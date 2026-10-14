@@ -71,7 +71,8 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 | GPU／多卡训练 | 未实现；入口会明确拒绝提交 |
 
 核心研究文件：[假设](docs/03_research_questions.md)、
-[实验设计](docs/11_experiment_design.md)、[研究日志](docs/20_research_log.md)。
+[实验设计](docs/11_experiment_design.md)、[研究日志](docs/20_research_log.md)、
+[下一轮 Mac 开发交接](docs/21_mac_development_handoff.md)。
 依赖默认保持轻量；DuckDB/LightGBM/scikit-learn 在 `research` extra，
 PyTorch 在 `neural` extra，Phase 0 不安装这些大模型依赖。
 
