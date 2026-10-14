@@ -287,3 +287,34 @@ Actual UCSF validation: `make check` passed with **182 tests passing**, Ruff/for
 repository-boundary checks. `make demo` passed with synthetic NLL
 2.729264271658528. No clinical source was opened by these checks and no clinical report
 or artifact was added to Git.
+
+## 2026-10-14 — Full bounded footer inventory and provenance search
+
+Ran three explicit footer-only Slurm audits against the reviewed v2 source roots
+(jobs 34078, 34079 and 34080). All completed successfully in one to two seconds. Each
+root was fully enumerated within a temporary 1,000-file/100-directory ceiling, with no
+footer failures or truncation and one internally consistent schema per source. The
+private reports remain outside Git. The private audit configurations were then restored
+to their conservative 12-file defaults.
+
+The combined source inventory substantially exceeds the coherent executor's 64-file
+ceiling. Spark part ordinals are contiguous but differ across the three sources, exact
+basenames do not overlap, and neither the source roots nor their common parent contains
+an Arrow metadata file, manifest, catalog, index or provenance record. Completion
+markers and similar filename suffixes do not prove a common key partitioner or complete
+selected-key coverage, so no clinical access manifest was created.
+
+Also reviewed the existing analysis code and bounded samples of already generated
+patient-sharded artifacts. The code performs direct Parquet scans and temporary joins;
+it does not expose an exact-key locator/index service or completeness receipt. A bounded
+footer search of existing artifacts found no sampled schema preserving the exact
+reviewed identity sets. A shallow catalog search likewise found no candidate control
+file referencing those identity fields. Both artifact searches stopped at their entry
+ceilings, so these are negative bounded findings, not proof about unvisited storage.
+
+No Parquet data pages, footer statistics, arbitrary metadata or row values were read.
+No database write, cohort, persistent extract, index or GPU task was created. A real
+coherent validation now requires either source-owner provenance proving a shared
+partition/locator contract, or a separately scoped preparation job that scans tens of
+GiB and hundreds of millions of footer-declared rows to create a restricted locator or
+coherent extract. That preparation is intentionally not hidden inside the validator.

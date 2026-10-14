@@ -24,6 +24,9 @@ Mac 实现”的安排已被本次指令取代。Mac 负责方案讨论、代码
 两次真实 CPU 运行得到有效 limited 报告，独立分片前缀没有共同身份覆盖。这不代表
 真实关联不存在。预算诊断和一致来源 `coherent_manifest` 读取器已实现并通过合成测试；
 当前尚无经审核的真实私有 manifest，精确键索引后端也未实现。
+后续完整 footer 审计确认三个 source root 均可读且 schema 内部一致，但文件集合超过
+manifest 上限、Spark part ordinal 不一致，也没有现成 catalog/provenance。现有 PULSE
+产物的有界 footer/catalog 样本未保留审核身份集合。不要再重复这些检查。
 
 ## 2. 当前目标：审核真实 manifest 后运行一次有意义的关联验证
 
