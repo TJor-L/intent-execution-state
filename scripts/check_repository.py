@@ -20,6 +20,7 @@ CONFIGS = {
     "configs/remote.example.yaml",
     "configs/feasibility.example.yaml",
     "configs/coherent_access.example.yaml",
+    "configs/clinical_protocol.example.yaml",
 }
 
 

@@ -1,5 +1,9 @@
 # Cohort definition
 
+Implementation status: the data-free protocol parser/planner is runnable and tested;
+real cohort extraction remains disabled. See docs/26_clinical_cohort_protocol.md and
+`configs/clinical_protocol.example.yaml` for the freeze gate.
+
 Planned clinical cohort: adult inpatients with eligible medication orders. The actual
 adult-age derivation, inpatient indicators, medication categories and source fields
 remain unverified. Select one or two categories with reliable direct linkage and

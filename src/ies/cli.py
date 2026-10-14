@@ -58,10 +58,16 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--mapping", type=Path, required=True)
     command.add_argument("--access-manifest", type=Path)
     command.add_argument("--output-dir", type=Path)
+    command = commands.add_parser("protocol-plan")
+    command.add_argument("--protocol", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "protocol-plan":
+        from ies.clinical_protocol import plan_protocol
+
+        return plan_protocol(args.protocol)
     if args.command == "feasibility":
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
@@ -153,6 +159,8 @@ def main(argv=None) -> int:
             root.exit(
                 2, "Metadata audit failed; verify server context, paths, and restricted report.\n"
             )
+        if args.command == "protocol-plan":
+            root.exit(2, "Clinical protocol plan failed; verify the private protocol.\n")
         root.exit(2, f"Synthetic command failed ({type(error).__name__}): {error}\n")
 
 

@@ -129,6 +129,7 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 | 规划注册键预算诊断 | 已实现；示例每源行上限降低，其他额度不扩大 |
 | 一致来源 manifest、独立扫描／字节／保留预算、双校验和执行绑定 | 已实现；真实 coherent 作业 complete、无限额触发 |
 | 单独授权的全源 coherent 准备器 | 已实现并运行；UCSF-only 投影、manifest 和 receipt 验证通过 |
+| 临床 cohort 协议与 data-free readiness gate | 已实现；draft 尚缺成人、住院、药物域审核及预设样本门槛 |
 | 精确键索引／探查后端 | 能力复核未发现可用服务；未实现，也不隐藏全源扫描 |
 | UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |
@@ -140,7 +141,8 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 [首轮 Mac 开发交接](docs/21_mac_development_handoff.md)、
 [服务器发现的契约缺口](docs/23_feasibility_contract_gaps.md)、
 [首次 v2 有界运行发现](docs/24_bounded_run_findings.md)、
-[关联访问设计](docs/25_coherent_access_design.md)。
+[关联访问设计](docs/25_coherent_access_design.md)、
+[临床 cohort 协议 gate](docs/26_clinical_cohort_protocol.md)。
 依赖默认保持轻量；DuckDB/LightGBM/scikit-learn 在 `research` extra，
 PyTorch 在 `neural` extra，Phase 0 不安装这些大模型依赖。
 

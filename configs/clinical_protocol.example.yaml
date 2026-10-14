@@ -1,0 +1,39 @@
+# Draft only. Populate and review a .local.yaml on UCSF before any clinical extraction.
+schema_version: 1
+status: draft
+task:
+  estimand: first_execution_competing_risk
+  eligible_orders: all_distinct_orders
+  repeated_administrations: reject_order
+  terminal_ties: reject_order
+  continuous_infusions: exclude
+  unresolved_prn: exclude
+population:
+  minimum_age_years: 18
+  adult_derivation_reviewed: false
+  adult_derivation_evidence_reference: null
+  inpatient_only: true
+  inpatient_definition_reviewed: false
+  inpatient_definition_evidence_reference: null
+  medication_categories: []
+  medication_category_system: null
+  medication_eligibility_reviewed: false
+  medication_eligibility_evidence_reference: null
+temporal:
+  index: order_created_and_available
+  input_window_hours: 24
+  followup_horizon_hours: 24
+  occurrence_and_availability_required: true
+  observation_coverage_required: true
+  laboratory_features_enabled: false
+split:
+  unit: patient
+  seed: 20261014
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  test_fraction: 0.15
+  global_calendar_split: false
+acceptance:
+  # Set before extraction from a separate precision/power review; do not tune to yield.
+  minimum_eligible_orders: null
+  minimum_execution_events: null

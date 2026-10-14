@@ -371,3 +371,24 @@ and cause rejection as designed; no terminal-without-execution category was obse
 These are aggregate feasibility findings for a fixed small row-position domain, not
 population rates, clinical efficacy evidence or a model result. All counts and reports
 remain on UCSF storage.
+
+## 2026-10-14 — Clinical cohort protocol gate started
+
+Started the post-feasibility milestone without extracting a real cohort. Implemented a
+strict versioned clinical protocol parser and data-free planner. It freezes the current
+research invariants: adult inpatient scope, first execution only, direct observation
+coverage, 24-hour input/followup, occurrence plus availability time, patient-level
+seeded splits, no global calendar split, rejection of repeats/ties, exclusion of
+continuous infusions and unresolved PRN semantics, and no laboratory features.
+
+The tracked protocol remains `draft`. A private protocol cannot become `frozen` until
+it contains reviewed evidence for adult derivation, inpatient definition and one or two
+prespecified medication categories, plus minimum eligible-order and execution-event
+thresholds justified before extraction. Plans expose only generic missing gates and
+never medication categories or evidence references. Generated tests cover draft/frozen
+states, every unresolved gate, unknown keys, invariant violations, private-value
+suppression and the CLI path. No clinical source, output directory or job is touched by
+planning.
+
+Actual server validation: `make check` passed with **195 tests passing**, Ruff/format
+and repository-boundary checks.
