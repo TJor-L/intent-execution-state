@@ -188,3 +188,42 @@ were not selected. `docs/24_bounded_run_findings.md` specifies the next design: 
 explicitly reviewed coherent-source or key-index/probe interface with separate scanned
 and retained bounds, provenance checksums and aggregate-only output. Full cohort
 extraction and an implicit full-table key scan remain out of scope.
+
+## 2026-10-14 — Budget diagnosis and coherent-access design review
+
+Pulled `9976b9ab688bb56d24a7ce5a3aefae6d6d9341fe`, the server's approved bounded-run
+findings. Two limited runs demonstrated that independent source prefixes do not yield
+useful cross-source identity coverage for this layout. This does not estimate absent
+clinical linkage. Only operational documentation was returned, without clinical data.
+
+Implemented a non-sensitive planning diagnostic for worst-case registry entries:
+three per-source row caps versus the shared key allowance, including the shortfall
+and whether all row caps fit. Plans explicitly identify independent-prefix sampling
+and do not claim coherent linkage coverage. Reduced the tracked example from 5,000
+to 3,000 rows per source, so at most 9,000 unique registry entries fit in 10,000 slots.
+Other quotas and existing private configs are unchanged. Fitting keys neither fixes
+source alignment nor guarantees memory use.
+
+Completed the proposed interface design in docs/25_coherent_access_design.md. It starts
+from an explicit reviewed order seed domain and requires either an existing coherent
+manifest or an approved exact-key index/probe capability. It specifies completeness
+receipts, separate scanned/retained work, file/row-group/probe/index/byte/resource
+bounds and mapping/manifest checksum binding across plan, submission and execution.
+Underlying immutable source/index provenance is required in addition to manifest
+hashes. The design retains duplicate, patient mismatch, repeat, retrospective-record
+and availability rules and distinguishes incomplete lookups from complete absence.
+
+The new access executor, manifest parser, dual-checksum submission path and provider
+backends are **not implemented**. They require the server's capability review first;
+no known existing index or coherent extract was inferred from the handoff. The next
+server prompt requests that review using already approved documentation and metadata,
+not another real prefix job or new persistent preparation. Building an index, making
+a coherent extract or doing a full-source key scan remains a separate reviewed phase.
+
+Actual local validation: `make check` passed with **170 tests passing, 2 Linux-only
+worker cases skipped**, Ruff/format checks and repository-boundary validation.
+`make demo` passed with unchanged synthetic NLL 2.729264271658528. Budget tests include
+the old shortfall, revised example, exact-capacity and very small-capacity cases,
+non-mutating/data-free planning and the server planning entry point. The Linux-only
+worker cases remain part of publication CI. No clinical source or UCSF job was accessed
+by this Mac agent.

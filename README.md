@@ -49,15 +49,20 @@ uv run ies evaluate --cohort artifacts/synthetic/cohort.json --model artifacts/s
    执行普通 push，不创建远程仓库、不强推。
 4. 用户在 UCSF 首次 clone 或后续 `git pull --ff-only`，将交接提示词给服务器端 Codex。
 5. 服务器 Codex 核验 SHA、阅读 `AGENTS.md`，先运行合成验证，再核实本地权限及
-   配置。完成字段语义审核后，下一轮运行有界可行性验证，只保存汇总计数。
+   配置。当前下一轮是审核一致来源／精确键访问能力，先不提交新的真实数据任务。
 
 提示词模板见 [docs/server_codex_prompt.md](docs/server_codex_prompt.md)，
 操作细节见 [docs/16_remote_development.md](docs/16_remote_development.md)。
 Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告和真实结果留在服务器。
 
-## 本轮更新：三来源有界可行性验证
+## 本轮更新：取样发现、预算诊断与关联读取设计
 
-输入是服务器本地审核过的字段映射；直接关联医嘱、给药和独立观测覆盖来源，拒绝患者不一致或重复给药，
+服务器的两次小规模任务产出了有效 `limited` 报告，但独立来源前缀之间没有相同
+身份覆盖；这不能证明缺少真实关联。下一步需先审核已有一致来源或精确键探查能力。
+详见[服务器发现](docs/24_bounded_run_findings.md)与[下一阶段接口设计](docs/25_coherent_access_design.md)。
+新读取器尚未实现，本轮服务器任务是设计审核，不是再次扩大前缀扫描。
+
+现有 v2 验证器使用服务器本地审核过的字段映射，关联医嘱、给药和独立观测覆盖来源，拒绝患者不一致或重复给药，
 单独统计 encounter 不一致，并区分首次执行、已知终止与右删失。不读取检验特征，
 不生成患者级 cohort。详见 [映射与计数规则](docs/22_bounded_feasibility.md)。
 
@@ -70,10 +75,11 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 
 ```bash
 uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml
-uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml
 ```
 
-`plan` 只读配置，不访问数据、不创建输出。执行须经 Slurm，受文件、目录、行、键、
+`plan` 只读配置，不访问数据、不创建输出，并显示三来源最坏情况下的注册键预算。
+新示例每源 3,000 行，最多 9,000 个注册键，可容纳于 10,000 的共享额度；现有私有
+配置不自动修改。预算匹配不等于覆盖一致。现有执行入口须经 Slurm，受文件、目录、行、键、
 CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`，不能把未扫描到的
 给药当作没有给药，也不能据此确认单次执行。报告留在 UCSF 仓库外。
 
@@ -86,8 +92,10 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 | 分段指数竞争风险基线、CIF、删失似然 | 已实现 |
 | 患者簇 bootstrap CI、可复现实验清单 | 已实现 |
 | Git 交接提示词、发布前检查、CI | 已实现 |
-| 有界 metadata-only 审计、CPU Slurm 提交工具 | 已实现；未在 UCSF 验证 |
-| 配置驱动的有界可行性验证、汇总计数、资源限制 | 已实现并用合成输入验证；待 UCSF 运行 |
+| 有界 metadata-only 审计、CPU Slurm 提交工具 | 已实现；CPU Slurm 已用于可行性任务 |
+| 配置驱动的三来源有界可行性验证、汇总计数、资源限制 | 已在 UCSF 运行；两次 limited，前缀关联取样无有效覆盖 |
+| 规划注册键预算诊断 | 已实现；示例每源行上限降低，其他额度不扩大 |
+| 一致来源／精确键探查、独立扫描与保留预算、双校验和执行绑定 | 设计待服务器审核；尚无可执行读取器 |
 | UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |
 | 状态预测、IPCW 校准／判别、多模型统计比较 | 后续研究阶段 |
@@ -97,7 +105,8 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 [实验设计](docs/11_experiment_design.md)、[研究日志](docs/20_research_log.md)、
 [首轮 Mac 开发交接](docs/21_mac_development_handoff.md)、
 [服务器发现的契约缺口](docs/23_feasibility_contract_gaps.md)、
-[首次 v2 有界运行发现](docs/24_bounded_run_findings.md)。
+[首次 v2 有界运行发现](docs/24_bounded_run_findings.md)、
+[关联访问设计](docs/25_coherent_access_design.md)。
 依赖默认保持轻量；DuckDB/LightGBM/scikit-learn 在 `research` extra，
 PyTorch 在 `neural` extra，Phase 0 不安装这些大模型依赖。
 

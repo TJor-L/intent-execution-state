@@ -8,7 +8,7 @@ Endpoint: held-out observed-data competing-risk NLL in hours; report a patient-c
 bootstrap interval. Purpose: verify the end-to-end executable path, not test novelty.
 Each run has immutable output directory, configuration, revision and artifact hashes.
 
-## E001: feasibility, not yet executed
+## E001: bounded feasibility attempted; coherent access pending review
 
 The first E001 code deliverable is now a generic bounded feasibility validator,
 not a clinical cohort extractor. The approved server handoff reports direct linkage
@@ -19,7 +19,10 @@ On UCSF, use a reviewed local mapping to count linkage consistency, qualifying a
 repeats, timing violations and first-event eligibility within explicit limits. Every
 truncated scan is labeled `limited`; it cannot confirm absence of another dose or
 right censoring. Inspect server-local counts before authorizing any cohort extraction.
-No clinical run of this new validator has been performed by the Mac agent.
+The server has now performed two bounded runs, both limited. No clinical data were
+accessed by the Mac agent. Independent source prefixes contained no matching links;
+this is a sampling limitation, not a linkage-failure estimate. No clinical model
+result or reliable cohort follows from those reports.
 
 The server stopped the first configuration attempt before job submission because
 time normalization, execution availability and a third observation source could not
@@ -28,6 +31,13 @@ these concepts but does not establish their real source semantics. Review the co
 clock, direct coverage join and retrospective endpoint ascertainment on UCSF. Execution
 equality needs independent evidence and a mapped retrospective-exclusion rule; lack
 of evidence remains a blocker, even though the software now supports the policy.
+
+The first v2 server mapping passed review and planning, then exposed the independent-
+prefix limitation (docs/24_bounded_run_findings.md). The next stage is capability review
+of an explicit seed domain and coherent manifest or existing exact-key probe backend
+(docs/25_coherent_access_design.md). Do not enlarge quotas or prepare a persistent
+index/extract implicitly. The new executor remains planned until a reviewed backend
+supports separate scanned/retained budgets and complete selected-key coverage.
 
 Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.

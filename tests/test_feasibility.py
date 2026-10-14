@@ -427,6 +427,43 @@ def test_plan_never_reads_sources_or_creates_output(case, tmp_path, monkeypatch,
     assert not (tmp_path / "inputs").exists()
 
 
+@pytest.mark.parametrize(
+    "rows,keys,shortfall,fits",
+    [(5000, 10000, 5000, False), (3000, 10000, 0, True), (1000, 3000, 0, True), (1, 1, 2, False)],
+)
+def test_planning_exposes_worst_case_registry_budget_without_changing_limits(
+    case, tmp_path, rows, keys, shortfall, fits
+):
+    case[0]["limits"].update(max_rows_per_source=rows, max_keys=keys, batch_rows=min(rows, 256))
+    path = tmp_path / "mapping.local.yaml"
+    content = yaml.safe_dump(case[0])
+    path.write_text(content)
+    plan = runner.plan_feasibility(path)
+    assert plan["identity_budget"] == {
+        "source_count": 3,
+        "worst_case_registry_keys": 3 * rows,
+        "shared_key_capacity": keys,
+        "worst_case_key_shortfall": shortfall,
+        "all_source_row_caps_fit": fits,
+        "balanced_rows_per_source_at_key_capacity": keys // 3,
+    }
+    assert plan["limits"] == case[0]["limits"]
+    assert path.read_text() == content
+    assert plan["sampling"] == "independent_source_prefixes"
+    assert plan["coherent_linkage_coverage_verified"] is False
+    assert not (tmp_path / "inputs").exists()
+    assert not any(value in json.dumps(plan) for value in (str(tmp_path), "toy-", "toy_slot"))
+
+
+def test_example_registry_caps_fit_without_expanding_existing_resources():
+    config = yaml.safe_load((ROOT / "configs/feasibility.example.yaml").read_text())
+    bounds = config["limits"]
+    assert 3 * bounds["max_rows_per_source"] <= bounds["max_keys"]
+    assert bounds["max_keys"] == 10000
+    assert bounds["max_rows_per_source"] < 5000
+    assert (bounds["cpus"], bounds["memory_mb"], bounds["runtime_seconds"]) == (1, 2048, 60)
+
+
 def test_sanitized_config_and_context_errors(case, tmp_path, monkeypatch, capsys):
     path = tmp_path / "feasibility.local.yaml"
     path.write_text("private-sentinel: [broken")
@@ -553,7 +590,9 @@ def test_slurm_feasibility_plan_uses_limits_without_data_access(
     )
     assert server.main() == 0
     assert not (tmp_path / "inputs").exists() and not (tmp_path / "outputs").exists()
-    assert "toy-cpu" not in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "toy-cpu" not in output
+    assert json.loads(output)["identity_budget"]["worst_case_registry_keys"] == 9000
     command = server.sbatch_command(config, "feasibility", tmp_path / "outputs", mapping_path)
     assert "--cpus-per-task=1" in command and "--mem=2048M" in command
     assert "--time=00:01:30" in command

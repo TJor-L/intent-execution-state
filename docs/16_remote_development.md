@@ -65,7 +65,11 @@ synthetic 子任务生成自己的 manifest。用服务器端 squeue/sacct 确�
 真实 cohort 提取必须先实现并审核 adapter。下次本地开发只接收允许分享的需求或
 聚合状态；患者级结果、原始 schema 与私有路径都留在 UCSF。
 
-## 下一轮：有界可行性验证
+## 已有 v2 可行性入口与当前下一步
+
+服务器已完成两次 limited 运行，独立来源前缀没有共同身份覆盖。下一轮是审核
+docs/25_coherent_access_design.md 中的一致来源／精确键探查能力，暂不提交新的真实
+任务或建立索引／提取。以下是已有 v2 工具说明，不代表本轮应再次 submit。
 
 1. 保留已有 `remote.local.yaml`，仅在服务器参考新版模板填写
    `configs/feasibility.example.yaml` → `configs/feasibility.local.yaml`。
@@ -77,6 +81,9 @@ synthetic 子任务生成自己的 manifest。用服务器端 squeue/sacct 确�
    映射的回填分类和排除规则，不能为了让配置通过而勾选。详见契约文档。
 3. `uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml`
    只检查配置并显示资源上限。它不会确认源文件或列确实存在。
+   新增 identity_budget 最坏注册键需求与缺口；示例降至每源 3,000 行，最多 9,000
+   个注册键，可容纳于共享 10,000 键。已有本地配置不自动修改，其他限额不扩大。
+   预算匹配不等于覆盖一致；规划明确输出 independent_source_prefixes。
 4. `uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml`
    提交单个 CPU 任务；启动时核验干净代码 SHA 和提交时读取的映射字节校验和。
 

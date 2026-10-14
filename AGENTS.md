@@ -15,7 +15,8 @@ generated synthetic fixtures here. Never paste real rows or values into issues,
 prompts, documentation, terminal summaries, or Git commits. Schema discovery
 reads Parquet footers only, omitting statistics and arbitrary metadata.
 No real column mapping is stored here. Server-approved operational findings are in
-docs/21_mac_development_handoff.md and docs/23_feasibility_contract_gaps.md; never infer
+docs/21_mac_development_handoff.md, docs/23_feasibility_contract_gaps.md and
+docs/24_bounded_run_findings.md; never infer
 source column names from those findings. Time/availability evidence references and
 documentation classifications are server-local too, never report payloads.
 
@@ -49,6 +50,11 @@ never replace observation end with order end. Naive times need an explicit revie
 timezone or shifted common-clock policy. Equality of execution occurrence/availability
 requires evidence and a reviewed mapped retrospective-exclusion rule; retrospectively
 documented or unclassified qualifying doses reject the entire linked order.
+The first real bounded runs were limited and independent prefixes had no linked keys;
+do not interpret that as absent linkage. The next server handoff is capability/design
+review of docs/25_coherent_access_design.md, not another real run. The coherent/indexed
+executor is planned only. Persistent index/extract creation and full-source key scans
+require a separate reviewed operation; never hide them inside bounded probing.
 
 ## Handoffs
 

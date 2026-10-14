@@ -6,6 +6,11 @@ mapping using bounded projected reads. It is not a UCSF-specific cohort adapter,
 label export, clinical experiment or causal model. No real source names, status
 values, rows or paths belong in the tracked example.
 
+The first server runs returned valid limited reports without links between independent
+prefixes (docs/24_bounded_run_findings.md). The next step is review of the proposed
+coherent-access interface in docs/25_coherent_access_design.md, not an expanded prefix
+run. That new backend is not implemented; the executable described here remains v2.
+
 ## Version 2 configuration and migration
 
 Mapping and aggregate report schemas are now version 2. Version 1 mappings are
@@ -28,6 +33,13 @@ contains resource limits and mode, not the mapping or source paths. The Slurm
 `server.py plan feasibility` entry adds scheduler-config validation without accessing
 data. Neither plan proves configured files/fields exist. Named-zone validation may
 read the installed timezone database; it never reads clinical storage.
+
+Planning also reports `identity_budget`: three times the per-source row cap is the
+worst-case total registry size. It exposes capacity, shortfall and whether all source
+row caps fit. `balanced_rows_per_source_at_key_capacity` is integer arithmetic, not
+a recommendation to enlarge scans. Existing configs are never rewritten. The public
+summary explicitly identifies `independent_source_prefixes` and does not claim coherent
+linkage coverage, even if the key budget fits. Planning does not guarantee memory use.
 
 ## Logical fields (not UCSF field names)
 
@@ -169,8 +181,8 @@ review metadata. The config is not copied into an output artifact. Use
 
 Hard ceilings are 64 files, 256 directories, 10,000 directory entries and 100,000 rows
 per source, 100,000 combined keys, 1,024 rows/batch, 900 wall/CPU seconds, 4 CPUs and
-4,096 MiB. Configured values can be smaller and must be explicit. Defaults remain
-4 files/source, 5,000 rows/source, 10,000 keys across all three sources, 1 CPU,
+4,096 MiB. Configured values can be smaller and must be explicit. Current example defaults are
+4 files/source, 3,000 rows/source, 10,000 keys across all three sources, 1 CPU,
 2,048 MiB and 60 seconds. A Slurm/system kill may preempt final report creation.
 Absence of a report is a failed/unresolved run, never an empty cohort. No GPU requested.
 

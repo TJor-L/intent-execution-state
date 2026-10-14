@@ -73,7 +73,9 @@ limits:
   max_files_per_source: 4
   max_directories_per_source: 20
   max_entries_per_source: 1000
-  max_rows_per_source: 5000
+  # Three unique source registries can retain at most 3 * 3000 = 9000 keys.
+  # This fits max_keys but does not make independently read prefixes coherent.
+  max_rows_per_source: 3000
   max_keys: 10000
   batch_rows: 256
   runtime_seconds: 60

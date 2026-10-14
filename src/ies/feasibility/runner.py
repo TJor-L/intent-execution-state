@@ -9,10 +9,31 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
-from ies.feasibility.contract import ROOT, FeasibilityError, load_mapping, load_mapping_snapshot
+from ies.feasibility.contract import (
+    ROOT,
+    FeasibilityError,
+    Mapping,
+    load_mapping,
+    load_mapping_snapshot,
+)
 from ies.io import write_json
 
 LIMIT_NAMES = ("files", "directories", "entries", "rows", "keys", "runtime", "cpu", "memory")
+
+
+def identity_budget(mapping: Mapping) -> dict:
+    """Arithmetic upper bound for the current reader's three identity registries only."""
+    source_count = len(mapping.sources)
+    worst_case = source_count * mapping.limits.max_rows_per_source
+    capacity = mapping.limits.max_keys
+    return {
+        "source_count": source_count,
+        "worst_case_registry_keys": worst_case,
+        "shared_key_capacity": capacity,
+        "worst_case_key_shortfall": max(0, worst_case - capacity),
+        "all_source_row_caps_fit": worst_case <= capacity,
+        "balanced_rows_per_source_at_key_capacity": capacity // source_count,
+    }
 
 
 def plan_feasibility(path: Path) -> dict:
@@ -21,6 +42,9 @@ def plan_feasibility(path: Path) -> dict:
         "mode": "bounded_feasibility",
         "submitted": False,
         "limits": asdict(mapping.limits),
+        "identity_budget": identity_budget(mapping),
+        "sampling": "independent_source_prefixes",
+        "coherent_linkage_coverage_verified": False,
         "laboratory_features_enabled": False,
     }
 
