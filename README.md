@@ -96,7 +96,8 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 核心研究文件：[假设](docs/03_research_questions.md)、
 [实验设计](docs/11_experiment_design.md)、[研究日志](docs/20_research_log.md)、
 [首轮 Mac 开发交接](docs/21_mac_development_handoff.md)、
-[服务器发现的契约缺口](docs/23_feasibility_contract_gaps.md)。
+[服务器发现的契约缺口](docs/23_feasibility_contract_gaps.md)、
+[首次 v2 有界运行发现](docs/24_bounded_run_findings.md)。
 依赖默认保持轻量；DuckDB/LightGBM/scikit-learn 在 `research` extra，
 PyTorch 在 `neural` extra，Phase 0 不安装这些大模型依赖。
 

@@ -165,3 +165,26 @@ using the updated pinned handoff, and submit one small aggregate-only job only i
 semantics can be established. The implementation does not supply missing evidence.
 If execution availability/classification or observation coverage cannot be reviewed,
 return an approved operational blocker without guessing values or expanding scope.
+
+## 2026-10-14 — First version 2 bounded feasibility runs
+
+The authorized server pulled and tested
+`8f8772587e7acb4958ce2ef9c6668edb7042120a`. Preflight, Ruff, formatting,
+**167 tests**, the repository boundary check and the synthetic demo passed. A private
+version 2 mapping passed data-free planning with all three logical sources and explicit
+time/documentation policies. No physical mapping or private evidence entered Git.
+
+Two small CPU jobs wrote valid `limited` reports. The first reached the shared key and
+row allowances before a useful three-source diagnostic. A second run reduced rows per
+source without increasing resources; it considered all three sources and qualifying
+actions but found no linked identities in the independent bounded prefixes. It
+correctly asserted no execution, terminal or censoring eligibility. A limited worker
+uses a documented nonzero exit, so scheduler state alone is not the result.
+
+This is a negative feasibility finding about the sampling mechanism, not evidence of
+absent clinical linkage. The source layout is separately sharded, so independent prefix
+sampling is structurally uninformative. Quotas were not expanded and convenient shards
+were not selected. `docs/24_bounded_run_findings.md` specifies the next design: an
+explicitly reviewed coherent-source or key-index/probe interface with separate scanned
+and retained bounds, provenance checksums and aggregate-only output. Full cohort
+extraction and an implicit full-table key scan remain out of scope.
