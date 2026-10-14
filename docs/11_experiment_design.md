@@ -8,7 +8,7 @@ Endpoint: held-out observed-data competing-risk NLL in hours; report a patient-c
 bootstrap interval. Purpose: verify the end-to-end executable path, not test novelty.
 Each run has immutable output directory, configuration, revision and artifact hashes.
 
-## E001: bounded feasibility attempted; coherent access pending review
+## E001: bounded feasibility attempted; server-led coherent access development
 
 The first E001 code deliverable is now a generic bounded feasibility validator,
 not a clinical cohort extractor. The approved server handoff reports direct linkage
@@ -33,11 +33,12 @@ equality needs independent evidence and a mapped retrospective-exclusion rule; l
 of evidence remains a blocker, even though the software now supports the policy.
 
 The first v2 server mapping passed review and planning, then exposed the independent-
-prefix limitation (docs/24_bounded_run_findings.md). The next stage is capability review
-of an explicit seed domain and coherent manifest or existing exact-key probe backend
-(docs/25_coherent_access_design.md). Do not enlarge quotas or prepare a persistent
-index/extract implicitly. The new executor remains planned until a reviewed backend
-supports separate scanned/retained budgets and complete selected-key coverage.
+prefix limitation (docs/24_bounded_run_findings.md). The next stage is server-led review,
+implementation and bounded validation of an explicit seed domain and coherent manifest
+or exact-key probe backend (docs/25_coherent_access_design.md), without a mandatory Mac
+handoff between stages. Do not enlarge quotas or prepare a persistent index/extract
+implicitly. The new executor remains planned until implemented and tested with separate
+scanned/retained budgets and complete selected-key coverage.
 
 Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.

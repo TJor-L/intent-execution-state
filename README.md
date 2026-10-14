@@ -1,7 +1,8 @@
 # Intent–Execution–State Modeling
 
-本地 Mac 开发与合成数据验证 → Git push → 用户在 UCSF pull → 服务器端 Codex
-接手临床数据工作。**本地不通过 SSH 访问 UCSF，不传回患者级数据。**
+**UCSF 负责主要开发与测试，Mac 负责方案讨论和代码复核。** 服务器连续完成实现、
+合成测试、小规模真实验证和修复，按里程碑通过 Git 同步，不逐步往返交接。
+本地不通过 SSH 访问 UCSF，不传回患者级数据。
 
 Phase 0 已提供可执行研究基础设施，并加入服务器交接要求的有界可行性验证器。
 它不证明结构化模型优于普通时序模型，也不包含真实 UCSF 字段映射或临床训练结果。
@@ -40,16 +41,17 @@ uv run ies train --cohort artifacts/synthetic/cohort.json --output artifacts/syn
 uv run ies evaluate --cohort artifacts/synthetic/cohort.json --model artifacts/synthetic/model.json --output-dir artifacts/synthetic/evaluation
 ```
 
-## 两端 Codex 交接
+## 两端 Codex 分工
 
-1. 本地运行 `make check` 和 `make demo`，更新研究日志，提交代码。
-2. `make handoff` 生成 `handoff/UCSF_CODEX_PROMPT.md`，固定当前干净提交的完整 SHA。
-3. `origin` 已配置为 `https://github.com/TJor-L/intent-execution-state.git`。
-   运行 `scripts/publish.sh`。脚本核验、测试后
-   执行普通 push，不创建远程仓库、不强推。
-4. 用户在 UCSF 首次 clone 或后续 `git pull --ff-only`，将交接提示词给服务器端 Codex。
-5. 服务器 Codex 核验 SHA、阅读 `AGENTS.md`，先运行合成验证，再核实本地权限及
-   配置。当前下一轮是审核一致来源／精确键访问能力，先不提交新的真实数据任务。
+1. 用户在 UCSF 拉取最新代码，把生成的提示词交给服务器 agent；初始 SHA 用于接手核验。
+2. 服务器直接核实访问能力、实现读取器、补合成测试，并在已审核范围内运行 CPU 验证。
+   发现普通代码、配置或调度问题就地修复，不等待 Mac 实现下一步。
+3. 编辑时运行针对性测试；pipeline 变更完成后运行 `make check`、`make demo` 并提交。
+   真实任务绑定实际干净提交；运行中的源码/配置不能修改，开发使用独立 checkout。
+4. 里程碑完成后更新研究日志，使用 `scripts/publish.sh` 普通推送；脚本检查并生成
+   固定当前提交的 `handoff/UCSF_CODEX_PROMPT.md`。无需每次小提交都要求用户来回同步。
+5. Mac 拉取里程碑代码进行复核和讨论。只有确实缺少访问/语义/能力或需要扩大工作范围，
+   才返回具体阻碍；同一分支避免双端同时改动。
 
 提示词模板见 [docs/server_codex_prompt.md](docs/server_codex_prompt.md)，
 操作细节见 [docs/16_remote_development.md](docs/16_remote_development.md)。
@@ -60,7 +62,8 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 服务器的两次小规模任务产出了有效 `limited` 报告，但独立来源前缀之间没有相同
 身份覆盖；这不能证明缺少真实关联。下一步需先审核已有一致来源或精确键探查能力。
 详见[服务器发现](docs/24_bounded_run_findings.md)与[下一阶段接口设计](docs/25_coherent_access_design.md)。
-新读取器尚未实现，本轮服务器任务是设计审核，不是再次扩大前缀扫描。
+新读取器尚未实现；服务器核实访问能力后直接继续实现、测试和受限验证。
+原先“仅审核后返回 Mac”的安排已取消，不重复没有变化的前缀扫描。
 
 现有 v2 验证器使用服务器本地审核过的字段映射，关联医嘱、给药和独立观测覆盖来源，拒绝患者不一致或重复给药，
 单独统计 encounter 不一致，并区分首次执行、已知终止与右删失。不读取检验特征，
@@ -95,7 +98,7 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 | 有界 metadata-only 审计、CPU Slurm 提交工具 | 已实现；CPU Slurm 已用于可行性任务 |
 | 配置驱动的三来源有界可行性验证、汇总计数、资源限制 | 已在 UCSF 运行；两次 limited，前缀关联取样无有效覆盖 |
 | 规划注册键预算诊断 | 已实现；示例每源行上限降低，其他额度不扩大 |
-| 一致来源／精确键探查、独立扫描与保留预算、双校验和执行绑定 | 设计待服务器审核；尚无可执行读取器 |
+| 一致来源／精确键探查、独立扫描与保留预算、双校验和执行绑定 | 已有设计；由服务器连续完成能力核实与实现，当前仍未实现 |
 | UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |
 | 状态预测、IPCW 校准／判别、多模型统计比较 | 后续研究阶段 |

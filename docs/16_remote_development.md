@@ -1,98 +1,102 @@
-# Local Git → UCSF pull → server Codex
+# UCSF 主开发，本地复核，Git 按里程碑同步
 
-用户已明确采用 Git 交接。Mac 端不配置到 UCSF 的 SSH/rsync，不拉取数据或日志。
-远程仓库为 `https://github.com/TJor-L/intent-execution-state.git`，本地已配置为 origin。
+用户已将开发和测试重心移到 UCSF。服务器 agent 在同一环境内完成实现、合成测试、
+获准范围内的真实小规模验证、诊断和修复；Mac 负责研究讨论、代码复核和合成复现。
+不再每发现一个数据访问问题就返回 Mac 等下一次代码交接。
 
-## 本地发布
+Git 继续只承载通用代码、合成测试、空白配置和审核后的操作摘要。远程仓库为
+`https://github.com/TJor-L/intent-execution-state.git`。Mac 不配置到 UCSF 的 SSH/rsync，
+不拉取临床数据、日志或模型。移动开发地点不改变数据边界。
+
+## 首次接手与版本
+
+用户在服务器保留已有工作，然后正常拉取：
 
 ```bash
-make setup
-make check
-make demo
-git add README.md AGENTS.md Makefile pyproject.toml uv.lock .python-version .gitignore .env.example src tests scripts slurm configs docs fixtures results/README.md .github
-git commit -m "Describe the verified code change"
-make handoff
-scripts/publish.sh
+git status --short
+git pull --ff-only origin main
 ```
 
-脚本要求工作区干净、检查通过，使用普通 push。交接提示词在被忽略的
-`handoff/UCSF_CODEX_PROMPT.md`，含完整提交 SHA。不要把待审核的服务器结果混进提交。
-每次更新代码后重新生成提示词，防止用新代码配旧指令。
+有未提交改动或分支分歧时先检查并整合，不 reset、不强推、不覆盖。把最新
+`handoff/UCSF_CODEX_PROMPT.md` 给服务器 agent；生成文件固定初始接手 SHA。
+这个 SHA 不是永久冻结：服务器可继续开发、测试、提交，后续任务固定各自实际代码版本。
 
-## UCSF 首次接手
+已有环境和私有配置优先复用。首次安装或依赖变动才需要 `make setup`；当前代码在
+此环境尚未核验时运行 `make check`。依赖安装须符合集群规则，计算任务不自动联网
+安装软件。只有配置缺失时才参考 example 创建 `.local.yaml`，不覆盖现有审核结果。
 
-用户首次在 UCSF 的代码目录执行：
+## 连续实现与验证
+
+服务器先核实真实访问能力，然后直接选择并实现一个可用的后端。当前目标是完成
+一次覆盖同一批医嘱的关联可行性验证。参考 docs/24 的取样发现和 docs/25 的接口设计；
+设计审核、编码和验证可以在服务器同一轮完成，不需要等待 Mac 接力。
+
+日常循环是：检查证据 → 实现/修复 → 针对性合成测试 → 必要的有界真实验证 → 解释
+结果并修复。只有真实验证需要经过已经核实的授权、映射、覆盖和资源约束；普通代码
+缺陷、测试失败、可修复的配置/调度问题由服务器直接处理，不单独交回 Mac。
 
 ```bash
-git clone https://github.com/TJor-L/intent-execution-state.git
-cd intent-execution-state
-```
+# 编辑期间：只跑与当前变更相关的测试
+uv run pytest tests/test_feasibility.py tests/test_feasibility_contract_v2.py
 
-后续在仓库内用 `git pull --ff-only`，保留服务器未提交工作。
-把生成的提示词交给服务器 Codex。服务器依赖安装方式需符合实际网络/集群规则；
-环境已准备时任务直接用绝对 Python 路径，Slurm 计算节点不会自动联网安装包。
-
-```bash
-make setup
+# pipeline 变更完成，准备提交/真实任务时
 make check
 make demo
-cp configs/remote.example.yaml configs/remote.local.yaml
-# 仅在服务器填入授权路径、Python、partition/account，并核实访问权限。
+```
+
+`make demo` 仅为合成端到端验证。真实临床读取走受限 CPU/Slurm 入口，不能为了方便
+绕过已有运行上下文和预算保护。真实任务每次重跑应对应具体修复或新证据；不重复
+没有变化的前缀扫描，也不自动扩配额。环境不变时无需重复 setup，文档改动无需重跑
+临床任务。发布脚本仍会执行必要的提交前检查。
+
+## 真实任务与正在开发的源码
+
+真实任务提交前要求干净提交；启动时核验 SHA 和映射校验和。开发可继续，但不能
+修改排队/运行任务使用的同一 checkout 或配置。可使用独立的干净 job checkout，
+并给任务明确的 Python、配置路径和代码版本；不能把启动时校验误认为源码快照。
+
+已有 `configs/remote.local.yaml` 记录获准存储、Python 和 Slurm 设置。需要验证服务器
+运行环境时执行：
+
+```bash
 export IES_EXECUTION_CONTEXT=ucsf
 uv run python scripts/server.py preflight
-uv run python scripts/server.py plan schema-audit
-uv run python scripts/server.py submit schema-audit
+uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml
 ```
 
-配置示例不含真实服务器路径。必须核实 `institutional_access_confirmed` 后才能继续。
-提交工具支持 schema-audit、synthetic 和 feasibility，均不请求 GPU。
-`plan` 只读配置，不创建目录、不提交任务、不检查或读取数据路径。
-schema-audit/synthetic 保持原 CPU 配额；feasibility 使用映射内的更严格资源上限。
+这些现有工具支持 schema-audit、synthetic 和 v2 feasibility，均为 CPU 任务。
+`plan` 不读取临床源数据、不创建输出。v2 的 identity_budget 显示三来源注册键预算；
+默认每源 3,000 行、共享 10,000 键。它仍是独立前缀读取器，并不实现 docs/25 的一致
+来源／精确键访问。服务器应实现并测试新后端及相应入口后再用它验证，不得把新设计
+的配置项直接塞进旧入口并声称已经实现。
 
-## 日志与结果
+当前小规模默认资源为 1 CPU、2,048 MiB、60 秒 worker wall/CPU 时间；Slurm 增加
+30 秒收尾时间。既有已审核配置可继续使用，不自动覆盖或扩大。新增后端必须明确
+文件、row group、扫描/保留行、键、索引与 I/O 等预算，遵守已确定的运行范围。
 
-服务器输出为 `output_root/jobs/<run>/`，包括调度日志、提交记录和元数据报告；
-synthetic 子任务生成自己的 manifest。用服务器端 squeue/sacct 确认是否成功，
-拿到 job ID 不代表完成。审计到达上限会标记覆盖有限；没有文件或读取失败返回非零。
-目录遍历顺序取决于文件系统，不能将样本视为代表性抽样。
+输出在仓库外授权目录；现有 v2 报告位于
+`output_root/jobs/<run>/feasibility/feasibility_report.json`。在服务器监控 squeue/sacct
+至终态并解释报告。limited 使用非零退出，不等于读取程序必然出错；无报告不等于零
+事件。患者级数据、源 schema、私有路径和完整受限计数继续留在服务器。
 
-提交前要求代码工作区干净；任务启动时再次核验提交 SHA 并使用该 checkout 的源码。
-不要在任务排队或运行时修改同一 checkout／执行 pull；后续开发应等任务结束或使用
-另一个独立 checkout。启动检查不是运行期间的文件快照。手工提交其他 sbatch 时也须
-设置 `IES_EXPECTED_COMMIT` 为审核过的 SHA，并用 `--chdir` 指向该干净仓库。
+## 里程碑发布与真正的阻碍
 
-预处理与评估 sbatch 目前只接受 canonical synthetic artifacts。GPU 入口明确失败。
-真实 cohort 提取必须先实现并审核 adapter。下次本地开发只接收允许分享的需求或
-聚合状态；患者级结果、原始 schema 与私有路径都留在 UCSF。
+服务器拥有当前实现分支；Mac 先复核，避免两端同时写同一分支。服务器可做小提交，
+但只在完成实现/验证里程碑或遇到真实外部阻碍时集中同步。无需每次 commit 都让用户
+来回 pull。先检查 diff，只暂存审核过的通用源码、合成测试和可共享文档，再发布：
 
-## 已有 v2 可行性入口与当前下一步
+```bash
+git diff --cached --check
+git commit -m 'Describe the verified change'
+bash scripts/publish.sh
+```
 
-服务器已完成两次 limited 运行，独立来源前缀没有共同身份覆盖。下一轮是审核
-docs/25_coherent_access_design.md 中的一致来源／精确键探查能力，暂不提交新的真实
-任务或建立索引／提取。以下是已有 v2 工具说明，不代表本轮应再次 submit。
+不暂存私有配置或数据。发布脚本要求工作区干净、检查通过后普通 push，并重新生成
+固定当前 SHA 的提示词。服务器发布后确认 CI。
+更新 `docs/20_research_log.md` 和实际实现状态；摘要包括 SHA、测试、真实任务状态、
+覆盖限制和下一步，不能把计划写成已完成。
 
-1. 保留已有 `remote.local.yaml`，仅在服务器参考新版模板填写
-   `configs/feasibility.example.yaml` → `configs/feasibility.local.yaml`。
-   现在为 schema version 2；旧映射只留作服务器私有参考，不自动转换或覆盖。
-   新增独立 observation 来源、直接关联键、结束发生与可用时间及其审核标志。
-2. 核实机构授权、映射、动作、观测覆盖与时间语义后，才填写相应 reviewed 标志。
-   不应把随机截取的给药文件声明为覆盖全部相关给药。尚未审核的语义应保留未完成。
-   无时区时间必须选择审核过的时区／共同移位时钟；给药相等假设还需要独立审核依据、
-   映射的回填分类和排除规则，不能为了让配置通过而勾选。详见契约文档。
-3. `uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml`
-   只检查配置并显示资源上限。它不会确认源文件或列确实存在。
-   新增 identity_budget 最坏注册键需求与缺口；示例降至每源 3,000 行，最多 9,000
-   个注册键，可容纳于共享 10,000 键。已有本地配置不自动修改，其他限额不扩大。
-   预算匹配不等于覆盖一致；规划明确输出 independent_source_prefixes。
-4. `uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml`
-   提交单个 CPU 任务；启动时核验干净代码 SHA 和提交时读取的映射字节校验和。
-
-feasibility 的 CPU、内存和时间分配来自其映射配置，覆盖 remote 配置中的对应值。
-默认 1 CPU、2048 MiB、60 秒 worker wall/CPU 限额；Slurm 增加 30 秒收尾时间。
-修改排队中的映射会让任务失败，不应通过关闭核验重用旧任务。
-报告位于服务器 `output_root/jobs/<run>/feasibility/feasibility_report.json`。
-该任务的提交记录不写入命令参数或私有路径。失败／限额退出非零，需要结合 sacct
-和报告状态解释；无报告可能是调度器/系统终止，不能视作成功。
-
-本地 Mac 只运行合成测试；Linux 资源限额的原生集成测试由 Linux CI 执行，
-实际 UCSF 的 Slurm/cgroup 行为仍需服务器确认。详见 docs/22_bounded_feasibility.md。
+只有缺少权限/关键语义、没有所需访问能力，或工作需要超出现有范围时，才提交具体
+阻碍。若不可避免地需要新建持久化索引、一致提取、全源扫描或新增资源，先给出范围、
+成本、产物位置和验收标准；这些仍是单独操作，不能隐藏在小规模 probe 内。无需因此
+搁置独立可完成的代码与合成测试。当前里程碑不包含真实 cohort 导出或 GPU/临床训练。

@@ -7,9 +7,11 @@ label export, clinical experiment or causal model. No real source names, status
 values, rows or paths belong in the tracked example.
 
 The first server runs returned valid limited reports without links between independent
-prefixes (docs/24_bounded_run_findings.md). The next step is review of the proposed
-coherent-access interface in docs/25_coherent_access_design.md, not an expanded prefix
-run. That new backend is not implemented; the executable described here remains v2.
+prefixes (docs/24_bounded_run_findings.md). UCSF is now the primary development site:
+the server should review the proposed interface in docs/25_coherent_access_design.md
+and continue directly into implementation, tests and bounded validation when supported
+by its access capabilities. That backend is not yet implemented; this document describes
+v2. Do not repeat unchanged prefix runs as a substitute for coherent access.
 
 ## Version 2 configuration and migration
 

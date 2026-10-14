@@ -227,3 +227,32 @@ the old shortfall, revised example, exact-capacity and very small-capacity cases
 non-mutating/data-free planning and the server planning entry point. The Linux-only
 worker cases remain part of publication CI. No clinical source or UCSF job was accessed
 by this Mac agent.
+
+## 2026-10-14 — User moves primary development and testing to UCSF
+
+The user identified the per-step Mac/server handoffs as inefficient and requested more
+development and testing on the server. Updated the working agreement, active handoff,
+README and workflow/design documents so UCSF owns the continuous implementation,
+synthetic-test, bounded-real-validation and repair cycle. The Mac now supports research
+discussion, code review and synthetic reproduction. The previous review-only stop and
+requirement to return ordinary implementation work to the Mac are explicitly superseded.
+
+The server may review available access capabilities and immediately implement/test a
+supported backend, then perform small CPU validation within established authorization,
+semantics and resource bounds. Ordinary bugs and configuration/scheduler defects are
+fixed there. Handoffs are grouped at verified milestones or genuine external blockers.
+The initial prompt SHA identifies entry state; later server commits/jobs use their own
+verified revisions. Active job checkouts/configs remain fixed, with separate development
+checkouts when necessary, and one primary writer per branch avoids competing edits.
+
+Existing environments and successful checks are reused when unchanged. Focused tests
+support development; pipeline changes still receive full checks and the synthetic demo.
+Clinical data, private mappings/evidence and reports stay on UCSF. The change does not
+authorize hidden full-source scans, new persistent extracts/indexes or resource growth;
+if those are truly needed, the server must make the separate operation concrete.
+
+This update changes workflow documentation, not the implementation status of coherent
+access: its executor remains unimplemented. No clinical job was started by the Mac.
+`make check` passed: **170 tests passed, 2 Linux-only cases skipped**, Ruff/format and
+repository-boundary checks passed. No new tests or synthetic run were needed for these
+documentation-only changes; the publication workflow still runs its required checks.

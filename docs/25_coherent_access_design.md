@@ -6,6 +6,14 @@ prefix reader. Only its planning budget diagnostic and smaller example row allow
 are implemented in this change. Do not submit another prefix job as a test of this
 design. A successful existing plan does not establish coherent source coverage.
 
+Workflow update: the user has moved primary development/testing to UCSF. The server
+agent should review capabilities and implement/test a supported backend in the same
+work cycle, then perform bounded validation within established authorization and limits.
+There is no longer a review-only stop or a required return to the Mac for implementation.
+This design is a starting specification; revise it using server evidence while preserving
+coverage, temporal, resource and data-boundary invariants. Prefer one working backend
+over implementing every possible backend before any validation.
+
 ## Problem and decision
 
 The server obtained valid limited reports but no links between independent source
@@ -217,8 +225,10 @@ prefixes. Required tests for a future executable backend:
    contain no private values, paths, keys or provenance references.
 8. Linux native resource guards and the existing synthetic pipeline remain passing.
 
-Before that implementation, the next server task is capability/design review only.
-Use existing approved documentation, catalogs and prior restricted findings. Return
-which backend is supported, whether exact-key completeness/immutability/work accounting
-can be proved, and what remains missing, without fields/paths/values. If neither backend
-exists, propose a separate preparation scope and cost estimate; do not build it here.
+Start with existing approved documentation, catalogs and prior restricted findings,
+then continue implementation and testing on the server once a backend is supported.
+Do not stop just to ask the Mac to implement an ordinary code change. Publish a verified
+implementation/validation milestone with coverage limitations. If neither backend can
+provide the required access, complete independent code/tests and propose the concrete
+separate preparation scope and cost estimate. Do not hide an unreviewed persistent
+index/extract or full-source scan inside the bounded executor.
