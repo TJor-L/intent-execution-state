@@ -37,9 +37,12 @@ prefix limitation (docs/24_bounded_run_findings.md). Server capability review fo
 approved exact-key index preserving the required identities. A coherent-manifest
 executor is now implemented and synthetically tested with separate scanned-row,
 row-group-byte, retained-row and seed-key limits plus complete selected-key coverage
-declarations. Clinical validation still requires a reviewed private manifest for an
-immutable snapshot. Do not enlarge quotas or prepare a persistent index/extract
-implicitly to create it.
+declarations. After separate user authorization, the server generated a restricted
+private extract and manifest from a fixed-seed uniform row-position sample with full
+three-source enumeration. The resulting coherent validation completed without
+truncation. It found both first executions and right censoring while retaining rejection
+diagnostics; this is feasibility evidence for the declared seed domain, not a population
+estimate. Do not enlarge quotas or create further persistent artifacts implicitly.
 
 Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.

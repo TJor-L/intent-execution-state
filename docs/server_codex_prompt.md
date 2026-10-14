@@ -20,7 +20,7 @@ Mac 实现”的安排已被本次指令取代。Mac 负责方案讨论、代码
 - 初始 SHA 只标记接手版本。你可以继续修改、测试并生成新提交；后续真实任务应绑定
   你实际验证过的新提交，不要误把初始 SHA 当成永远不能变化的版本。
 
-已知状态：合成 pipeline 和三来源有界验证器已实现，最近服务器检查 182 项测试通过。
+已知状态：合成 pipeline 和三来源有界验证器已实现，最近服务器检查 185 项测试通过。
 两次真实 CPU 运行得到有效 limited 报告，独立分片前缀没有共同身份覆盖。这不代表
 真实关联不存在。预算诊断和一致来源 `coherent_manifest` 读取器已实现并通过合成测试；
 当前尚无经审核的真实私有 manifest，精确键索引后端也未实现。
@@ -30,6 +30,9 @@ manifest 上限、Spark part ordinal 不一致，也没有现成 catalog/provena
 用户随后明确批准了单独的全源只读准备操作。`coherent-prepare` Slurm 入口现已实现；
 先核对其已通过完整测试并绑定干净提交，再提交和监控。它只写 UCSF output_root，
 不得写数据库、Git、cohort 或外部存储。
+准备作业 34086 已完成；均匀 row-position seed 找到三来源关联。bounded feasibility
+作业 34087 为 complete、coverage verified、无任何限额触发。真实计数和产物只在
+UCSF，不要重复准备或把结果解释为总体比例。
 
 ## 2. 当前目标：审核真实 manifest 后运行一次有意义的关联验证
 

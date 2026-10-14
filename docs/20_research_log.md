@@ -344,3 +344,30 @@ the previously reviewed locator and correctly rejects both affected orders. `mak
 passed with **185 tests passing** and repository-boundary checks; `make demo` passed with
 unchanged synthetic NLL 2.729264271658528. No real preparation job had been submitted at
 the time of this entry.
+
+## 2026-10-14 — Complete coherent UCSF feasibility run
+
+The first authorized preparation run completed, but its stable-prefix seed contained no
+linked administration rows. A data-free plan also exposed a worst-case shared-identity
+budget shortfall. The server fixed both ordinary design defects rather than interpreting
+the negative prefix result: retained rows were reduced to 33,333 per source so the
+three-source worst case fits 100,000 shared keys, and seed selection changed to 4,096
+fixed-seed uniformly sampled row positions across the full order snapshot. Selection
+does not condition on successful joins or outcomes.
+
+After 185 tests, repository-boundary checks and the unchanged synthetic demo passed,
+the final preparation job 34086 completed successfully under 2 CPU, 4 GiB and ten-minute
+scheduler bounds. It fully scanned the reviewed projected sources, found both linked
+administration and observation rows, verified the source inventory before and after,
+and wrote only restricted UCSF-local artifacts with private permissions. No database,
+cohort, model or GPU task was used.
+
+Bounded feasibility job 34087 then completed successfully from the prepared mapping and
+manifest. Its report is `complete`, coherent coverage is verified, no resource or data
+limit was reached, and no order remained unresolved due to limits. The declared seed
+domain contains both accepted first executions and right censoring. Repeated qualifying
+administrations, missing required times and temporal-ordering violations remain visible
+and cause rejection as designed; no terminal-without-execution category was observed.
+These are aggregate feasibility findings for a fixed small row-position domain, not
+population rates, clinical efficacy evidence or a model result. All counts and reports
+remain on UCSF storage.

@@ -1,7 +1,8 @@
 # Coherent bounded access: design for server review
 
-Status: **the coherent-manifest executor is implemented and synthetically tested; no
-reviewed clinical manifest exists**. The capability review found no approved exact-key
+Status: **the coherent-manifest executor and separately authorized preparation job are
+implemented, synthetically tested and validated in one complete bounded UCSF run**.
+The capability review found no approved exact-key
 index and found that existing patient-sharded MEDS artifacts omit identities required
 by this validator. The alternative indexed-probe backend remains unimplemented. Do not
 submit another prefix job as a test of coherent coverage, fabricate locators, or build
@@ -16,6 +17,9 @@ file inventory before and after, enforces explicit file/entry/row-group/row/byte
 retention caps, and writes only a restricted projected extract plus private mapping,
 manifest and receipt under the configured UCSF output root. It never writes a database.
 This preparation is distinct from the bounded executor and must not be run implicitly.
+The completed run used a fixed-seed uniform row-position domain, found linked
+administrations and observations, and finished with verified coverage and no reached
+limits. It is not evidence of population prevalence or model performance.
 
 Workflow update: the user has moved primary development/testing to UCSF. The server
 agent should review capabilities and implement/test a supported backend in the same
