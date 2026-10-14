@@ -93,3 +93,24 @@ Next server task: review/populate the ignored mapping, plan and then run one bou
 aggregate feasibility job if its prerequisites are satisfied. Interpret limited/
 failed/no-report states explicitly and return only approved operational findings.
 Real extraction, clinical training, physiology features and GPU work remain pending.
+
+## 2026-10-14 — Server feasibility configuration stopped before submission
+
+The authorized server pulled and tested
+`ff14ab80d4cc07d12828f98aafece6338d841393`. Preflight, Ruff, formatting,
+**111 tests**, the repository boundary check and the end-to-end synthetic demo passed.
+No real feasibility Slurm job was submitted because the reviewed sources cannot be
+represented truthfully by the current mapping contract.
+
+Approved operational findings: source timestamps require an explicit policy for
+timezone-naive values; execution availability has no separately reviewed timestamp;
+and observation end comes from a third logical source rather than the order rows.
+Temporal ordering alone was not treated as semantic proof, and occurrence-equals-
+availability was not enabled to bypass missing evidence. The execution-action policy
+does not invent refused, held or not-given terminal causes.
+
+The next Mac task is documented in `docs/23_feasibility_contract_gaps.md`: add explicit
+reviewed time normalization, a bounded third observation source and join, and stricter
+evidence requirements for occurrence-equals-availability. Output remains aggregate-
+only; real cohort persistence, labs, GPU training and automatic result transfer stay
+out of scope.
