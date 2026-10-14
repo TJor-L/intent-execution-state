@@ -94,6 +94,20 @@ uv run python scripts/server.py plan feasibility \
 
 空白结构见 `configs/coherent_access.example.yaml`；填充值、路径、审核引用和摘要均不得提交。
 
+当且仅当全源准备已被单独批准时，可从干净提交通过 Slurm 运行：
+
+```bash
+uv run python scripts/server.py plan coherent-prepare \
+  --config configs/remote.local.yaml \
+  --mapping configs/feasibility.v2.local.yaml
+uv run python scripts/server.py submit coherent-prepare \
+  --config configs/remote.local.yaml \
+  --mapping configs/feasibility.v2.local.yaml
+```
+
+准备器完整扫描三来源的映射投影列，但不写数据库。受限 extract、私有映射、manifest
+和 receipt 只写入 UCSF `output_root`，不进入 Git。它不是 cohort，也不证明样本代表性。
+
 `plan` 只读配置，不访问数据、不创建输出，并显示三来源最坏情况下的注册键预算。
 新示例每源 3,000 行，最多 9,000 个注册键，可容纳于 10,000 的共享额度；现有私有
 配置不自动修改。预算匹配不等于覆盖一致。现有执行入口须经 Slurm，受文件、目录、行、键、
@@ -113,6 +127,7 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 | 配置驱动的三来源有界可行性验证、汇总计数、资源限制 | 已在 UCSF 运行；两次 limited，前缀关联取样无有效覆盖 |
 | 规划注册键预算诊断 | 已实现；示例每源行上限降低，其他额度不扩大 |
 | 一致来源 manifest、独立扫描／字节／保留预算、双校验和执行绑定 | 已实现并通过合成测试；尚无经审核的真实私有 manifest |
+| 单独授权的全源 coherent 准备器 | 已实现并通过合成测试；只在 UCSF 写受限投影和私有 receipt |
 | 精确键索引／探查后端 | 能力复核未发现可用服务；未实现，也不隐藏全源扫描 |
 | UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |

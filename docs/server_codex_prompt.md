@@ -27,6 +27,9 @@ Mac 实现”的安排已被本次指令取代。Mac 负责方案讨论、代码
 后续完整 footer 审计确认三个 source root 均可读且 schema 内部一致，但文件集合超过
 manifest 上限、Spark part ordinal 不一致，也没有现成 catalog/provenance。现有 PULSE
 产物的有界 footer/catalog 样本未保留审核身份集合。不要再重复这些检查。
+用户随后明确批准了单独的全源只读准备操作。`coherent-prepare` Slurm 入口现已实现；
+先核对其已通过完整测试并绑定干净提交，再提交和监控。它只写 UCSF output_root，
+不得写数据库、Git、cohort 或外部存储。
 
 ## 2. 当前目标：审核真实 manifest 后运行一次有意义的关联验证
 

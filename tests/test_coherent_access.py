@@ -14,6 +14,7 @@ from ies.feasibility.access import (
     load_access_snapshot,
 )
 from ies.feasibility.contract import FeasibilityError, load_mapping_snapshot
+from ies.feasibility.prepare import prepare_coherent
 from ies.feasibility.runner import plan_feasibility
 
 
@@ -403,4 +404,64 @@ def test_server_command_pins_access_digest_and_argument_order(tmp_path):
         str(mapping_path),
         str(access_path),
         str(tmp_path / "output/feasibility"),
+    ]
+
+
+def test_full_source_preparation_builds_private_runnable_extract(tmp_path):
+    mapping_path, _, _, _, _ = _case(tmp_path)
+    output = tmp_path / "prepared"
+    assert prepare_coherent(mapping_path, output) == {
+        "mode": "coherent_preparation",
+        "status": "complete",
+    }
+    prepared_path = output / "feasibility.local.yaml"
+    access_path = output / "coherent_access.local.yaml"
+    mapping, digest = load_mapping_snapshot(prepared_path)
+    manifest, _ = load_access_snapshot(access_path, mapping, digest)
+    report = inspect_coherent_sources(mapping, manifest)
+    assert report["status"] == "complete"
+    assert report["counts"]["accepted_execution_orders"] == 0
+    assert report["counts"]["duplicate_administration_identities"] == 1
+    assert report["counts"]["rejected_orders"] == 2
+    assert report["coherent_linkage_coverage_verified"] is True
+    receipt = yaml.safe_load((output / "preparation_receipt.json").read_text())
+    assert receipt["status"] == "complete" and receipt["seed_keys"] == 2
+    assert "toy-order" not in (output / "preparation_receipt.json").read_text()
+    assert (prepared_path.stat().st_mode & 0o777) == 0o600
+    assert all(
+        pq.ParquetFile(output / f"extracts/{role}.parquet").metadata.num_row_groups == 1
+        for role in ("orders", "administrations", "observations")
+    )
+
+
+def test_preparation_rejects_nested_source_discovery(tmp_path):
+    mapping_path, config, _, _, _ = _case(tmp_path)
+    nested = Path(config["orders"]["path"]) / "nested"
+    nested.mkdir()
+    with pytest.raises(FeasibilityError, match="preparation_nested_source"):
+        prepare_coherent(mapping_path, tmp_path / "prepared")
+
+
+def test_server_command_for_preparation_is_bounded_and_private(tmp_path):
+    mapping_path, _, _, _, _ = _case(tmp_path)
+    server = load_script("server")
+    config = {
+        "python_executable": "/server/python",
+        "slurm": {
+            "partition": "cpu",
+            "account": None,
+            "cpus": 2,
+            "memory": "4G",
+            "time_limit": "00:10:00",
+        },
+    }
+    command = server.sbatch_command(config, "coherent-prepare", tmp_path / "output", mapping_path)
+    export = next(item for item in command if item.startswith("--export="))
+    assert hashlib.sha256(mapping_path.read_bytes()).hexdigest() in export
+    assert not any("gpu" in item or "gres" in item for item in command)
+    assert command[-4:] == [
+        str(server.ROOT / "slurm/coherent_prepare.sbatch"),
+        "/server/python",
+        str(mapping_path),
+        str(tmp_path / "output/coherent"),
     ]

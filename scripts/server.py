@@ -148,6 +148,21 @@ def sbatch_command(
         if access_manifest is not None:
             command.append(str(access_manifest.absolute()))
         command.append(str(run_dir / "feasibility"))
+    elif job == "coherent-prepare":
+        if mapping_path is None or access_manifest is not None:
+            raise ValueError("Coherent preparation requires only a feasibility mapping")
+        _, digest = load_mapping_snapshot(mapping_path)
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_MAPPING_SHA256={digest}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/coherent_prepare.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(run_dir / "coherent"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -158,7 +173,11 @@ def sbatch_command(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "plan", "submit"))
-    parser.add_argument("job", nargs="?", choices=("schema-audit", "synthetic", "feasibility"))
+    parser.add_argument(
+        "job",
+        nargs="?",
+        choices=("schema-audit", "synthetic", "feasibility", "coherent-prepare"),
+    )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--access-manifest", type=Path)
@@ -191,6 +210,18 @@ def main() -> int:
             # No private paths echoed into a shareable terminal summary.
             if args.job == "feasibility":
                 print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
+            elif args.job == "coherent-prepare":
+                print(
+                    json.dumps(
+                        {
+                            "job": args.job,
+                            "resources": config["slurm"],
+                            "submitted": False,
+                            "full_source_read": True,
+                            "database_write": False,
+                        }
+                    )
+                )
             else:
                 print(
                     json.dumps({"job": args.job, "resources": config["slurm"], "submitted": False})
@@ -205,7 +236,7 @@ def main() -> int:
             raise ValueError("Slurm submission failed; inspect configuration on the server")
         job_id = result.stdout.strip().split(";")[0]
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
-        if args.job != "feasibility":
+        if args.job not in ("feasibility", "coherent-prepare"):
             submission["command"] = command
         write_json(
             run_dir / "submission.json",

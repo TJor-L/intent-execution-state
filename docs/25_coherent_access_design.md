@@ -7,6 +7,15 @@ by this validator. The alternative indexed-probe backend remains unimplemented. 
 submit another prefix job as a test of coherent coverage, fabricate locators, or build
 an index/full-source extract under this interface.
 
+Preparation update: after an explicit separate authorization, the repository now
+contains a full-source preparation job. It chooses up to 64 typed order identities by
+stable file/row-group/row traversal, then scans every declared source file to retain all
+matching order rows, administrations and direct observations. It verifies the source
+file inventory before and after, enforces explicit file/entry/row-group/row/byte and
+retention caps, and writes only a restricted projected extract plus private mapping,
+manifest and receipt under the configured UCSF output root. It never writes a database.
+This preparation is distinct from the bounded executor and must not be run implicitly.
+
 Workflow update: the user has moved primary development/testing to UCSF. The server
 agent should review capabilities and implement/test a supported backend in the same
 work cycle, then perform bounded validation within established authorization and limits.

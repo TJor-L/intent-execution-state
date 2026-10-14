@@ -318,3 +318,27 @@ coherent validation now requires either source-owner provenance proving a shared
 partition/locator contract, or a separately scoped preparation job that scans tens of
 GiB and hundreds of millions of footer-declared rows to create a restricted locator or
 coherent extract. That preparation is intentionally not hidden inside the validator.
+
+## 2026-10-14 — Separately authorized coherent preparation implementation
+
+The user explicitly authorized the separately scoped full-source read. Implemented a
+Slurm-only coherent preparation worker without a database dependency. It selects up to
+64 valid typed order identities using a fixed stable traversal, fully scans the mapped
+columns in all three sources, retains every matching order/administration/direct
+observation row, and preserves duplicates and mismatches for the existing validator.
+It does not select a clinical cohort or claim representative sampling.
+
+The preparation has hard ceilings per source: 1,000 files, 2,000 entries, 2,000 row
+groups, 500 million rows and 64 GiB, plus 100,000 retained rows/keys. The exact Parquet
+inventory (path, size and nanosecond mtime) must be unchanged before and after the scan.
+Only after that check does it write three projected Parquet files, a private mapping,
+coherent manifest and checksummed receipt beneath the UCSF output root with restrictive
+permissions. Console output is fixed aggregate status; exception payloads are suppressed.
+
+Generated-only tests exercise full cross-file preparation, private file permissions,
+the runnable generated mapping/manifest, discovery rejection and Slurm digest/resource
+binding. The synthetic full scan exposes a duplicate administration identity outside
+the previously reviewed locator and correctly rejects both affected orders. `make check`
+passed with **185 tests passing** and repository-boundary checks; `make demo` passed with
+unchanged synthetic NLL 2.729264271658528. No real preparation job had been submitted at
+the time of this entry.
