@@ -21,15 +21,27 @@ def apply_limits(limits):
 
 def main() -> int:
     try:
-        path, output, expected_hash = sys.argv[1:]
+        if len(sys.argv) not in (4, 6):
+            raise FeasibilityError("invalid_worker_arguments")
+        path, output, expected_hash = sys.argv[1:4]
         path = Path(path)
         mapping, digest = load_mapping_snapshot(path)
         if digest != expected_hash:
             raise FeasibilityError("mapping_changed")
         apply_limits(mapping.limits)
-        from ies.feasibility.reader import inspect_sources
+        if len(sys.argv) == 6:
+            from ies.feasibility.access import inspect_coherent_sources, load_access_snapshot
 
-        write_json(Path(output), inspect_sources(mapping))
+            access_path, expected_access_hash = Path(sys.argv[4]), sys.argv[5]
+            manifest, access_hash = load_access_snapshot(access_path, mapping, digest)
+            if access_hash != expected_access_hash:
+                raise FeasibilityError("access_manifest_changed")
+            report = inspect_coherent_sources(mapping, manifest)
+        else:
+            from ies.feasibility.reader import inspect_sources
+
+            report = inspect_sources(mapping)
+        write_json(Path(output), report)
         return 0
     except MemoryError:
         return 72

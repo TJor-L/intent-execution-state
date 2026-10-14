@@ -19,6 +19,7 @@ CONFIGS = {
     "configs/synthetic.yaml",
     "configs/remote.example.yaml",
     "configs/feasibility.example.yaml",
+    "configs/coherent_access.example.yaml",
 }
 
 

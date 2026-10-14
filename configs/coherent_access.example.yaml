@@ -1,0 +1,41 @@
+# Placeholder contract only. Populate a .local.yaml on UCSF after provenance review.
+# Never commit populated locators, evidence references, source names, or mappings.
+schema_version: 1
+mode: coherent_manifest
+mapping_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+snapshot:
+  generation: replace-on-server
+  immutable_provenance_reviewed: false
+  evidence_reference: replace-on-server
+seed:
+  source: orders
+  selection_rule: replace-with-reviewed-deterministic-rule
+  reviewed: false
+  evidence_reference: replace-on-server
+sources:
+  orders:
+    snapshot_generation: replace-on-server
+    coverage_reviewed: false
+    complete_for_seed_domain: false
+    coverage_reference: replace-on-server
+    locators: []
+  administrations:
+    snapshot_generation: replace-on-server
+    coverage_reviewed: false
+    complete_for_seed_domain: false
+    coverage_reference: replace-on-server
+    locators: []
+  observations:
+    snapshot_generation: replace-on-server
+    coverage_reviewed: false
+    complete_for_seed_domain: false
+    coverage_reference: replace-on-server
+    locators: []
+limits:
+  max_files: 12
+  max_row_groups: 24
+  max_scanned_rows_per_source: 3000
+  # Sum of Parquet row-group uncompressed sizes before any selected group is read.
+  max_row_group_bytes_per_source: 67108864
+  max_retained_rows_per_source: 1000
+  max_seed_keys: 64

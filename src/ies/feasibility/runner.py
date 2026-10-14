@@ -9,16 +9,26 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from ies.feasibility.access import load_access_snapshot, plan_access
 from ies.feasibility.contract import (
     ROOT,
     FeasibilityError,
     Mapping,
-    load_mapping,
     load_mapping_snapshot,
 )
 from ies.io import write_json
 
-LIMIT_NAMES = ("files", "directories", "entries", "rows", "keys", "runtime", "cpu", "memory")
+LIMIT_NAMES = (
+    "files",
+    "directories",
+    "entries",
+    "rows",
+    "bytes",
+    "keys",
+    "runtime",
+    "cpu",
+    "memory",
+)
 
 
 def identity_budget(mapping: Mapping) -> dict:
@@ -36,9 +46,9 @@ def identity_budget(mapping: Mapping) -> dict:
     }
 
 
-def plan_feasibility(path: Path) -> dict:
-    mapping = load_mapping(path)
-    return {
+def plan_feasibility(path: Path, access_manifest: Path | None = None) -> dict:
+    mapping, mapping_digest = load_mapping_snapshot(path)
+    plan = {
         "mode": "bounded_feasibility",
         "submitted": False,
         "limits": asdict(mapping.limits),
@@ -47,6 +57,12 @@ def plan_feasibility(path: Path) -> dict:
         "coherent_linkage_coverage_verified": False,
         "laboratory_features_enabled": False,
     }
+    if access_manifest is not None:
+        manifest, _ = load_access_snapshot(access_manifest, mapping, mapping_digest)
+        plan["sampling"] = "coherent_manifest"
+        plan["coherent_linkage_coverage_verified"] = True
+        plan["access"] = plan_access(manifest)
+    return plan
 
 
 def verify_execution_context():
@@ -80,12 +96,18 @@ def resource_report(limit: str | None = None) -> dict:
     }
 
 
-def run_feasibility(path: Path, output_dir: Path) -> dict:
+def run_feasibility(path: Path, output_dir: Path, access_manifest: Path | None = None) -> dict:
     verify_execution_context()
     mapping, digest = load_mapping_snapshot(path)
     expected = os.environ.get("IES_MAPPING_SHA256")
     if expected and expected != digest:
         raise FeasibilityError("mapping_changed")
+    access_digest = None
+    if access_manifest is not None:
+        _, access_digest = load_access_snapshot(access_manifest, mapping, digest)
+        expected_access = os.environ.get("IES_ACCESS_SHA256")
+        if expected_access != access_digest:
+            raise FeasibilityError("access_manifest_changed")
     output = output_dir.resolve()
     if not output_dir.is_absolute() or output.is_relative_to(ROOT):
         raise FeasibilityError("invalid_output_boundary")
@@ -107,15 +129,18 @@ def run_feasibility(path: Path, output_dir: Path) -> dict:
             env[name] = str(mapping.limits.cpus)
         env["PYTHONFAULTHANDLER"] = "0"
         try:
+            command = [
+                sys.executable,
+                "-m",
+                "ies.feasibility.worker",
+                str(path.resolve()),
+                str(report_path),
+                digest,
+            ]
+            if access_manifest is not None:
+                command.extend([str(access_manifest.resolve()), access_digest])
             completed = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "ies.feasibility.worker",
-                    str(path.resolve()),
-                    str(report_path),
-                    digest,
-                ],
+                command,
                 timeout=mapping.limits.runtime_seconds,
                 env=env,
                 stdout=subprocess.DEVNULL,

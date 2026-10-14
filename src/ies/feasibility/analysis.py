@@ -53,7 +53,17 @@ COUNT_NAMES = (
     "unresolved_due_to_limits_orders",
     "ambiguous_terminal_ties",
 )
-LIMIT_NAMES = ("files", "directories", "entries", "rows", "keys", "runtime", "cpu", "memory")
+LIMIT_NAMES = (
+    "files",
+    "directories",
+    "entries",
+    "rows",
+    "bytes",
+    "keys",
+    "runtime",
+    "cpu",
+    "memory",
+)
 
 
 @dataclass

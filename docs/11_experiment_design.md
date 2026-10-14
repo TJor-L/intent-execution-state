@@ -33,12 +33,13 @@ equality needs independent evidence and a mapped retrospective-exclusion rule; l
 of evidence remains a blocker, even though the software now supports the policy.
 
 The first v2 server mapping passed review and planning, then exposed the independent-
-prefix limitation (docs/24_bounded_run_findings.md). The next stage is server-led review,
-implementation and bounded validation of an explicit seed domain and coherent manifest
-or exact-key probe backend (docs/25_coherent_access_design.md), without a mandatory Mac
-handoff between stages. Do not enlarge quotas or prepare a persistent index/extract
-implicitly. The new executor remains planned until implemented and tested with separate
-scanned/retained budgets and complete selected-key coverage.
+prefix limitation (docs/24_bounded_run_findings.md). Server capability review found no
+approved exact-key index preserving the required identities. A coherent-manifest
+executor is now implemented and synthetically tested with separate scanned-row,
+row-group-byte, retained-row and seed-key limits plus complete selected-key coverage
+declarations. Clinical validation still requires a reviewed private manifest for an
+immutable snapshot. Do not enlarge quotas or prepare a persistent index/extract
+implicitly to create it.
 
 Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.

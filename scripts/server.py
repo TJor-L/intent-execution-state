@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import yaml
 
+from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
@@ -78,7 +79,11 @@ def load_server_config(path: Path, inspect_storage: bool = True) -> dict:
 
 
 def sbatch_command(
-    config: dict, job: str, run_dir: Path, mapping_path: Path | None = None
+    config: dict,
+    job: str,
+    run_dir: Path,
+    mapping_path: Path | None = None,
+    access_manifest: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -123,6 +128,11 @@ def sbatch_command(
         command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
             f",IES_MAPPING_SHA256={digest}"
         )
+        access_digest = None
+        if access_manifest is not None:
+            _, access_digest = load_access_snapshot(access_manifest, mapping, digest)
+            export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
+            command[export_index] += f",IES_ACCESS_SHA256={access_digest}"
         # The worker's independent OS caps and scheduler allocation use the same limits.
         command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
             f"--cpus-per-task={mapping.limits.cpus}"
@@ -133,13 +143,11 @@ def sbatch_command(
             f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
         )
         command.extend(
-            [
-                str(ROOT / "slurm/feasibility.sbatch"),
-                python,
-                str(mapping_path.absolute()),
-                str(run_dir / "feasibility"),
-            ]
+            [str(ROOT / "slurm/feasibility.sbatch"), python, str(mapping_path.absolute())]
         )
+        if access_manifest is not None:
+            command.append(str(access_manifest.absolute()))
+        command.append(str(run_dir / "feasibility"))
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -153,6 +161,7 @@ def main() -> int:
     parser.add_argument("job", nargs="?", choices=("schema-audit", "synthetic", "feasibility"))
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
     parser.add_argument("--mapping", type=Path)
+    parser.add_argument("--access-manifest", type=Path)
     args = parser.parse_args()
     try:
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
@@ -177,11 +186,11 @@ def main() -> int:
             / "jobs"
             / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8])
         )
-        command = sbatch_command(config, args.job, run_dir, args.mapping)
+        command = sbatch_command(config, args.job, run_dir, args.mapping, args.access_manifest)
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
             if args.job == "feasibility":
-                print(json.dumps(plan_feasibility(args.mapping)))
+                print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
             else:
                 print(
                     json.dumps({"job": args.job, "resources": config["slurm"], "submitted": False})

@@ -62,8 +62,12 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 服务器的两次小规模任务产出了有效 `limited` 报告，但独立来源前缀之间没有相同
 身份覆盖；这不能证明缺少真实关联。下一步需先审核已有一致来源或精确键探查能力。
 详见[服务器发现](docs/24_bounded_run_findings.md)与[下一阶段接口设计](docs/25_coherent_access_design.md)。
-新读取器尚未实现；服务器核实访问能力后直接继续实现、测试和受限验证。
-原先“仅审核后返回 Mac”的安排已取消，不重复没有变化的前缀扫描。
+服务器能力复核未发现保留精确医嘱—给药及 encounter 身份的现成索引；现有患者分片
+MEDS 产物不能满足该验证器。现已实现 `coherent_manifest` 后端：它只读取经审核 manifest
+中列出的 Parquet 文件和 row group，并分别限制扫描行、row-group 字节、保留行和 seed 键。
+真实运行仍须先有一个绑定当前私有映射与不可变快照、且证明三来源覆盖完整的服务器本地
+manifest；当前没有该 manifest，不能伪造或用隐藏全表扫描生成。原先“仅审核后返回 Mac”
+的安排已取消，也不重复没有变化的前缀扫描。
 
 现有 v2 验证器使用服务器本地审核过的字段映射，关联医嘱、给药和独立观测覆盖来源，拒绝患者不一致或重复给药，
 单独统计 encounter 不一致，并区分首次执行、已知终止与右删失。不读取检验特征，
@@ -79,6 +83,16 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 ```bash
 uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml
 ```
+
+一致访问的服务器本地 manifest 审核完成后，使用：
+
+```bash
+uv run python scripts/server.py plan feasibility \
+  --mapping configs/feasibility.local.yaml \
+  --access-manifest configs/coherent_access.local.yaml
+```
+
+空白结构见 `configs/coherent_access.example.yaml`；填充值、路径、审核引用和摘要均不得提交。
 
 `plan` 只读配置，不访问数据、不创建输出，并显示三来源最坏情况下的注册键预算。
 新示例每源 3,000 行，最多 9,000 个注册键，可容纳于 10,000 的共享额度；现有私有
@@ -98,7 +112,8 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 | 有界 metadata-only 审计、CPU Slurm 提交工具 | 已实现；CPU Slurm 已用于可行性任务 |
 | 配置驱动的三来源有界可行性验证、汇总计数、资源限制 | 已在 UCSF 运行；两次 limited，前缀关联取样无有效覆盖 |
 | 规划注册键预算诊断 | 已实现；示例每源行上限降低，其他额度不扩大 |
-| 一致来源／精确键探查、独立扫描与保留预算、双校验和执行绑定 | 已有设计；由服务器连续完成能力核实与实现，当前仍未实现 |
+| 一致来源 manifest、独立扫描／字节／保留预算、双校验和执行绑定 | 已实现并通过合成测试；尚无经审核的真实私有 manifest |
+| 精确键索引／探查后端 | 能力复核未发现可用服务；未实现，也不隐藏全源扫描 |
 | UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |
 | 状态预测、IPCW 校准／判别、多模型统计比较 | 后续研究阶段 |

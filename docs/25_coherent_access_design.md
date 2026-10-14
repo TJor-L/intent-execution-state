@@ -1,10 +1,11 @@
 # Coherent bounded access: design for server review
 
-Status: **proposed interface, no clinical executor implemented**. This responds to
-docs/24_bounded_run_findings.md. The current executable remains the version 2 independent
-prefix reader. Only its planning budget diagnostic and smaller example row allowance
-are implemented in this change. Do not submit another prefix job as a test of this
-design. A successful existing plan does not establish coherent source coverage.
+Status: **the coherent-manifest executor is implemented and synthetically tested; no
+reviewed clinical manifest exists**. The capability review found no approved exact-key
+index and found that existing patient-sharded MEDS artifacts omit identities required
+by this validator. The alternative indexed-probe backend remains unimplemented. Do not
+submit another prefix job as a test of coherent coverage, fabricate locators, or build
+an index/full-source extract under this interface.
 
 Workflow update: the user has moved primary development/testing to UCSF. The server
 agent should review capabilities and implement/test a supported backend in the same
@@ -36,9 +37,9 @@ index-like API is not bounded probing. Creating an index or coherent extract is 
 separate operation with its own scope, resource estimate, authorization and review;
 this design does not authorize that operation.
 
-## Server-local manifest contract (proposed, not yet parsed by the CLI)
+## Server-local coherent-manifest contract
 
-The future manifest is separate from the existing logical mapping. It contains no
+The manifest is separate from the existing logical mapping. It contains no
 inline patient/order keys; it refers to an explicit seed source. All populated
 manifests, review references, locators, receipts and hashes stay on restricted UCSF
 storage. Only placeholder schemas and synthetic examples may enter Git.
@@ -57,7 +58,7 @@ storage. Only placeholder schemas and synthetic examples may enter Git.
 
 For a coherent manifest, each source includes a bounded explicit list of file
 references and row-group ordinals, bound to the immutable generation. No recursive
-glob or directory discovery is allowed in the future executor. For indexed probes,
+glob or directory discovery is allowed in the executor. For indexed probes,
 the manifest binds an approved provider identifier and its index generation; returned
 locators must belong to the same snapshot and pass the same file/row-group budget.
 The provider identifier selects vetted code, never executable code, shell commands or
@@ -71,7 +72,9 @@ redefine the population as whichever prefix happened to fit.
 
 ## Private request/response interface
 
-The following is a protocol specification, not a runnable implementation:
+The following remains the general provider protocol. The implemented coherent-manifest
+path realizes its bounded read/finalize behavior directly; an indexed provider does not
+yet implement this protocol:
 
 ```text
 prepare(mapping_snapshot, source_manifest_snapshot, code_sha)
@@ -137,8 +140,10 @@ candidate reads, must be charged before it exceeds a limit.
 | wall/CPU/memory | Existing parent timeout, worker RLIMIT_CPU/RLIMIT_AS, affinity/thread limits and Slurm allocation; no quota growth |
 
 Parquet I/O operates at page granularity. A projected-row limit alone does not bound
-decompression/I/O. The future backend must bound file/row-group work and bytes as well
-as rows; CPU and memory guards remain necessary. An external query service must enforce
+decompression/I/O. The coherent-manifest backend therefore charges the full
+uncompressed size recorded for each selected row group before materialization, in
+addition to file/group and row limits. CPU and memory guards remain necessary. An
+external query service must enforce
 physical work limits and expose trustworthy accounting. A client timeout and small
 result limit do not prove that server-side full scans were bounded.
 
@@ -204,10 +209,11 @@ the horizon, retrospective/unknown documentation rejection, separate availabilit
 checks, reviewed terminal causes and lab exclusion. These rules are not relaxed to
 improve yield. No synthetic replacement for failed clinical lookup is permitted.
 
-## Implementation acceptance after server review
+## Implementation acceptance and remaining validation
 
-Use synthetic shards that deliberately place linked records outside independent
-prefixes. Required tests for a future executable backend:
+Synthetic shards deliberately place linked records outside independent prefixes. The
+implemented coherent-manifest backend covers the applicable requirements below; the
+indexed-probe-specific cases remain requirements for any future probe backend:
 
 1. Both coherent-manifest and indexed-probe contracts reject missing/unknown coverage;
    implement only the backend actually supported by reviewed infrastructure.

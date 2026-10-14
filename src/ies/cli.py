@@ -56,6 +56,7 @@ def parser() -> argparse.ArgumentParser:
     command = commands.add_parser("feasibility")
     command.add_argument("action", choices=("plan", "run"))
     command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--access-manifest", type=Path)
     command.add_argument("--output-dir", type=Path)
     return root
 
@@ -65,10 +66,10 @@ def dispatch(args):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
         if args.action == "plan":
-            return plan_feasibility(args.mapping)
+            return plan_feasibility(args.mapping, args.access_manifest)
         if args.output_dir is None:
             raise ValueError("Output directory required")
-        return run_feasibility(args.mapping, args.output_dir)
+        return run_feasibility(args.mapping, args.output_dir, args.access_manifest)
     if args.command == "audit":
         if os.environ.get("IES_EXECUTION_CONTEXT") != "ucsf":
             raise ValueError("Metadata audit requires an authorized UCSF server context")

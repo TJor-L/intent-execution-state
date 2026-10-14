@@ -7,11 +7,21 @@ label export, clinical experiment or causal model. No real source names, status
 values, rows or paths belong in the tracked example.
 
 The first server runs returned valid limited reports without links between independent
-prefixes (docs/24_bounded_run_findings.md). UCSF is now the primary development site:
-the server should review the proposed interface in docs/25_coherent_access_design.md
-and continue directly into implementation, tests and bounded validation when supported
-by its access capabilities. That backend is not yet implemented; this document describes
-v2. Do not repeat unchanged prefix runs as a substitute for coherent access.
+prefixes (docs/24_bounded_run_findings.md). The subsequent capability review found no
+existing exact-key index retaining the identities required by this validator. The
+implemented `coherent_manifest` backend reads only explicitly reviewed files and row
+groups from a common immutable snapshot. It has synthetic coverage but no reviewed
+clinical manifest yet. Do not repeat unchanged prefix runs, infer locators, or hide a
+full-source scan as a substitute for coherent access.
+
+Copy `configs/coherent_access.example.yaml` to an ignored server-local file only after
+the mapping, snapshot, deterministic seed rule and complete three-source coverage have
+been reviewed. Planning with `--access-manifest` validates both snapshots without
+opening Parquet. Submission pins both byte digests; the worker rechecks them after its
+resource limits are active. Selected row groups are bounded by file/group counts,
+projected rows, uncompressed row-group bytes, retained matching rows and seed keys.
+Rows unrelated to the reviewed order/observation identities consume scan and byte work
+but do not enter validation. Any exceeded bound suppresses outcomes and returns limited.
 
 ## Version 2 configuration and migration
 

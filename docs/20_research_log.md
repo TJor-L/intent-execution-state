@@ -256,3 +256,34 @@ access: its executor remains unimplemented. No clinical job was started by the M
 `make check` passed: **170 tests passed, 2 Linux-only cases skipped**, Ruff/format and
 repository-boundary checks passed. No new tests or synthetic run were needed for these
 documentation-only changes; the publication workflow still runs its required checks.
+
+## 2026-10-14 — Coherent-manifest backend implemented on UCSF
+
+Reviewed the server's existing approved patient-sharded MEDS artifacts and available
+manifests. They provide coherent patient event shards but the medication conversion
+does not retain the direct order-to-administration and encounter identities required
+by this validator. No approved exact-key index/probe service preserving those fields
+was found. This is an access-layout finding, not a clinical linkage finding. No hidden
+full-source scan, persistent index, extract, cohort or GPU task was started.
+
+Implemented schema-version-1 `coherent_manifest` access. A server-local manifest binds
+the exact mapping bytes, an immutable reviewed snapshot and deterministic seed rule,
+complete three-source coverage declarations, and explicit Parquet file/row-group
+locators. The reader performs no recursive discovery or predicate/full-source fallback.
+It separately caps files, row groups, projected rows, full uncompressed row-group
+bytes, retained matching rows and seed keys. Unrelated administration/observation rows
+consume scan and byte work but do not enter validation. Any incomplete bound suppresses
+outcomes. Mapping and manifest digests are pinned through plan, Slurm submission and
+the resource-limited worker; console and public plans omit private references and paths.
+
+Added generated-only tests for remote-shard linkage, data-free planning, mapping/mode
+rejection, row and byte truncation, unrelated-row accounting, duplicate orders outside
+the initial location, changed locators, and Slurm digest/argument binding. Added only a
+non-runnable placeholder manifest to Git. Actual server validation remains blocked on
+a reviewed private manifest proving immutable complete locator coverage. Fabricating
+that manifest or deriving it with a full-source preparation pass is outside this task.
+
+Actual UCSF validation: `make check` passed with **182 tests passing**, Ruff/format and
+repository-boundary checks. `make demo` passed with synthetic NLL
+2.729264271658528. No clinical source was opened by these checks and no clinical report
+or artifact was added to Git.
