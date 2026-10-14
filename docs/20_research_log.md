@@ -329,7 +329,8 @@ observation row, and preserves duplicates and mismatches for the existing valida
 It does not select a clinical cohort or claim representative sampling.
 
 The preparation has hard ceilings per source: 1,000 files, 2,000 entries, 2,000 row
-groups, 500 million rows and 64 GiB, plus 100,000 retained rows/keys. The exact Parquet
+groups, 500 million rows and 64 GiB, plus 33,333 retained rows per source and 100,000
+shared keys. The exact Parquet
 inventory (path, size and nanosecond mtime) must be unchanged before and after the scan.
 Only after that check does it write three projected Parquet files, a private mapping,
 coherent manifest and checksummed receipt beneath the UCSF output root with restrictive
