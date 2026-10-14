@@ -44,7 +44,8 @@ uv run ies evaluate --cohort artifacts/synthetic/cohort.json --model artifacts/s
 
 1. 本地运行 `make check` 和 `make demo`，更新研究日志，提交代码。
 2. `make handoff` 生成 `handoff/UCSF_CODEX_PROMPT.md`，固定当前干净提交的完整 SHA。
-3. 用户提供远程仓库地址后配置 `origin`，运行 `scripts/publish.sh`。脚本核验、测试后
+3. `origin` 已配置为 `https://github.com/TJor-L/intent-execution-state.git`。
+   运行 `scripts/publish.sh`。脚本核验、测试后
    执行普通 push，不创建远程仓库、不强推。
 4. 用户在 UCSF 首次 clone 或后续 `git pull --ff-only`，将交接提示词给服务器端 Codex。
 5. 服务器 Codex 核验 SHA、阅读 `AGENTS.md`，先运行合成验证，再核实本地权限及

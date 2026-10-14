@@ -1,7 +1,7 @@
 # Local Git → UCSF pull → server Codex
 
 用户已明确采用 Git 交接。Mac 端不配置到 UCSF 的 SSH/rsync，不拉取数据或日志。
-远程仓库尚未建立；等用户提供地址后才配置 origin。
+远程仓库为 `https://github.com/TJor-L/intent-execution-state.git`，本地已配置为 origin。
 
 ## 本地发布
 
@@ -12,7 +12,6 @@ make demo
 git add README.md AGENTS.md Makefile pyproject.toml uv.lock .python-version .gitignore .env.example src tests scripts slurm configs docs fixtures results/README.md .github
 git commit -m "Describe the verified code change"
 make handoff
-# 用户给出地址后：git remote add origin <USER_SUPPLIED_URL>
 scripts/publish.sh
 ```
 
@@ -22,7 +21,14 @@ scripts/publish.sh
 
 ## UCSF 首次接手
 
-用户 clone 仓库；后续用 `git pull --ff-only`，保留服务器未提交工作。
+用户首次在 UCSF 的代码目录执行：
+
+```bash
+git clone https://github.com/TJor-L/intent-execution-state.git
+cd intent-execution-state
+```
+
+后续在仓库内用 `git pull --ff-only`，保留服务器未提交工作。
 把生成的提示词交给服务器 Codex。服务器依赖安装方式需符合实际网络/集群规则；
 环境已准备时任务直接用绝对 Python 路径，Slurm 计算节点不会自动联网安装包。
 

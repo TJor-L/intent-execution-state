@@ -43,3 +43,11 @@ demo and generated handoff record the actual clean commit; no self-referential S
 is hard-coded in this log. Raw synthetic artifacts are ignored, not committed.
 Next server task: bounded metadata audit after version, environment and
 institutional-access checks. Remote Git URL and the actual push remain pending.
+
+## 2026-10-14 — Git remote handoff
+
+The user supplied `https://github.com/TJor-L/intent-execution-state.git` and authorized
+the previously agreed code publication. Configured it as origin; the remote HEAD/main
+query returned no existing commits. Updated the UCSF clone instructions. Publication
+uses the checked `scripts/publish.sh` workflow and regenerates the handoff for the
+published source commit. No UCSF access or data transfer is part of this step.
