@@ -8,8 +8,9 @@ submit another prefix job as a test of coherent coverage, fabricate locators, or
 an index/full-source extract under this interface.
 
 Preparation update: after an explicit separate authorization, the repository now
-contains a full-source preparation job. It chooses up to 64 typed order identities by
-stable file/row-group/row traversal, then scans every declared source file to retain all
+contains a full-source preparation job. It chooses up to 64 typed order identities from
+4,096 fixed-seed uniformly sampled row positions across the stable order snapshot, then
+scans every declared source file to retain all
 matching order rows, administrations and direct observations. It verifies the source
 file inventory before and after, enforces explicit file/entry/row-group/row/byte and
 retention caps, and writes only a restricted projected extract plus private mapping,

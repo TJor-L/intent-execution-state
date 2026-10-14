@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +28,8 @@ from ies.io import sha256, write_json
 
 ROLES = ("orders", "administrations", "observations")
 SEED_COUNT = 64
+SEED_CANDIDATE_POSITIONS = 4_096
+SEED_RANDOM_STATE = 20_261_014
 MAX_FILES_PER_SOURCE = 1_000
 MAX_ENTRIES_PER_SOURCE = 2_000
 MAX_ROW_GROUPS_PER_SOURCE = 2_000
@@ -162,14 +165,36 @@ def batches(
 def select_seed(mapping: Mapping, files: tuple[FileState, ...]) -> set[tuple[str, str | int]]:
     physical = mapping.orders.columns["order_id"]
     counters = {"row_groups": 0, "rows": 0}
-    selected: set[tuple[str, str | int]] = set()
+    total_rows = 0
+    for item in files:
+        try:
+            with pq.ParquetFile(item.path, pre_buffer=False) as parquet:
+                total_rows += parquet.metadata.num_rows
+        except Exception:
+            fail()
+    if total_rows == 0 or total_rows > MAX_ROWS_PER_SOURCE:
+        fail("preparation_empty_seed")
+    candidate_count = min(total_rows, SEED_CANDIDATE_POSITIONS)
+    sampled = random.Random(SEED_RANDOM_STATE).sample(range(total_rows), candidate_count)
+    rank = {position: index for index, position in enumerate(sampled)}
+    targets = sorted(sampled)
+    candidates: list[tuple[int, tuple[str, str | int] | None]] = []
+    offset = 0
+    target_index = 0
     for batch in batches(mapping.orders, files, [physical], counters):
-        for value in batch.column(0).to_pylist():
-            key = identity(value)
-            if key is not None:
-                selected.add(key)
-                if len(selected) == SEED_COUNT:
-                    return selected
+        end = offset + batch.num_rows
+        while target_index < len(targets) and targets[target_index] < end:
+            position = targets[target_index]
+            value = batch.column(0)[position - offset].as_py()
+            candidates.append((rank[position], identity(value)))
+            target_index += 1
+        offset = end
+    selected: set[tuple[str, str | int]] = set()
+    for _, key in sorted(candidates):
+        if key is not None:
+            selected.add(key)
+            if len(selected) == SEED_COUNT:
+                break
     if not selected:
         fail("preparation_empty_seed")
     return selected
@@ -326,8 +351,8 @@ def prepare_coherent(mapping_path: Path, output_dir: Path) -> dict:
             "seed": {
                 "source": "orders",
                 "selection_rule": (
-                    "up to first 64 unique valid typed order identities in stable "
-                    "file/row-group/row traversal"
+                    "up to 64 unique valid typed order identities from 4096 fixed-seed "
+                    "uniform row positions in the stable order snapshot"
                 ),
                 "reviewed": True,
                 "evidence_reference": "private coherent preparation receipt",
@@ -365,6 +390,8 @@ def prepare_coherent(mapping_path: Path, output_dir: Path) -> dict:
             "manifest_sha256": sha256(manifest_path),
             "generation": generation,
             "seed_keys": len(seed),
+            "seed_random_state": SEED_RANDOM_STATE,
+            "seed_candidate_positions": min(order_counts["rows"], SEED_CANDIDATE_POSITIONS),
             "observation_keys": len(observation_keys),
             "source_counts": {
                 "orders": order_counts,

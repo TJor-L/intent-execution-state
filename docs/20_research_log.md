@@ -323,7 +323,8 @@ coherent extract. That preparation is intentionally not hidden inside the valida
 
 The user explicitly authorized the separately scoped full-source read. Implemented a
 Slurm-only coherent preparation worker without a database dependency. It selects up to
-64 valid typed order identities using a fixed stable traversal, fully scans the mapped
+64 valid typed order identities from 4,096 fixed-seed uniformly sampled row positions
+across the stable order snapshot, fully scans the mapped
 columns in all three sources, retains every matching order/administration/direct
 observation row, and preserves duplicates and mismatches for the existing validator.
 It does not select a clinical cohort or claim representative sampling.
