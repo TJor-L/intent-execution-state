@@ -3,8 +3,8 @@
 本地 Mac 开发与合成数据验证 → Git push → 用户在 UCSF pull → 服务器端 Codex
 接手临床数据工作。**本地不通过 SSH 访问 UCSF，不传回患者级数据。**
 
-Phase 0 已提供可执行研究基础设施。它不证明结构化模型优于普通时序模型，
-也不包含已经验证的 UCSF 字段映射或临床训练结果。
+Phase 0 已提供可执行研究基础设施，并加入服务器交接要求的有界可行性验证器。
+它不证明结构化模型优于普通时序模型，也不包含真实 UCSF 字段映射或临床训练结果。
 
 ## 本地快速开始
 
@@ -49,11 +49,28 @@ uv run ies evaluate --cohort artifacts/synthetic/cohort.json --model artifacts/s
    执行普通 push，不创建远程仓库、不强推。
 4. 用户在 UCSF 首次 clone 或后续 `git pull --ff-only`，将交接提示词给服务器端 Codex。
 5. 服务器 Codex 核验 SHA、阅读 `AGENTS.md`，先运行合成验证，再核实本地权限及
-   服务器配置。首次真实数据任务仅进行有界的 Parquet footer 审计。
+   配置。完成字段语义审核后，下一轮运行有界可行性验证，只保存汇总计数。
 
 提示词模板见 [docs/server_codex_prompt.md](docs/server_codex_prompt.md)，
 操作细节见 [docs/16_remote_development.md](docs/16_remote_development.md)。
 Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告和真实结果留在服务器。
+
+## 本轮新增：有界可行性验证
+
+输入是服务器本地审核过的字段映射；直接关联医嘱和给药，拒绝患者不一致或重复给药，
+单独统计 encounter 不一致，并区分首次执行、已知终止与右删失。不读取检验特征，
+不生成患者级 cohort。详见 [映射与计数规则](docs/22_bounded_feasibility.md)。
+
+仅在 UCSF 填写被忽略的 `configs/feasibility.local.yaml` 后运行：
+
+```bash
+uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml
+uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml
+```
+
+`plan` 只读配置，不访问数据、不创建输出。执行须经 Slurm，受文件、目录、行、键、
+CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`，不能把未扫描到的
+给药当作没有给药，也不能据此确认单次执行。报告留在 UCSF 仓库外。
 
 ## 实现状态
 
@@ -65,7 +82,8 @@ Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告
 | 患者簇 bootstrap CI、可复现实验清单 | 已实现 |
 | Git 交接提示词、发布前检查、CI | 已实现 |
 | 有界 metadata-only 审计、CPU Slurm 提交工具 | 已实现；未在 UCSF 验证 |
-| UCSF/MIMIC 适配、真实 cohort、临床语义映射 | 未实现，需先审计 |
+| 配置驱动的有界可行性验证、汇总计数、资源限制 | 已实现并用合成输入验证；待 UCSF 运行 |
+| UCSF/MIMIC cohort 适配、真实 cohort、临床语义映射 | 未实现；真实映射仅在服务器本地审核 |
 | LightGBM、Transformer、点过程、结构化神经模型 | 后续研究阶段 |
 | 状态预测、IPCW 校准／判别、多模型统计比较 | 后续研究阶段 |
 | GPU／多卡训练 | 未实现；入口会明确拒绝提交 |

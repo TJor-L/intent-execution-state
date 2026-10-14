@@ -11,6 +11,8 @@ from uuid import uuid4
 
 import yaml
 
+from ies.feasibility.contract import load_mapping_snapshot
+from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +24,7 @@ def source_revision(root: Path = ROOT) -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
 
 
-def load_server_config(path: Path) -> dict:
+def load_server_config(path: Path, inspect_storage: bool = True) -> dict:
     config = yaml.safe_load(path.read_text())
     if not isinstance(config, dict):
         raise ValueError("Expected server config mapping")
@@ -36,15 +38,20 @@ def load_server_config(path: Path) -> dict:
         value = config.get(key)
         if not isinstance(value, str) or not Path(value).is_absolute():
             raise ValueError("Server paths must be populated absolute paths")
-    data_root = Path(config["data_root"]).resolve()
-    output_root = Path(config["output_root"]).resolve()
-    if not data_root.exists():
+    data_root = Path(config["data_root"])
+    output_root = Path(config["output_root"])
+    if ".." in data_root.parts or ".." in output_root.parts:
+        raise ValueError("Storage roots must be canonical absolute paths")
+    if inspect_storage:
+        data_root = data_root.resolve()
+        output_root = output_root.resolve()
+    if inspect_storage and not data_root.exists():
         raise ValueError("Data root is unavailable on this server")
     if data_root.is_relative_to(ROOT) or output_root.is_relative_to(ROOT):
         raise ValueError("Private data and outputs must be outside the source repository")
     if output_root.is_relative_to(data_root) or data_root.is_relative_to(output_root):
         raise ValueError("Input and output storage roots must be separate")
-    if not os.access(config["python_executable"], os.X_OK):
+    if inspect_storage and not os.access(config["python_executable"], os.X_OK):
         raise ValueError("Configured Python executable is unavailable")
     slurm = config.get("slurm", {})
     if not isinstance(slurm, dict):
@@ -70,7 +77,9 @@ def load_server_config(path: Path) -> dict:
     return config
 
 
-def sbatch_command(config: dict, job: str, run_dir: Path) -> list[str]:
+def sbatch_command(
+    config: dict, job: str, run_dir: Path, mapping_path: Path | None = None
+) -> list[str]:
     slurm = config["slurm"]
     command = [
         "sbatch",
@@ -107,19 +116,46 @@ def sbatch_command(config: dict, job: str, run_dir: Path) -> list[str]:
                 str(run_dir / "synthetic"),
             ]
         )
+    elif job == "feasibility":
+        if mapping_path is None:
+            raise ValueError("Feasibility mapping required")
+        mapping, digest = load_mapping_snapshot(mapping_path)
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_MAPPING_SHA256={digest}"
+        )
+        # The worker's independent OS caps and scheduler allocation use the same limits.
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30  # time to write a sanitized final report
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/feasibility.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(run_dir / "feasibility"),
+            ]
+        )
     else:
-        raise ValueError("Only metadata audit and synthetic CPU jobs are supported")
+        raise ValueError(
+            "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
+        )
     return command
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("preflight", "plan", "submit"))
-    parser.add_argument("job", nargs="?", choices=("schema-audit", "synthetic"))
+    parser.add_argument("job", nargs="?", choices=("schema-audit", "synthetic", "feasibility"))
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
+    parser.add_argument("--mapping", type=Path)
     args = parser.parse_args()
     try:
-        config = load_server_config(args.config)
+        config = load_server_config(args.config, inspect_storage=args.action != "plan")
         if args.action == "preflight":
             result = subprocess.run(
                 [
@@ -135,34 +171,36 @@ def main() -> int:
             print("Server context, configured storage boundaries, and Python imports verified.")
             return 0
         if args.job is None:
-            raise ValueError("Specify schema-audit or synthetic")
+            raise ValueError("Specify a supported CPU job")
         run_dir = (
             Path(config["output_root"])
             / "jobs"
             / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8])
         )
-        command = sbatch_command(config, args.job, run_dir)
+        command = sbatch_command(config, args.job, run_dir, args.mapping)
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            print(json.dumps({"job": args.job, "resources": config["slurm"], "submitted": False}))
+            if args.job == "feasibility":
+                print(json.dumps(plan_feasibility(args.mapping)))
+            else:
+                print(
+                    json.dumps({"job": args.job, "resources": config["slurm"], "submitted": False})
+                )
             return 0
         revision = source_revision()
-        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
-            f",IES_EXPECTED_COMMIT={revision}"
-        )
+        export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
+        command[export_index] += f",IES_EXPECTED_COMMIT={revision}"
         run_dir.mkdir(parents=True, exist_ok=False, mode=0o700)
         result = subprocess.run(command, capture_output=True, text=True, check=False)
         if result.returncode or not re.fullmatch(r"\d+(;[A-Za-z0-9_.-]+)?", result.stdout.strip()):
             raise ValueError("Slurm submission failed; inspect configuration on the server")
         job_id = result.stdout.strip().split(";")[0]
+        submission = {"job_id": job_id, "job": args.job, "commit": revision}
+        if args.job != "feasibility":
+            submission["command"] = command
         write_json(
             run_dir / "submission.json",
-            {
-                "job_id": job_id,
-                "job": args.job,
-                "commit": revision,
-                "command": command,
-            },
+            submission,
         )
         print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}))
         return 0

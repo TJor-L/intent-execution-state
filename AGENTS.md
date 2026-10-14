@@ -14,7 +14,8 @@ weights, and raw schema reports stay on authorized UCSF storage. Use only
 generated synthetic fixtures here. Never paste real rows or values into issues,
 prompts, documentation, terminal summaries, or Git commits. Schema discovery
 reads Parquet footers only, omitting statistics and arbitrary metadata.
-No real column mapping is confirmed. Never infer source column names.
+No real column mapping is stored here. Server-approved operational findings are in
+docs/21_mac_development_handoff.md; never infer source column names from those findings.
 
 ## Research invariants
 
@@ -32,9 +33,14 @@ Use `make check` and `make demo` after pipeline changes. Tests must cover
 censoring, linkage, temporal availability, patient splits, and no-data Git
 handoffs. Keep failures explicit; never substitute synthetic results for clinical
 results. Do not log exception payloads containing private records.
-No large/GPU training during Phase 0. Server agents may inspect metadata only
-after institutional access and server context are verified. Extraction requires
-a reviewed mapping and separate feasibility implementation.
+No large/GPU training during Phase 0. Server agents may inspect metadata or run the
+bounded aggregate-only feasibility command after institutional access, server context,
+mapping semantics and source coverage are verified locally. Real cohort extraction
+remains unimplemented and outside this handoff. Do not persist rows during feasibility.
+Treat truncated scans as incomplete evidence: do not confirm single executions or
+censoring when another qualifying dose could be outside the scan. Encounter mismatch
+handling is explicit and counted; patient mismatches always reject the order.
+Keep lab features disabled until an independent availability rule is reviewed.
 
 ## Handoffs
 

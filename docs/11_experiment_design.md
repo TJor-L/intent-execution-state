@@ -10,8 +10,18 @@ Each run has immutable output directory, configuration, revision and artifact ha
 
 ## E001: feasibility, not yet executed
 
-On UCSF, verify direct linkage, status semantics, clock consistency, observation
-coverage and eligible medication categories. Predefine acceptable linkage completeness,
+The first E001 code deliverable is now a generic bounded feasibility validator,
+not a clinical cohort extractor. The approved server handoff reports direct linkage
+is structurally feasible, repeated administrations are common, encounter equality
+cannot be assumed, and independent lab availability is not yet reviewed.
+
+On UCSF, use a reviewed local mapping to count linkage consistency, qualifying actions,
+repeats, timing violations and first-event eligibility within explicit limits. Every
+truncated scan is labeled `limited`; it cannot confirm absence of another dose or
+right censoring. Inspect server-local counts before authorizing any cohort extraction.
+No clinical run of this new validator has been performed by the Mac agent.
+
+Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.
 Do not invent numerical acceptance thresholds without measuring the setting.
 No baseline clinical result exists until these conditions and a cohort are reviewed.

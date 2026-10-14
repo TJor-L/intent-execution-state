@@ -51,3 +51,45 @@ the previously agreed code publication. Configured it as origin; the remote HEAD
 query returned no existing commits. Updated the UCSF clone instructions. Publication
 uses the checked `scripts/publish.sh` workflow and regenerates the handoff for the
 published source commit. No UCSF access or data transfer is part of this step.
+
+## 2026-10-14 — Bounded feasibility implementation from server handoff
+
+Pulled `682c6baf541f50a8249b3bc5badb7d74cd73a317`, which added the approved Mac
+development handoff. It reports structurally feasible direct linkage, common repeated
+administrations, mandatory patient consistency, non-exact encounter identity, a locally
+reviewed dose-action policy, unresolved general refused/held terminal causes and no
+reviewed independent lab availability rule. No physical schema or records were shared.
+
+Implemented a generic typed server-local mapping contract, projected/batched Parquet
+reader and aggregate-only feasibility validator. It counts direct linkage, invalid
+identities/times, patient/encounter consistency, qualifying/excluded actions and
+first-event eligibility. Repeats reject the order rather than selecting the earliest
+dose. Execution, reviewed terminal events and administrative censoring remain distinct.
+Laboratory features are disabled. No real cohort adapter or patient-level export was added.
+
+An important coverage decision: an early scan limit may hide another dose or duplicate
+key. Limited scans report observed diagnostics only and do not confirm execution,
+terminal or censoring eligibility. This is intentionally stricter than treating the
+scanned prefix as complete followup. Complete means complete within the declared,
+server-reviewed source scope, not an inference about the full database.
+
+Added explicit source/file/directory/row/key limits, worker CPU/memory/affinity limits,
+parent wall-time enforcement, CPU-only Slurm submission and clean-commit verification.
+Planning reads configuration only and creates no output. Submission fingerprints the
+same mapping bytes used to set resource limits; changed mappings fail at execution.
+Reports contain only fixed aggregate counters/status, with no records, physical names,
+actions, paths, timestamps or exception payloads. Outputs stay in restricted server
+storage; the worker does not spill rows or persist its private mapping.
+
+Actual Mac validation: `make check` passed with **110 tests passing and 1 Linux-only
+integration test skipped**; lint/format and publication-boundary checks passed.
+`make demo` passed with the unchanged synthetic baseline NLL 2.729264271658528.
+Bash syntax checks passed. Tests use generated neutral fields/actions/identities and
+cover the 15 handoff categories, incomplete coverage, clean revisions, mapping changes,
+private output modes and sanitized failures. The native resource-limited worker test
+is scheduled to execute in Linux CI on publication; no UCSF job was submitted here.
+
+Next server task: review/populate the ignored mapping, plan and then run one bounded
+aggregate feasibility job if its prerequisites are satisfied. Interpret limited/
+failed/no-report states explicitly and return only approved operational findings.
+Real extraction, clinical training, physiology features and GPU work remain pending.

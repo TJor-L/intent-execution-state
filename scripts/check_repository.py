@@ -15,7 +15,11 @@ ROOT_FILES = {
     "uv.lock",
     "Makefile",
 }
-CONFIGS = {"configs/synthetic.yaml", "configs/remote.example.yaml"}
+CONFIGS = {
+    "configs/synthetic.yaml",
+    "configs/remote.example.yaml",
+    "configs/feasibility.example.yaml",
+}
 
 
 def allowed(name: str) -> bool:

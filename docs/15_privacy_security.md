@@ -22,3 +22,18 @@ restricted data are not automatically publishable. Public aggregates need review
 small cells and institutional disclosure requirements; this project does not invent
 those thresholds. The `IES_EXECUTION_CONTEXT` variable is an accidental-use guard,
 not proof of institutional approval or a security sandbox.
+
+The bounded feasibility command adds a strict server-local mapping contract and reads
+only projected columns under explicit source limits. Real row values exist in memory
+only on the server. Neither the row iterator nor the validator persists records.
+The only result payload contains fixed aggregate counters, completion/limit state,
+and format version. Paths, physical columns, action values, identifiers, timestamps,
+example rows, predictions, per-patient splits and exception payloads are excluded.
+
+Run output directories have mode 0700 and report files 0600; worker core dumps are
+disabled. Linux address-space, CPU-time and affinity limits plus a parent timeout
+complement Slurm allocation. External worker output is suppressed and errors are
+reported without payloads. A resource kill can leave no report; never interpret that
+as zero events or success. Full aggregate reports remain restricted because small
+cells are not automatically safe to disclose. Existing metadata audit reports have
+a different contract and remain server-local too.

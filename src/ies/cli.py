@@ -53,10 +53,22 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--output", type=Path, required=True)
     command.add_argument("--max-files", type=int, default=12)
     command.add_argument("--max-directories", type=int, default=100)
+    command = commands.add_parser("feasibility")
+    command.add_argument("action", choices=("plan", "run"))
+    command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path)
     return root
 
 
 def dispatch(args):
+    if args.command == "feasibility":
+        from ies.feasibility.runner import plan_feasibility, run_feasibility
+
+        if args.action == "plan":
+            return plan_feasibility(args.mapping)
+        if args.output_dir is None:
+            raise ValueError("Output directory required")
+        return run_feasibility(args.mapping, args.output_dir)
     if args.command == "audit":
         if os.environ.get("IES_EXECUTION_CONTEXT") != "ucsf":
             raise ValueError("Metadata audit requires an authorized UCSF server context")
@@ -122,6 +134,15 @@ def dispatch(args):
 def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
+    if args.command == "feasibility":
+        try:
+            result = dispatch(args)
+        except Exception:
+            root.exit(
+                2, "Feasibility command failed; verify the server-local mapping and context.\n"
+            )
+        print(json.dumps(result, allow_nan=False))
+        return 0 if result.get("status", "complete") == "complete" else 2
     try:
         print(json.dumps(dispatch(args), indent=2, allow_nan=False))
         return 0

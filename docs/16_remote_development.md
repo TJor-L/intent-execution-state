@@ -45,8 +45,9 @@ uv run python scripts/server.py submit schema-audit
 ```
 
 配置示例不含真实服务器路径。必须核实 `institutional_access_confirmed` 后才能继续。
-提交工具只支持 schema-audit 或 synthetic，小于 30 分钟、至多 4 CPU、16 GiB，
-不请求 GPU。`plan` 不创建目录、不提交任务、不访问数据行。
+提交工具支持 schema-audit、synthetic 和 feasibility，均不请求 GPU。
+`plan` 只读配置，不创建目录、不提交任务、不检查或读取数据路径。
+schema-audit/synthetic 保持原 CPU 配额；feasibility 使用映射内的更严格资源上限。
 
 ## 日志与结果
 
@@ -63,3 +64,24 @@ synthetic 子任务生成自己的 manifest。用服务器端 squeue/sacct 确�
 预处理与评估 sbatch 目前只接受 canonical synthetic artifacts。GPU 入口明确失败。
 真实 cohort 提取必须先实现并审核 adapter。下次本地开发只接收允许分享的需求或
 聚合状态；患者级结果、原始 schema 与私有路径都留在 UCSF。
+
+## 下一轮：有界可行性验证
+
+1. 保留已有 `remote.local.yaml`，仅在服务器复制并填写
+   `configs/feasibility.example.yaml` → `configs/feasibility.local.yaml`。
+2. 核实机构授权、映射、动作、观测覆盖与时间语义后，才填写相应 reviewed 标志。
+   不应把随机截取的给药文件声明为覆盖全部相关给药。尚未审核的语义应保留未完成。
+3. `uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml`
+   只检查配置并显示资源上限。它不会确认源文件或列确实存在。
+4. `uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml`
+   提交单个 CPU 任务；启动时核验干净代码 SHA 和提交时读取的映射字节校验和。
+
+feasibility 的 CPU、内存和时间分配来自其映射配置，覆盖 remote 配置中的对应值。
+默认 1 CPU、2048 MiB、60 秒 worker wall/CPU 限额；Slurm 增加 30 秒收尾时间。
+修改排队中的映射会让任务失败，不应通过关闭核验重用旧任务。
+报告位于服务器 `output_root/jobs/<run>/feasibility/feasibility_report.json`。
+该任务的提交记录不写入命令参数或私有路径。失败／限额退出非零，需要结合 sacct
+和报告状态解释；无报告可能是调度器/系统终止，不能视作成功。
+
+本地 Mac 只运行合成测试；Linux 资源限额的原生集成测试由 Linux CI 执行，
+实际 UCSF 的 Slurm/cgroup 行为仍需服务器确认。详见 docs/22_bounded_feasibility.md。
