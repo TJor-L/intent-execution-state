@@ -1,0 +1,17 @@
+# Copy to configs/remote.local.yaml ONLY ON UCSF. Never commit populated config.
+execution_context: ucsf
+institutional_access_confirmed: false
+data_root: null
+output_root: null
+# Absolute path to the server's Python 3.11+ environment containing ies.
+python_executable: null
+slurm:
+  partition: null
+  account: null
+  cpus: 2
+  memory: 4G
+  time_limit: "00:10:00"
+# Metadata sample limits, not a full database scan.
+audit:
+  max_files: 12
+  max_directories: 100

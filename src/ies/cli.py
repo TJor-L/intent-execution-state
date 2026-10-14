@@ -1,0 +1,138 @@
+"""Synthetic commands are local; restricted metadata audit is server-only."""
+
+import argparse
+import json
+import os
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
+
+from ies.config import load_config
+from ies.data.audit import audit_parquet
+from ies.data.events import read_events, validate_events, write_events
+from ies.data.synthetic import generate_events
+from ies.evaluation.metrics import evaluate
+from ies.io import read_json, write_json
+from ies.models.piecewise import fit_baseline
+from ies.preprocessing.cohort import build_cohort
+from ies.training.pipeline import run_experiment
+
+
+def synthetic_artifact(path: Path) -> dict:
+    result = read_json(path)
+    if result.get("data_class") != "synthetic":
+        raise ValueError("Only explicitly synthetic artifacts are supported in Phase 0")
+    return result
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    commands = root.add_subparsers(dest="command", required=True)
+    for name in ("run", "generate", "build-cohort", "train"):
+        command = commands.add_parser(name)
+        command.add_argument("--config", type=Path, default=Path("configs/synthetic.yaml"))
+        if name == "run":
+            command.add_argument("--run-dir", type=Path)
+        else:
+            command.add_argument("--output", type=Path, required=True)
+        if name == "build-cohort":
+            command.add_argument("--events", type=Path, required=True)
+        if name == "train":
+            command.add_argument("--cohort", type=Path, required=True)
+    command = commands.add_parser("validate")
+    command.add_argument("--events", type=Path, required=True)
+    command = commands.add_parser("evaluate")
+    command.add_argument("--cohort", type=Path, required=True)
+    command.add_argument("--model", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
+    command.add_argument("--split", choices=("validation", "test"), default="test")
+    command.add_argument("--bootstrap", type=int, default=200)
+    command.add_argument("--seed", type=int, default=20261014)
+    command = commands.add_parser("audit")
+    command.add_argument("--data-root", type=Path, required=True)
+    command.add_argument("--output", type=Path, required=True)
+    command.add_argument("--max-files", type=int, default=12)
+    command.add_argument("--max-directories", type=int, default=100)
+    return root
+
+
+def dispatch(args):
+    if args.command == "audit":
+        if os.environ.get("IES_EXECUTION_CONTEXT") != "ucsf":
+            raise ValueError("Metadata audit requires an authorized UCSF server context")
+        repository = Path(__file__).resolve().parents[2]
+        if args.output.resolve().is_relative_to(repository):
+            raise ValueError("Restricted metadata output must be outside the code tree")
+        report = audit_parquet(args.data_root, args.max_files, args.max_directories)
+        write_json(args.output, report)
+        if not report["files"] or report["failures"]:
+            raise ValueError("Audit incomplete; inspect restricted report on the server")
+        return {"mode": "metadata_only", "files_inspected": len(report["files"])}
+    if args.command == "validate":
+        return validate_events(read_events(args.events))
+    if args.command == "evaluate":
+        args.output_dir.mkdir(parents=True, exist_ok=False)
+        metrics, predictions = evaluate(
+            synthetic_artifact(args.cohort)["rows"],
+            synthetic_artifact(args.model),
+            args.split,
+            args.bootstrap,
+            args.seed,
+        )
+        write_json(args.output_dir / "metrics.json", metrics)
+        write_json(args.output_dir / "predictions.json", predictions)
+        return metrics
+    config = load_config(args.config)
+    if args.command == "run":
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8]
+        )
+        return {"run_dir": str(run_dir), "metrics": run_experiment(args.config, run_dir)}
+    if args.output.exists():
+        raise ValueError("Output already exists; choose a new artifact path")
+    if args.command == "generate":
+        events = generate_events(
+            **{
+                k: config[k]
+                for k in (
+                    "n_patients",
+                    "seed",
+                    "orders_per_patient",
+                    "horizon_hours",
+                    "delay_scale",
+                )
+            }
+        )
+        write_events(args.output, events)
+        return validate_events(events)
+    if args.command == "build-cohort":
+        cohort = build_cohort(
+            read_events(args.events),
+            config["seed"],
+            config["horizon_hours"],
+            config["lookback_hours"],
+        )
+        write_json(args.output, {"data_class": "synthetic", "rows": cohort})
+        return {"orders": len(cohort), "data_class": "synthetic"}
+    model = fit_baseline(synthetic_artifact(args.cohort)["rows"], config["bin_edges_hours"])
+    write_json(args.output, model)
+    return {"model": model["model"], "n_train_orders": model["n_train_orders"]}
+
+
+def main(argv=None) -> int:
+    root = parser()
+    args = root.parse_args(argv)
+    try:
+        print(json.dumps(dispatch(args), indent=2, allow_nan=False))
+        return 0
+    except (ValueError, OSError, KeyError, TypeError) as error:
+        # No external record values or file paths in diagnostics.
+        if args.command == "audit":
+            root.exit(
+                2, "Metadata audit failed; verify server context, paths, and restricted report.\n"
+            )
+        root.exit(2, f"Synthetic command failed ({type(error).__name__}): {error}\n")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

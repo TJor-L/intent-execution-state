@@ -1,0 +1,17 @@
+# Baseline registry
+
+| ID | Model | Status / comparison purpose |
+| --- | --- | --- |
+| A | Piecewise exponential competing risks, intercept only | Implemented; censor-aware reference and pipeline check |
+| B | LightGBM temporal features with a censor-aware target | Planned; must not convert censored cases to negative execution labels |
+| C | Single-stream time-aware type-aware Transformer | Planned; strongest direct test of whether explicit structure is needed |
+| D | Single-stream marked temporal event model | Planned; controls for continuous event dynamics |
+| E | Shared encoder, independent heads | Planned; isolates conditional execution/state factorization |
+| P | Order-conditioned execution model | Proposed, unimplemented |
+
+Save input vocabulary, time windows, labels, parameter count, trainable count, training
+updates, tuning budget, compute and seed for every model. Match supervision as well
+as input data: an auxiliary state target must also be available to the appropriate
+control. Use the same patients, horizon and censoring definition across comparisons.
+Compare both equal-parameter and equal-compute regimes when they answer different
+questions. Do not treat improvement over A alone as methodological evidence.
