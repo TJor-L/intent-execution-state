@@ -34,15 +34,21 @@ reviewed server-side feasibility query.
 
 `configs/feasibility.example.yaml` contains null physical-field/path placeholders.
 Only the ignored server-local mapping may supply real names or action values.
-The typed contract requires both sources' identities, patient keys, order occurrence
-and availability, administration occurrence/action, a reviewed dose-action allowlist
-and observation end. Both encounter mappings are optional together, with an explicit
-reject/count policy. Optional discontinuation/end events require reviewed terminal
-semantics and separate occurrence/availability mappings.
+The version 2 typed contract requires three sources: orders, administrations and
+observation coverage. All require identities and patient keys. Order rows carry a
+reviewed direct observation key, occurrence and availability; administration rows
+carry a direct order key, occurrence/action and independent availability by default.
+Observation rows carry endpoint occurrence and availability, with reviewed retrospective
+coverage semantics. Missing coverage never falls back to order end. Both joins check
+patients and have explicit encounter reject/count policies. Optional discontinuation/end
+events require reviewed terminal semantics and separate occurrence/availability mappings.
 
-Administration availability requires a column or an explicit reviewed equality-to-
-occurrence policy; it is never inferred from the lack of a column. Numeric patient-
-relative hours and timezone-aware timestamps are supported. String/naive timestamps,
-unreviewed labs, missing authorization and unbounded configuration fail closed.
+Equality-to-occurrence additionally needs private evidence metadata and a reviewed
+mapped documentation classification. Retrospective/unknown qualifying records reject
+the whole linked order. Equality is never inferred from the lack of a timestamp.
+Numeric hours and aware timestamps are supported; naive timestamps require a reviewed
+named timezone or a common within-patient shifted clock. Ambiguous local times default
+to rejection; nonexistent local times always reject. String timestamps, unreviewed
+time policies/labs, missing authorization and unbounded configuration fail closed.
 The implementation reads only selected columns in bounded batches and emits counters,
 not source-field names, rows or a populated dictionary. See docs/22_bounded_feasibility.md.

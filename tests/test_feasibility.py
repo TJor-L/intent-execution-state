@@ -32,24 +32,27 @@ def case(tmp_path):
         "institutional_access_confirmed",
         "mapping_reviewed",
         "source_coverage_reviewed",
+        "observation_linkage_reviewed",
+        "observation_end_reviewed",
         "qualifying_actions_reviewed",
         "terminal_semantics_reviewed",
     ):
         config[flag] = True
     config["time_encoding"] = "numeric_hours"
     config["qualifying_actions"] = ["toy-dose"]
-    for kind in ("orders", "administrations"):
+    for kind in ("orders", "administrations", "observations"):
         config[kind]["path"] = str(tmp_path / "inputs" / f"{kind}.parquet")
         config[kind]["columns"] = {
             logical: f"toy_slot_{i}" for i, logical in enumerate(config[kind]["columns"])
         }
+    config["administrations"]["columns"]["documentation_status"] = None
     order = {
         "order_id": "toy-order-0",
         "patient_id": "toy-person-0",
         "encounter_id": "toy-encounter-0",
         "occurred_at": 48.0,
         "available_at": 48.0,
-        "observation_end_at": 72.0,
+        "observation_id": "toy-observation-0",
         "discontinued_at": None,
         "discontinued_available_at": None,
         "ended_at": None,
@@ -64,23 +67,32 @@ def case(tmp_path):
         "available_at": 50.5,
         "action": "toy-dose",
     }
-    return config, order, administration
+    observation = {
+        "observation_id": "toy-observation-0",
+        "patient_id": "toy-person-0",
+        "encounter_id": "toy-encounter-0",
+        "ended_at": 72.0,
+        "available_at": 72.0,
+    }
+    return config, order, administration, observation
 
 
-def result(case, *, orders=None, administrations=None):
-    config, order, administration = case
+def result(case, *, orders=None, administrations=None, observations=None):
+    config, order, administration, observation = case
     return analyze(
         [order] if orders is None else orders,
         [administration] if administrations is None else administrations,
+        [observation] if observations is None else observations,
         parse_mapping(config),
     )
 
 
-def write_sources(case, orders=None, administrations=None):
-    config, order, administration = case
+def write_sources(case, orders=None, administrations=None, observations=None):
+    config, order, administration, observation = case
     for kind, data in (
         ("orders", [order] if orders is None else orders),
         ("administrations", [administration] if administrations is None else administrations),
+        ("observations", [observation] if observations is None else observations),
     ):
         path = Path(config[kind]["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +152,7 @@ def test_explicit_count_only_encounter_policy_and_absent_mapping(case):
     case[2]["encounter_id"] = "toy-other"
     counts = result(case)["counts"]
     assert counts["encounter_mismatches"] == counts["accepted_execution_orders"] == 1
-    for source in ("orders", "administrations"):
+    for source in ("orders", "administrations", "observations"):
         case[0][source]["columns"]["encounter_id"] = None
     counts = result(case)["counts"]
     assert counts["encounter_checks_unavailable"] == 1
@@ -177,14 +189,14 @@ def test_terminal_distinct_from_execution_and_censoring(case, terminal):
     counts = result(case, administrations=[])["counts"]
     assert counts["terminal_without_execution_orders"] == 1
     assert counts["right_censored_orders"] == counts["accepted_execution_orders"] == 0
-    case[1]["observation_end_at"] = 49.25
+    case[3]["ended_at"] = 49.25
     assert result(case, administrations=[])["counts"]["right_censored_orders"] == 1
 
 
 def test_observation_end_and_delayed_availability_censor_without_failure(case):
-    case[1]["observation_end_at"] = 49.0
+    case[3]["ended_at"] = 49.0
     assert result(case)["counts"]["right_censored_orders"] == 1
-    case[1]["observation_end_at"] = 72.0
+    case[3]["ended_at"] = 72.0
     case[2]["available_at"] = 73.0
     counts = result(case)["counts"]
     assert counts["right_censored_orders"] == counts["administrations_unavailable_at_boundary"] == 1
@@ -221,11 +233,11 @@ def test_terminal_competition_and_tie(case):
 
 
 def test_time_encoding_explicit_utc_and_shifted_dates(case):
-    config, order, administration = case
+    config, order, administration, observation = case
     config["time_encoding"] = "timestamp_utc"
     # Future shifted dates are allowed; use only intervals within each patient.
     base = datetime(2126, 1, 1, tzinfo=UTC)
-    for row in (order, administration):
+    for row in (order, administration, observation):
         for field in list(row):
             if field.endswith("_at") and row[field] is not None:
                 row[field] = base + timedelta(hours=row[field])
@@ -240,7 +252,29 @@ def test_availability_equality_requires_explicit_reviewed_policy(case):
     with pytest.raises(FeasibilityError):
         parse_mapping(config)
     config["administration_availability"] = "occurrence_reviewed"
+    with pytest.raises(FeasibilityError):
+        parse_mapping(config)
+    enable_equality(case)
     assert result(case)["counts"]["accepted_execution_orders"] == 1
+
+
+def enable_equality(case):
+    config = case[0]
+    config["administration_availability"] = "occurrence_reviewed"
+    config["administrations"]["columns"].update(
+        available_at=None, documentation_status="toy_documentation"
+    )
+    config["occurrence_equality_policy"] = {
+        "reviewed": True,
+        "evidence_reference": "toy-private-equality-review",
+        "retrospective_exclusion": {
+            "reviewed": True,
+            "evidence_reference": "toy-private-exclusion-review",
+            "contemporaneous_values": ["toy-live"],
+            "retrospective_values": ["toy-retro"],
+        },
+    }
+    case[2]["documentation_status"] = "toy-live"
 
 
 @pytest.mark.parametrize(
@@ -249,6 +283,8 @@ def test_availability_equality_requires_explicit_reviewed_policy(case):
         ("institutional_access_confirmed", False),
         ("mapping_reviewed", False),
         ("source_coverage_reviewed", False),
+        ("observation_linkage_reviewed", False),
+        ("observation_end_reviewed", False),
         ("qualifying_actions_reviewed", False),
         ("terminal_semantics_reviewed", False),
         ("qualifying_actions", []),
@@ -377,7 +413,7 @@ def test_empty_source_and_symlinks_never_imply_complete_followup(case, tmp_path)
 def test_runtime_budget_check(case):
     mapping = parse_mapping(case[0])
     with pytest.raises(FeasibilityError, match="runtime_limit"):
-        analyze([case[1]], [case[2]], mapping, Budget(mapping, started=0))
+        analyze([case[1]], [case[2]], [case[3]], mapping, Budget(mapping, started=0))
 
 
 def test_plan_never_reads_sources_or_creates_output(case, tmp_path, monkeypatch, capsys):
@@ -580,7 +616,10 @@ def test_slurm_submit_pins_source_and_mapping_without_logging_private_arguments(
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Production resource caps require Linux")
-def test_real_linux_worker_on_generated_parquet(case, tmp_path):
+@pytest.mark.parametrize("availability", ["column", "occurrence_reviewed"])
+def test_real_linux_worker_on_generated_parquet(case, tmp_path, availability):
+    if availability == "occurrence_reviewed":
+        enable_equality(case)
     write_sources(case)
     path = tmp_path / "mapping.local.yaml"
     path.write_text(yaml.safe_dump(case[0]))

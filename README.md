@@ -55,11 +55,16 @@ uv run ies evaluate --cohort artifacts/synthetic/cohort.json --model artifacts/s
 操作细节见 [docs/16_remote_development.md](docs/16_remote_development.md)。
 Git 仓库只承载代码、文档、合成测试及空白配置；schema 报告和真实结果留在服务器。
 
-## 本轮新增：有界可行性验证
+## 本轮更新：三来源有界可行性验证
 
-输入是服务器本地审核过的字段映射；直接关联医嘱和给药，拒绝患者不一致或重复给药，
+输入是服务器本地审核过的字段映射；直接关联医嘱、给药和独立观测覆盖来源，拒绝患者不一致或重复给药，
 单独统计 encounter 不一致，并区分首次执行、已知终止与右删失。不读取检验特征，
 不生成患者级 cohort。详见 [映射与计数规则](docs/22_bounded_feasibility.md)。
+
+配置升级为 `schema_version: 2`，旧配置须参考新版模板在服务器重新审核。
+无时区时间须声明审核过的 IANA 时区或共同移位时钟；夏令时歧义默认拒绝。
+给药时间相等假设须附审核依据和回填分类规则，回填／未知分类拒绝整个关联医嘱。
+观测结束使用独立来源的发生与可用时间，不用医嘱终止时间替代。
 
 仅在 UCSF 填写被忽略的 `configs/feasibility.local.yaml` 后运行：
 
@@ -90,7 +95,7 @@ CPU、内存与运行时间上限约束。达到扫描上限时输出 `limited`�
 
 核心研究文件：[假设](docs/03_research_questions.md)、
 [实验设计](docs/11_experiment_design.md)、[研究日志](docs/20_research_log.md)、
-[下一轮 Mac 开发交接](docs/21_mac_development_handoff.md)、
+[首轮 Mac 开发交接](docs/21_mac_development_handoff.md)、
 [服务器发现的契约缺口](docs/23_feasibility_contract_gaps.md)。
 依赖默认保持轻量；DuckDB/LightGBM/scikit-learn 在 `research` extra，
 PyTorch 在 `neural` extra，Phase 0 不安装这些大模型依赖。

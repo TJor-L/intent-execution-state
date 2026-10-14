@@ -1,19 +1,41 @@
 # Placeholders only. Populate configs/feasibility.local.yaml ON UCSF, never in Git.
-schema_version: 1
+schema_version: 2
 execution_context: ucsf
 institutional_access_confirmed: false
 mapping_reviewed: false
 source_coverage_reviewed: false
+observation_linkage_reviewed: false
+# Retrospective coverage endpoint, not a predictor or evidence of knowledge at index.
+observation_end_reviewed: false
 qualifying_actions_reviewed: false
 terminal_semantics_reviewed: false
 laboratory_features_enabled: false
-# Explicitly choose numeric_hours OR timestamp_utc (timezone-aware Arrow timestamps).
+# numeric_hours, timestamp_utc (aware), or timestamp_naive with the policy below.
 time_encoding: null
+# Required only for timestamp_naive; replace null with this structure after review:
+#   reviewed: false
+#   clock: null  # named_timezone OR shifted_common (common within each patient)
+#   timezone: null  # reviewed IANA name for named_timezone; null for shifted_common
+#   ambiguous: reject  # earlier/later permitted only with explicit reviewed evidence
+#   nonexistent: reject  # no automatic clock repair
+#   evidence_reference: null  # private server-local review reference, never exported
+naive_time_policy: null
 horizon_hours: 24.0
 # reject_order OR count_only; mismatches are always counted, never repaired.
 encounter_policy: reject_order
+observation_encounter_policy: reject_order
 # column requires available_at; occurrence_reviewed requires a reviewed equality assumption.
 administration_availability: column
+# Required only for occurrence_reviewed; also map documentation_status below.
+#   reviewed: false
+#   evidence_reference: null
+#   retrospective_exclusion:
+#     reviewed: false
+#     evidence_reference: null
+#     contemporaneous_values: []
+#     retrospective_values: []
+# Qualifying retrospective/unknown records reject the entire linked order.
+occurrence_equality_policy: null
 qualifying_actions: []
 orders:
   path: null
@@ -23,7 +45,7 @@ orders:
     encounter_id: null
     occurred_at: null
     available_at: null
-    observation_end_at: null
+    observation_id: null
     discontinued_at: null
     discontinued_available_at: null
     ended_at: null
@@ -38,6 +60,15 @@ administrations:
     occurred_at: null
     available_at: null
     action: null
+    documentation_status: null
+observations:
+  path: null
+  columns:
+    observation_id: null
+    patient_id: null
+    encounter_id: null
+    ended_at: null
+    available_at: null
 limits:
   max_files_per_source: 4
   max_directories_per_source: 20

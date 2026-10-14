@@ -4,29 +4,43 @@ import math
 import time
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
 
 from ies.feasibility.contract import FeasibilityError, Mapping, identity
+from ies.feasibility.time import time_value
 
 COUNT_NAMES = (
     "considered_orders",
     "considered_administrations",
+    "considered_observations",
     "missing_order_identities",
     "missing_administration_identities",
     "missing_direct_order_identity",
+    "missing_observation_identities",
+    "missing_direct_observation_identity",
     "missing_required_times",
     "invalid_time_values",
     "duplicate_order_identities",
     "duplicate_administration_identities",
+    "duplicate_observation_identities",
     "matched_direct_links",
     "unmatched_direct_links",
     "patient_mismatches",
     "encounter_mismatches",
     "encounter_missing_links",
     "encounter_checks_unavailable",
+    "matched_observation_links",
+    "unmatched_observation_links",
+    "observation_patient_mismatches",
+    "observation_encounter_mismatches",
+    "observation_encounter_missing_links",
+    "observation_encounter_checks_unavailable",
+    "observation_endpoint_unavailable_at_boundary_orders",
     "qualifying_actions",
     "excluded_actions",
     "missing_actions",
+    "retrospective_execution_rows",
+    "unresolved_documentation_rows",
+    "excluded_documentation_orders",
     "order_unavailable_at_index",
     "temporal_ordering_violations",
     "administrations_unavailable_at_boundary",
@@ -54,15 +68,6 @@ class Budget:
             raise FeasibilityError("runtime_limit")
 
 
-def time_value(value, encoding):
-    if encoding == "numeric_hours":
-        if type(value) in (int, float) and math.isfinite(value):
-            return float(value)
-    elif isinstance(value, datetime) and value.tzinfo is not None:
-        return value.timestamp() / 3600
-    return None
-
-
 def known_by(occurred: float, available: float, cutoff: float) -> bool:
     return occurred <= available <= cutoff
 
@@ -71,22 +76,32 @@ def known_by(occurred: float, available: float, cutoff: float) -> bool:
 class Order:
     patient: tuple | None
     encounter: tuple | None
+    observation_id: tuple | None
     occurred: float | None
     boundary: float | None
     terminals: list[tuple[float, float]]
     invalid: bool = False
     qualifying: int = 0
     first: tuple[float, float] | None = None
+    documentation_excluded: bool = False
 
 
-def pair(row, occurrence, availability, encoding, counts, optional=False):
+@dataclass(repr=False)
+class Observation:
+    patient: tuple | None
+    encounter: tuple | None
+    times: tuple[float, float] | None
+    invalid: bool
+
+
+def pair(row, occurrence, availability, mapping, counts, optional=False):
     raw = (row.get(occurrence), row.get(availability))
     if optional and raw == (None, None):
         return None, False
     if any(value is None for value in raw):
         counts["missing_required_times"] += 1
         return None, True
-    times = tuple(time_value(value, encoding) for value in raw)
+    times = tuple(time_value(value, mapping) for value in raw)
     if any(value is None for value in times):
         counts["invalid_time_values"] += 1
         return None, True
@@ -96,16 +111,33 @@ def pair(row, occurrence, availability, encoding, counts, optional=False):
     return times, False
 
 
+def check_encounter(order, encounter, mapped, policy, counts, prefix="") -> bool:
+    if not mapped:
+        counts[f"{prefix}encounter_checks_unavailable"] += 1
+        return False
+    mismatch = encounter is not None and order.encounter is not None
+    mismatch = mismatch and encounter != order.encounter
+    missing = encounter is None or order.encounter is None
+    counts[f"{prefix}encounter_mismatches"] += int(mismatch)
+    counts[f"{prefix}encounter_missing_links"] += int(missing)
+    return (mismatch or missing) and policy == "reject_order"
+
+
 def analyze(
-    order_rows, administration_rows, mapping: Mapping, budget: Budget | None = None
+    order_rows,
+    administration_rows,
+    observation_rows,
+    mapping: Mapping,
+    budget: Budget | None = None,
 ) -> dict:
     budget = budget or Budget(mapping)
     counts = Counter(dict.fromkeys(COUNT_NAMES, 0))
     orders = {}
     administration_ids = {}
+    observations = {}
 
     def room_for_key():
-        if len(orders) + len(administration_ids) >= mapping.limits.max_keys:
+        if len(orders) + len(administration_ids) + len(observations) >= mapping.limits.max_keys:
             budget.reached["keys"] = True
             return False
         return True
@@ -124,24 +156,11 @@ def analyze(
             continue
         if not room_for_key():
             break
-        times, invalid = pair(row, "occurred_at", "available_at", mapping.time_encoding, counts)
-        boundary = time_value(row.get("observation_end_at"), mapping.time_encoding)
-        if boundary is None:
-            counts[
-                "missing_required_times"
-                if row.get("observation_end_at") is None
-                else "invalid_time_values"
-            ] += 1
-            invalid = True
+        times, invalid = pair(row, "occurred_at", "available_at", mapping, counts)
         occurred = times[0] if times else None
         if times and not known_by(*times, occurred):
             counts["order_unavailable_at_index"] += 1
             invalid = True
-        if occurred is not None and boundary is not None:
-            if boundary <= occurred:
-                counts["temporal_ordering_violations"] += 1
-                invalid = True
-            boundary = min(boundary, occurred + mapping.horizon_hours)
         terminals = []
         for name in ("discontinued", "ended"):
             if mapping.orders.columns[f"{name}_at"] is None:
@@ -150,7 +169,7 @@ def analyze(
                 row,
                 f"{name}_at",
                 f"{name}_available_at",
-                mapping.time_encoding,
+                mapping,
                 counts,
                 optional=True,
             )
@@ -163,11 +182,65 @@ def analyze(
         orders[key] = Order(
             patient,
             identity(row.get("encounter_id")),
+            identity(row.get("observation_id")),
             occurred,
-            boundary,
+            None,
             terminals,
             invalid or patient is None,
         )
+
+    for row in observation_rows:
+        budget.check_time()
+        counts["considered_observations"] += 1
+        key, patient = identity(row.get("observation_id")), identity(row.get("patient_id"))
+        if key is None or patient is None:
+            counts["missing_observation_identities"] += 1
+        if key is None:
+            continue
+        if key in observations:
+            counts["duplicate_observation_identities"] += 1
+            observations[key].invalid = True
+            continue
+        if not room_for_key():
+            break
+        times, invalid = pair(row, "ended_at", "available_at", mapping, counts)
+        observations[key] = Observation(
+            patient, identity(row.get("encounter_id")), times, invalid or patient is None
+        )
+
+    for order in orders.values():
+        budget.check_time()
+        if order.observation_id is None:
+            counts["missing_direct_observation_identity"] += 1
+        observation = observations.get(order.observation_id)
+        if observation is None:
+            counts["unmatched_observation_links"] += 1
+            order.invalid = True
+            continue
+        counts["matched_observation_links"] += 1
+        order.invalid |= observation.invalid
+        if observation.patient is not None and observation.patient != order.patient:
+            counts["observation_patient_mismatches"] += 1
+            order.invalid = True
+        order.invalid |= check_encounter(
+            order,
+            observation.encounter,
+            mapping.observations.columns["encounter_id"] is not None,
+            mapping.observation_encounter_policy,
+            counts,
+            "observation_",
+        )
+        if observation.times and order.occurred is not None:
+            end, available = observation.times
+            if end <= order.occurred:
+                counts["temporal_ordering_violations"] += 1
+                order.invalid = True
+            order.boundary = min(end, order.occurred + mapping.horizon_hours)
+            # Coverage is retrospectively ascertained, never an index-time feature.
+            # Evidence availability does not extend followup or imply online knowledge.
+            counts["observation_endpoint_unavailable_at_boundary_orders"] += int(
+                available > order.boundary
+            )
 
     for row in administration_rows:
         budget.check_time()
@@ -197,16 +270,13 @@ def analyze(
             if patient is not None and patient != order.patient:
                 counts["patient_mismatches"] += 1
                 invalid = True
-            if mapping.administrations.columns["encounter_id"] is None:
-                counts["encounter_checks_unavailable"] += 1
-            else:
-                encounter = identity(row.get("encounter_id"))
-                mismatch = encounter is not None and order.encounter is not None
-                mismatch = mismatch and encounter != order.encounter
-                missing = encounter is None or order.encounter is None
-                counts["encounter_mismatches"] += int(mismatch)
-                counts["encounter_missing_links"] += int(missing)
-                invalid |= (mismatch or missing) and mapping.encounter_policy == "reject_order"
+            invalid |= check_encounter(
+                order,
+                identity(row.get("encounter_id")),
+                mapping.administrations.columns["encounter_id"] is not None,
+                mapping.encounter_policy,
+                counts,
+            )
         action = identity(row.get("action"))
         if action is None:
             counts["missing_actions"] += 1
@@ -216,9 +286,20 @@ def analyze(
         else:
             counts["qualifying_actions"] += 1
             availability = "available_at"
-            if mapping.administration_availability == "occurrence_reviewed":
+            if mapping.occurrence_equality_policy is not None:
                 availability = "occurred_at"
-            times, bad = pair(row, "occurred_at", availability, mapping.time_encoding, counts)
+                policy = mapping.occurrence_equality_policy
+                status = identity(row.get("documentation_status"))
+                retrospective = status in policy.retrospective_values
+                unresolved = status not in policy.contemporaneous_values and not retrospective
+                counts["retrospective_execution_rows"] += int(retrospective)
+                counts["unresolved_documentation_rows"] += int(unresolved)
+                if retrospective or unresolved:
+                    invalid = True
+                    if order is not None:
+                        # Dropping just the dose could falsely manufacture censoring or a singleton.
+                        order.documentation_excluded = True
+            times, bad = pair(row, "occurred_at", availability, mapping, counts)
             invalid |= bad
             if order is not None:
                 # Count repeats even if a row has bad times or is outside the horizon.
@@ -235,6 +316,7 @@ def analyze(
         budget.check_time()
         counts["single_qualifying_orders"] += int(order.qualifying == 1)
         counts["repeated_qualifying_orders"] += int(order.qualifying > 1)
+        counts["excluded_documentation_orders"] += int(order.documentation_excluded)
         if order.invalid or order.qualifying > 1:
             counts["rejected_orders"] += 1
             continue
@@ -261,7 +343,7 @@ def analyze(
         else:
             counts["right_censored_orders"] += 1
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": "bounded_feasibility",
         "data_class": "restricted_aggregate",
         "status": "limited" if any(budget.reached.values()) else "complete",

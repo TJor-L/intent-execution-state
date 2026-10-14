@@ -21,6 +21,14 @@ truncated scan is labeled `limited`; it cannot confirm absence of another dose o
 right censoring. Inspect server-local counts before authorizing any cohort extraction.
 No clinical run of this new validator has been performed by the Mac agent.
 
+The server stopped the first configuration attempt before job submission because
+time normalization, execution availability and a third observation source could not
+be represented truthfully (docs/23_feasibility_contract_gaps.md). Version 2 implements
+these concepts but does not establish their real source semantics. Review the common
+clock, direct coverage join and retrospective endpoint ascertainment on UCSF. Execution
+equality needs independent evidence and a mapped retrospective-exclusion rule; lack
+of evidence remains a blocker, even though the software now supports the policy.
+
 Predefine acceptable linkage completeness,
 ambiguity, event coverage and sample size after discussing the source definitions.
 Do not invent numerical acceptance thresholds without measuring the setting.

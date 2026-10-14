@@ -114,3 +114,54 @@ reviewed time normalization, a bounded third observation source and join, and st
 evidence requirements for occurrence-equals-availability. Output remains aggregate-
 only; real cohort persistence, labs, GPU training and automatic result transfer stay
 out of scope.
+
+## 2026-10-14 — Version 2 contract after the server's stopped configuration
+
+Pulled `b3961d600f9baeb319b3da27fd63ed9a465ba161` with the approved contract-gap
+handoff. The server had submitted no real feasibility job; no rows, source fields,
+private paths or schema reports were transferred to the Mac.
+
+Implemented version 2 mappings and aggregate reports. A required third observation
+source joins through an explicit reviewed identity and checks patient consistency.
+Its encounter reject/count policy is independent of the administration policy.
+Missing coverage, duplicate observation identities and invalid endpoint times reject
+linked orders; order termination cannot supply missing coverage. Observation registries
+share the total key budget; all three readers share the same per-source traversal/row
+caps and global CPU/memory/time limits. Any truncation preserves limited status and
+suppresses otherwise eligible outcome claims.
+
+Added in-memory naive timestamp normalization with a reviewed named IANA timezone or
+explicit common within-patient shifted clock. No host timezone, current-date check or
+calendar split is inferred. Ambiguous local times reject unless a reviewed earlier/later
+policy is explicit; nonexistent local times always reject. Order occurrence and
+availability remain separate required mappings. Old mappings fail rather than inherit
+new semantics silently.
+
+Execution availability stays independently mapped by default. Equality now requires
+private evidence metadata and a separately reviewed mapped classification of
+contemporaneous versus retrospective documentation. Retrospective/unknown qualifying
+records reject the whole linked order and still contribute to repeat diagnostics.
+Dropping only those rows would falsely manufacture censoring or single executions.
+No refused, held or not-given outcome was invented.
+
+Observation endpoint availability is validated separately from occurrence and counted
+when it lies after the analysis boundary. The explicitly reviewed interpretation is
+retrospective coverage ascertainment, not online endpoint knowledge or an index-time
+feature. Availability never extends the observation window. Continuous coverage still
+requires source-semantic review; a direct identity match alone cannot establish it.
+An online coverage policy, mixed time encodings and real cohort persistence remain
+unimplemented. These are stated limitations, not inferred source properties.
+
+Actual local validation: `make check` passed with **165 tests passing and 2 Linux-only
+worker cases skipped**, plus Ruff, formatting and repository-boundary checks.
+`make demo` passed with the unchanged synthetic NLL 2.729264271658528 and patient-
+bootstrap interval [2.4316855014758967, 2.9971389140500238]. New tests cover UTC/DST and
+shifted clocks, missing/duplicate/inconsistent observation links, every third-source
+scan/key bound, retrospective exclusion, required evidence, sanitized failures and
+data-free planning. Native Linux worker cases cover both availability policies in CI.
+
+Next server task: preserve the old private mapping, review a version 2 configuration
+using the updated pinned handoff, and submit one small aggregate-only job only if all
+semantics can be established. The implementation does not supply missing evidence.
+If execution availability/classification or observation coverage cannot be reviewed,
+return an approved operational blocker without guessing values or expanding scope.

@@ -15,7 +15,9 @@ generated synthetic fixtures here. Never paste real rows or values into issues,
 prompts, documentation, terminal summaries, or Git commits. Schema discovery
 reads Parquet footers only, omitting statistics and arbitrary metadata.
 No real column mapping is stored here. Server-approved operational findings are in
-docs/21_mac_development_handoff.md; never infer source column names from those findings.
+docs/21_mac_development_handoff.md and docs/23_feasibility_contract_gaps.md; never infer
+source column names from those findings. Time/availability evidence references and
+documentation classifications are server-local too, never report payloads.
 
 ## Research invariants
 
@@ -41,6 +43,12 @@ Treat truncated scans as incomplete evidence: do not confirm single executions o
 censoring when another qualifying dose could be outside the scan. Encounter mismatch
 handling is explicit and counted; patient mismatches always reject the order.
 Keep lab features disabled until an independent availability rule is reviewed.
+Use the version 2 mapping with a bounded third observation source. Require direct
+observation linkage, patient agreement and reviewed retrospective coverage semantics;
+never replace observation end with order end. Naive times need an explicit reviewed
+timezone or shifted common-clock policy. Equality of execution occurrence/availability
+requires evidence and a reviewed mapped retrospective-exclusion rule; retrospectively
+documented or unclassified qualifying doses reject the entire linked order.
 
 ## Handoffs
 

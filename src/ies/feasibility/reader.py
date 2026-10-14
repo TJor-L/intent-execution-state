@@ -1,7 +1,7 @@
 """Bounded projected Parquet reads. No joins spill to disk and no rows are persisted."""
 
 import os
-from contextlib import closing
+from contextlib import ExitStack, closing
 from math import gcd
 from pathlib import Path
 
@@ -122,6 +122,6 @@ def rows(source: Source, budget: Budget):
 def inspect_sources(mapping: Mapping) -> dict:
     budget = Budget(mapping)
     pa.set_cpu_count(mapping.limits.cpus)
-    with closing(rows(mapping.orders, budget)) as orders:
-        with closing(rows(mapping.administrations, budget)) as administrations:
-            return analyze(orders, administrations, mapping, budget)
+    with ExitStack() as stack:
+        sources = [stack.enter_context(closing(rows(source, budget))) for source in mapping.sources]
+        return analyze(*sources, mapping, budget)

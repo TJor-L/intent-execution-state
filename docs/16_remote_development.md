@@ -67,10 +67,14 @@ synthetic 子任务生成自己的 manifest。用服务器端 squeue/sacct 确�
 
 ## 下一轮：有界可行性验证
 
-1. 保留已有 `remote.local.yaml`，仅在服务器复制并填写
+1. 保留已有 `remote.local.yaml`，仅在服务器参考新版模板填写
    `configs/feasibility.example.yaml` → `configs/feasibility.local.yaml`。
+   现在为 schema version 2；旧映射只留作服务器私有参考，不自动转换或覆盖。
+   新增独立 observation 来源、直接关联键、结束发生与可用时间及其审核标志。
 2. 核实机构授权、映射、动作、观测覆盖与时间语义后，才填写相应 reviewed 标志。
    不应把随机截取的给药文件声明为覆盖全部相关给药。尚未审核的语义应保留未完成。
+   无时区时间必须选择审核过的时区／共同移位时钟；给药相等假设还需要独立审核依据、
+   映射的回填分类和排除规则，不能为了让配置通过而勾选。详见契约文档。
 3. `uv run python scripts/server.py plan feasibility --mapping configs/feasibility.local.yaml`
    只检查配置并显示资源上限。它不会确认源文件或列确实存在。
 4. `uv run python scripts/server.py submit feasibility --mapping configs/feasibility.local.yaml`

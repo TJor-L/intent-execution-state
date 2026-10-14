@@ -47,7 +47,7 @@ def verify_execution_context():
 
 def resource_report(limit: str | None = None) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "mode": "bounded_feasibility",
         "data_class": "restricted_aggregate",
         "status": "limited" if limit else "failed",
@@ -65,7 +65,7 @@ def run_feasibility(path: Path, output_dir: Path) -> dict:
     output = output_dir.resolve()
     if not output_dir.is_absolute() or output.is_relative_to(ROOT):
         raise FeasibilityError("invalid_output_boundary")
-    for source in (mapping.orders, mapping.administrations):
+    for source in mapping.sources:
         data = source.path.resolve()
         if output.is_relative_to(data) or data.is_relative_to(output):
             raise FeasibilityError("invalid_output_boundary")
