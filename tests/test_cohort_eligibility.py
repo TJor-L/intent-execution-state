@@ -569,3 +569,46 @@ def test_cli_returns_nonzero_for_limited_eligibility(monkeypatch, capsys):
         == 2
     )
     assert "private" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        [
+            "cohort-extract",
+            "run",
+            "--mapping",
+            "/private/mapping.local.yaml",
+            "--protocol",
+            "/private/protocol.local.yaml",
+            "--output-dir",
+            "/private/output",
+        ],
+        [
+            "clinical-baseline",
+            "run",
+            "--cohort-dir",
+            "/private/cohort",
+            "--baseline-config",
+            "/private/baseline.yaml",
+            "--output-dir",
+            "/private/output",
+        ],
+        [
+            "clinical-features",
+            "run",
+            "--mapping",
+            "/private/mapping.local.yaml",
+            "--protocol",
+            "/private/protocol.local.yaml",
+            "--cohort-dir",
+            "/private/cohort",
+            "--output-dir",
+            "/private/output",
+        ],
+    ],
+)
+def test_private_commands_return_nonzero_for_failed_status(arguments, monkeypatch, capsys):
+    monkeypatch.setattr("ies.cli.dispatch", lambda args: {"status": "failed"})
+    assert main(arguments) == 2
+    assert "private" not in capsys.readouterr().out

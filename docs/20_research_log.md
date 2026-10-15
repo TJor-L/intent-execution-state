@@ -586,3 +586,12 @@ coverage, absolute calendar features and incomplete event histories are not feat
 Generated tests cover exact cohort alignment, adult feature completeness, private modes
 and digest-bound CPU-only Slurm submission. The data-free UCSF plan passed; the formal
 feature extraction has not yet run.
+
+The first formal feature job 34439 stopped before source scans because the worker checked
+an attribute not exposed by the already strict parsed protocol object. Its sanitized
+failure artifact contained no clinical content. The scheduler initially displayed
+success because the CLI's private-command status branch omitted the newer cohort,
+baseline and feature commands. Removed the redundant attribute access, corrected exit
+status handling for all private commands, and added generated regressions requiring a
+nonzero result for every failed private operation. No feature artifact was produced by
+the failed job and no resource scope was changed.

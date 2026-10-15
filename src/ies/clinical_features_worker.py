@@ -26,7 +26,7 @@ def main() -> int:
         ):
             raise ClinicalFeatureError("feature_inputs_changed")
         protocol = parse_protocol(yaml.safe_load(protocol_bytes))
-        if protocol.status != "frozen" or protocol.laboratory_features_enabled:
+        if protocol.status != "frozen":
             raise ClinicalFeatureError("invalid_feature_protocol")
         apply_limits(mapping.limits)
         extract_clinical_features(
