@@ -49,6 +49,13 @@ ambiguity, event coverage and sample size after discussing the source definition
 Do not invent numerical acceptance thresholds without measuring the setting.
 No baseline clinical result exists until these conditions and a cohort are reviewed.
 
+The bounded cohort now supports a separate fixed Baseline A validation operation. It
+uses training rows only for estimation, evaluates validation rows only, does not emit
+test metrics, and uses no predictors. Its purpose is to validate the clinical label,
+censoring and likelihood path before feature development; it cannot establish individual
+discrimination or a clinical-performance claim. All models, metrics and predictions stay
+in UCSF private storage.
+
 ## E002: primary method comparison, pending feasibility
 
 Primary comparison: structured model P versus type-aware model C with matched inputs,

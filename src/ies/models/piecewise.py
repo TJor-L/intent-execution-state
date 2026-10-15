@@ -6,7 +6,7 @@ from ies.data.events import CAUSES
 from ies.losses.competing_risks import exposure, negative_log_likelihood, validate_edges
 
 
-def fit_baseline(cohort: list[dict], edges: list[float]) -> dict:
+def fit_baseline(cohort: list[dict], edges: list[float], *, data_class: str = "synthetic") -> dict:
     training = [r for r in cohort if r["split"] == "train"]
     if not training:
         raise ValueError("No training patients")
@@ -25,7 +25,7 @@ def fit_baseline(cohort: list[dict], edges: list[float]) -> dict:
     hazards = (counts + 0.5) / (person_time[:, None] + 1.0)
     return {
         "model": "piecewise_exponential_intercept_v1",
-        "data_class": "synthetic",
+        "data_class": data_class,
         "edges_hours": list(edges_array),
         "causes": list(CAUSES),
         "hazards_per_hour": hazards.tolist(),

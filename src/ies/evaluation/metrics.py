@@ -33,8 +33,9 @@ def evaluate(cohort: list[dict], model: dict, split="test", bootstrap=200, seed=
         )
         for _ in range(bootstrap)
     ]
+    data_class = model.get("data_class", "synthetic")
     metrics = {
-        "data_class": "synthetic",
+        "data_class": data_class,
         "split": split,
         "n_patients": len(patients),
         "n_orders": len(rows),
@@ -42,10 +43,14 @@ def evaluate(cohort: list[dict], model: dict, split="test", bootstrap=200, seed=
         "nll_patient_bootstrap_95ci": np.quantile(estimates, [0.025, 0.975]).tolist(),
         "bootstrap_replicates": bootstrap,
         "outcomes": {str(k): sum(r["cause"] == k for r in rows) for k in range(4)},
-        "note": "Synthetic pipeline smoke test; not evidence of clinical performance or novelty.",
+        "note": (
+            "Synthetic pipeline smoke test; not evidence of clinical performance or novelty."
+            if data_class == "synthetic"
+            else "Intercept-only label-pipeline validation; no individual predictive claim."
+        ),
     }
     predictions = {
-        "data_class": "synthetic",
+        "data_class": data_class,
         "population_curve": cumulative_incidence(model),
         "orders": [
             {"order_id": r["order_id"], "patient_id": r["patient_id"], "nll": float(loss)}

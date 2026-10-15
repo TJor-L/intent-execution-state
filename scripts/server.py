@@ -12,6 +12,7 @@ from uuid import uuid4
 
 import yaml
 
+from ies.clinical_baseline import load_baseline_config
 from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
@@ -90,6 +91,8 @@ def sbatch_command(
     mapping_path: Path | None = None,
     access_manifest: Path | None = None,
     protocol_path: Path | None = None,
+    cohort_dir: Path | None = None,
+    baseline_config: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -242,6 +245,33 @@ def sbatch_command(
                 str(run_dir / "cohort-extract"),
             ]
         )
+    elif job == "clinical-baseline":
+        if any(value is not None for value in (mapping_path, access_manifest, protocol_path)):
+            raise ValueError("Clinical baseline accepts only cohort and baseline config")
+        if cohort_dir is None or baseline_config is None:
+            raise ValueError("Clinical baseline requires cohort and baseline config")
+        cohort = cohort_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root):
+            raise ValueError("Clinical cohort must be in configured private output storage")
+        _, config_digest = load_baseline_config(baseline_config)
+        manifest_digest = hashlib.sha256((cohort / "manifest.json").read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_BASELINE_CONFIG_SHA256={config_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={manifest_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:20:30"
+        command.extend(
+            [
+                str(ROOT / "slurm/clinical_baseline.sbatch"),
+                python,
+                str(cohort),
+                str(baseline_config.absolute()),
+                str(run_dir / "clinical-baseline"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -263,12 +293,17 @@ def main() -> int:
             "cohort-vocabulary",
             "cohort-eligibility",
             "cohort-extract",
+            "clinical-baseline",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
+    parser.add_argument("--cohort-dir", type=Path)
+    parser.add_argument(
+        "--baseline-config", type=Path, default=ROOT / "configs/clinical_baseline.yaml"
+    )
     args = parser.parse_args()
     try:
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
@@ -300,6 +335,8 @@ def main() -> int:
             args.mapping,
             args.access_manifest,
             args.protocol,
+            args.cohort_dir,
+            args.baseline_config,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
@@ -317,6 +354,20 @@ def main() -> int:
                     slurm_only=True,
                 )
                 print(json.dumps(plan))
+            elif args.job == "clinical-baseline":
+                baseline, _ = load_baseline_config(args.baseline_config)
+                print(
+                    json.dumps(
+                        {
+                            "mode": "clinical_intercept_baseline",
+                            "submitted": False,
+                            "features_used": False,
+                            "evaluation_split": baseline["evaluation_split"],
+                            "test_split_evaluated": False,
+                            "gpu_used": False,
+                        }
+                    )
+                )
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -349,6 +400,7 @@ def main() -> int:
             "cohort-vocabulary",
             "cohort-eligibility",
             "cohort-extract",
+            "clinical-baseline",
         ):
             submission["command"] = command
         write_json(

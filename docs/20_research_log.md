@@ -554,3 +554,17 @@ remain met. Population counts remain explicitly incomplete because the determini
 candidate cap was saturated, so this artifact is a completed bounded research cohort,
 not a complete UCSF population census. No clinical row, identifier, mapping, count or
 artifact was copied into Git or reported outside UCSF.
+
+Implemented the next fixed Baseline A operation for the bounded cohort. The CPU-only
+worker verifies the cohort manifest and checksum, reads only train/validation rows,
+fits the existing smoothed piecewise-exponential competing-risk baseline on training
+patients, and evaluates only the validation partition with a seeded patient-cluster
+bootstrap. Test metrics are not produced. The output model, validation metrics,
+row-level validation losses and digest-bound manifest remain private under UCSF storage
+with restrictive permissions. This is a label/likelihood pipeline validation without
+features or an individual predictive claim, not the planned feature model.
+
+Generated tests cover deterministic output, patient separation, zero-duration rejection,
+changed-cohort rejection, private file modes, restricted-clinical classification and
+digest-bound CPU-only Slurm submission. The formal clinical baseline has not run; its
+source must first pass the full checks and be committed so Slurm can pin a clean revision.

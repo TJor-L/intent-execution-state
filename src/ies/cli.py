@@ -74,10 +74,19 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--mapping", type=Path, required=True)
     command.add_argument("--protocol", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("clinical-baseline")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--baseline-config", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "clinical-baseline":
+        from ies.clinical_baseline_runner import run_baseline
+
+        return run_baseline(args.cohort_dir, args.baseline_config, args.output_dir)
     if args.command == "cohort-extract":
         from ies.cohort_readiness.extract_runner import run_extraction
 
@@ -107,6 +116,7 @@ def dispatch(args):
         "cohort-vocabulary",
         "cohort-eligibility",
         "cohort-extract",
+        "clinical-baseline",
     ):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
@@ -196,6 +206,9 @@ def main(argv=None) -> int:
                 ),
                 "cohort-extract": (
                     "Cohort extraction failed; inspect the private UCSF output directory.\n"
+                ),
+                "clinical-baseline": (
+                    "Clinical baseline failed; inspect the private UCSF output directory.\n"
                 ),
             }
             message = messages[args.command]
