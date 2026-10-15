@@ -447,3 +447,21 @@ and digest-bound Slurm submission. A real eligibility job had not yet been submi
 the time of this entry. `make check` passed with **209 tests passing**, Ruff/format and
 repository-boundary checks. `make demo` passed with unchanged synthetic NLL
 2.729264271658528.
+
+Private eligibility configuration exposed two fail-closed bootstrap defects. Early jobs
+34360, 34372 and 34378 stopped before page scans because field discovery did not handle
+CamelCase and applied final-source caps to unrelated candidate directories. Job 34379
+completed the projected vocabulary scans, then correctly stopped when more than one
+explicit one-time frequency label was present; the generator was fixed to retain all
+strictly recognized one-time labels rather than demand a single spelling. Job 34382
+completed the scans and wrote a private mapping, but final contract validation exposed
+an implementation bug: a reference to the existing ignored `configs/*.local.yaml`
+mapping was being rejected as though it were a clinical data path.
+
+The contract now permits only ignored `configs/*.local.yaml` references inside the repo;
+clinical sources and outputs remain prohibited there. The generated eligibility mapping
+then passed the data-free plan with all five projected sources and unchanged resource
+caps. No failed bootstrap produced a cohort, report or row extract, and no private field,
+value or count entered Git. After the fix, `make check` passed with **210 tests** and the
+synthetic demo remained unchanged. The real aggregate eligibility job remains the next
+operation.

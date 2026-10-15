@@ -96,6 +96,15 @@ def _path(value) -> Path:
     return path
 
 
+def _private_mapping_path(value) -> Path:
+    require(isinstance(value, str) and value and "\x00" not in value)
+    path = Path(value)
+    require(path.is_absolute() and ".." not in path.parts and path != Path("/"))
+    if path.is_relative_to(ROOT):
+        require(path.parent == ROOT / "configs" and path.name.endswith(".local.yaml"))
+    return path
+
+
 def _column(value) -> str:
     require(
         isinstance(value, str)
@@ -161,7 +170,7 @@ def parse_eligibility_mapping(value: dict) -> EligibilityMapping:
     _evidence(value["evidence_reference"])
     feasibility_value = value["feasibility_mapping"]
     require(isinstance(feasibility_value, dict) and set(feasibility_value) == {"path", "sha256"})
-    feasibility_path = _path(feasibility_value["path"])
+    feasibility_path = _private_mapping_path(feasibility_value["path"])
     expected_sha = feasibility_value["sha256"]
     require(isinstance(expected_sha, str) and len(expected_sha) == 64)
     feasibility, actual_sha = load_mapping_snapshot(feasibility_path)

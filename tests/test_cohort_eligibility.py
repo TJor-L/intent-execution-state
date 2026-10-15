@@ -13,6 +13,7 @@ from conftest import load_script
 from ies.cli import main
 from ies.cohort_readiness.eligibility import (
     EligibilityError,
+    _private_mapping_path,
     audit_eligibility,
     load_eligibility_mapping,
 )
@@ -255,6 +256,14 @@ def test_unreviewed_values_and_changed_base_mapping_fail_closed(tmp_path):
     path.write_text(yaml.safe_dump(value))
     with pytest.raises(EligibilityError):
         load_eligibility_mapping(path)
+
+
+def test_only_ignored_local_config_reference_is_allowed_inside_repository():
+    allowed = ROOT / "configs/toy.local.yaml"
+    assert _private_mapping_path(str(allowed)) == allowed
+    for path in (ROOT / "configs/tracked.yaml", ROOT / "src/toy.local.yaml"):
+        with pytest.raises(EligibilityError, match="invalid_eligibility_mapping"):
+            _private_mapping_path(str(path))
 
 
 def test_plan_is_data_free_and_suppresses_private_values(tmp_path, monkeypatch):
