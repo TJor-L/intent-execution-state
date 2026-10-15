@@ -595,3 +595,16 @@ baseline and feature commands. Removed the redundant attribute access, corrected
 status handling for all private commands, and added generated regressions requiring a
 nonzero result for every failed private operation. No feature artifact was produced by
 the failed job and no resource scope was changed.
+
+The corrected formal feature job 34440 completed in 1 minute 33 seconds with low memory
+use. Private post-run checks verified the source/config/cohort bindings, checksums,
+permissions, exact feature schema, non-null adult ages and one-to-one patient/order
+alignment with every bounded cohort row. No feature values or counts left UCSF.
+
+Implemented a fixed age-band piecewise competing-risk baseline with a global fallback
+for age bands absent from training. The boundaries are fixed in source before validation;
+estimation uses training patients only and evaluation remains validation-only with the
+same seeded patient bootstrap. It reads the verified cohort and feature manifests,
+refuses misalignment or changed artifacts and writes only private UCSF outputs. This is
+a feature-pipeline control, not a causal or clinical-performance claim. Formal execution
+has not yet run.

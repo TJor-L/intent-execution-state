@@ -5,6 +5,7 @@ import pytest
 
 from ies.evaluation.metrics import evaluate
 from ies.losses.competing_risks import negative_log_likelihood
+from ies.models.age_stratified import evaluate_age_stratified, fit_age_stratified
 from ies.models.piecewise import cumulative_incidence, fit_baseline
 from ies.preprocessing.cohort import build_cohort
 
@@ -71,3 +72,39 @@ def test_bootstrap_is_seeded_finite_and_rejects_patient_overlap(events):
     leaking["train_patients"].append(next(r["patient_id"] for r in cohort if r["split"] == "test"))
     with pytest.raises(ValueError, match="overlap"):
         evaluate(cohort, leaking)
+
+
+def test_fixed_age_baseline_uses_training_only_and_global_fallback():
+    cohort = [
+        {
+            "split": "train",
+            "patient_id": "a",
+            "order_id": "1",
+            "duration": 1.0,
+            "cause": 1,
+            "age_years_at_order": 30,
+        },
+        {
+            "split": "train",
+            "patient_id": "b",
+            "order_id": "2",
+            "duration": 2.0,
+            "cause": 0,
+            "age_years_at_order": 70,
+        },
+        {
+            "split": "validation",
+            "patient_id": "c",
+            "order_id": "3",
+            "duration": 3.0,
+            "cause": 2,
+            "age_years_at_order": 50,
+        },
+    ]
+    model = fit_age_stratified(cohort, [0, 2, 6, 24])
+    assert "45-64" not in model["age_bands"]
+    metrics, predictions = evaluate_age_stratified(
+        cohort, model, split="validation", bootstrap=10, seed=7
+    )
+    assert np.isfinite(metrics["nll_per_order"])
+    assert predictions["orders"][0]["order_id"] == "3"

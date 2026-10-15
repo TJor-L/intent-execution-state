@@ -10,11 +10,13 @@ import pytest
 from conftest import load_script
 
 from ies import clinical_baseline
+from ies.clinical_age_baseline import run_clinical_age_baseline
 from ies.clinical_baseline import (
     ClinicalBaselineError,
     load_baseline_config,
     run_clinical_baseline,
 )
+from ies.clinical_features import FEATURE_SCHEMA
 from ies.cohort_readiness.extract import SCHEMA
 from ies.io import sha256, write_json
 
@@ -126,3 +128,68 @@ def test_server_submission_is_digest_bound_and_cpu_only(tmp_path):
     assert "IES_BASELINE_CONFIG_SHA256=" in export
     assert "--cpus-per-task=2" in command and "--mem=4096M" in command
     assert str(server.ROOT / "slurm/clinical_baseline.sbatch") in command
+
+
+def test_fixed_age_baseline_joins_verified_features_and_uses_validation_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(clinical_baseline, "AUTHORIZED_ROOT", tmp_path)
+    cohort, cohort_digest = _cohort(tmp_path)
+    cohort_rows = pq.read_table(cohort / "cohort.parquet", columns=["patient_id", "order_id"])
+    feature_dir = tmp_path / "features"
+    feature_dir.mkdir()
+    feature_rows = [
+        dict(row, age_years_at_order=30 + index * 15)
+        for index, row in enumerate(cohort_rows.to_pylist())
+    ]
+    pq.write_table(
+        pa.Table.from_pylist(feature_rows, schema=FEATURE_SCHEMA),
+        feature_dir / "features.parquet",
+    )
+    feature_manifest = {
+        "status": "complete",
+        "features": ["age_years_at_order"],
+        "outcome_features_used": False,
+        "artifacts_sha256": {"features.parquet": sha256(feature_dir / "features.parquet")},
+    }
+    write_json(feature_dir / "manifest.json", feature_manifest)
+    feature_digest = sha256(feature_dir / "manifest.json")
+    config, config_digest = load_baseline_config(ROOT / "configs/clinical_baseline.yaml")
+    output = tmp_path / "age-model"
+    output.mkdir()
+    manifest = run_clinical_age_baseline(
+        cohort,
+        feature_dir,
+        output,
+        config,
+        config_digest,
+        cohort_digest,
+        feature_digest,
+        "c" * 40,
+    )
+    assert manifest["status"] == "complete"
+    assert manifest["features"] == ["age_years_at_order"]
+    assert manifest["test_split_evaluated"] is False
+    predictions = json.loads((output / "validation_predictions.json").read_text())
+    assert {row["order_id"] for row in predictions["orders"]} == {"string:order-2"}
+    server = load_script("server")
+    command = server.sbatch_command(
+        {
+            "python_executable": "/server/python",
+            "output_root": str(tmp_path),
+            "slurm": {
+                "partition": "cpu",
+                "account": None,
+                "cpus": 4,
+                "memory": "8G",
+                "time_limit": "00:20:00",
+            },
+        },
+        "clinical-age-baseline",
+        tmp_path / "job",
+        cohort_dir=cohort,
+        feature_dir=feature_dir,
+        baseline_config=ROOT / "configs/clinical_baseline.yaml",
+    )
+    export = next(item for item in command if item.startswith("--export="))
+    assert "IES_FEATURE_MANIFEST_SHA256=" in export
+    assert "IES_COHORT_MANIFEST_SHA256=" in export
+    assert str(server.ROOT / "slurm/clinical_age_baseline.sbatch") in command

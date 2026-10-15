@@ -3,6 +3,7 @@
 | ID | Model | Status / comparison purpose |
 | --- | --- | --- |
 | A | Piecewise exponential competing risks, intercept only | Implemented for synthetic and bounded private clinical label-pipeline validation; no individualized prediction |
+| A-age | Piecewise exponential competing risks with fixed age bands and global fallback | Implemented for private feature-pipeline validation; validation-only and not a clinical claim |
 | B | LightGBM temporal features with a censor-aware target | Planned; must not convert censored cases to negative execution labels |
 | C | Single-stream time-aware type-aware Transformer | Planned; strongest direct test of whether explicit structure is needed |
 | D | Single-stream marked temporal event model | Planned; controls for continuous event dynamics |

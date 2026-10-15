@@ -606,6 +606,18 @@ def test_cli_returns_nonzero_for_limited_eligibility(monkeypatch, capsys):
             "--output-dir",
             "/private/output",
         ],
+        [
+            "clinical-age-baseline",
+            "run",
+            "--cohort-dir",
+            "/private/cohort",
+            "--feature-dir",
+            "/private/features",
+            "--baseline-config",
+            "/private/baseline.yaml",
+            "--output-dir",
+            "/private/output",
+        ],
     ],
 )
 def test_private_commands_return_nonzero_for_failed_status(arguments, monkeypatch, capsys):

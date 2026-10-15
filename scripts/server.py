@@ -93,6 +93,7 @@ def sbatch_command(
     protocol_path: Path | None = None,
     cohort_dir: Path | None = None,
     baseline_config: Path | None = None,
+    feature_dir: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -307,6 +308,37 @@ def sbatch_command(
                 str(run_dir / "clinical-features"),
             ]
         )
+    elif job == "clinical-age-baseline":
+        if cohort_dir is None or feature_dir is None or baseline_config is None:
+            raise ValueError("Age baseline requires cohort, features and baseline config")
+        if any(value is not None for value in (mapping_path, access_manifest, protocol_path)):
+            raise ValueError("Age baseline does not accept source mappings")
+        cohort = cohort_dir.resolve()
+        features = feature_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root) or not features.is_relative_to(output_root):
+            raise ValueError("Clinical artifacts must be in configured private output storage")
+        _, config_digest = load_baseline_config(baseline_config)
+        cohort_digest = hashlib.sha256((cohort / "manifest.json").read_bytes()).hexdigest()
+        feature_digest = hashlib.sha256((features / "manifest.json").read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_BASELINE_CONFIG_SHA256={config_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={cohort_digest}"
+            f",IES_FEATURE_MANIFEST_SHA256={feature_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:20:30"
+        command.extend(
+            [
+                str(ROOT / "slurm/clinical_age_baseline.sbatch"),
+                python,
+                str(cohort),
+                str(features),
+                str(baseline_config.absolute()),
+                str(run_dir / "clinical-age-baseline"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -330,6 +362,7 @@ def main() -> int:
             "cohort-extract",
             "clinical-baseline",
             "clinical-features",
+            "clinical-age-baseline",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -337,6 +370,7 @@ def main() -> int:
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
     parser.add_argument("--cohort-dir", type=Path)
+    parser.add_argument("--feature-dir", type=Path)
     parser.add_argument(
         "--baseline-config", type=Path, default=ROOT / "configs/clinical_baseline.yaml"
     )
@@ -373,6 +407,7 @@ def main() -> int:
             args.protocol,
             args.cohort_dir,
             args.baseline_config,
+            args.feature_dir,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
@@ -418,6 +453,19 @@ def main() -> int:
                         }
                     )
                 )
+            elif args.job == "clinical-age-baseline":
+                print(
+                    json.dumps(
+                        {
+                            "mode": "clinical_fixed_age_band_baseline",
+                            "submitted": False,
+                            "features": ["age_years_at_order"],
+                            "evaluation_split": "validation",
+                            "test_split_evaluated": False,
+                            "gpu_used": False,
+                        }
+                    )
+                )
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -452,6 +500,7 @@ def main() -> int:
             "cohort-extract",
             "clinical-baseline",
             "clinical-features",
+            "clinical-age-baseline",
         ):
             submission["command"] = command
         write_json(

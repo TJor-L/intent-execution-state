@@ -85,10 +85,22 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--protocol", type=Path, required=True)
     command.add_argument("--cohort-dir", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("clinical-age-baseline")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--feature-dir", type=Path, required=True)
+    command.add_argument("--baseline-config", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "clinical-age-baseline":
+        from ies.clinical_age_baseline_runner import run_age_baseline
+
+        return run_age_baseline(
+            args.cohort_dir, args.feature_dir, args.baseline_config, args.output_dir
+        )
     if args.command == "clinical-features":
         from ies.clinical_features_runner import run_features
 
@@ -128,6 +140,7 @@ def dispatch(args):
         "cohort-extract",
         "clinical-baseline",
         "clinical-features",
+        "clinical-age-baseline",
     ):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
@@ -208,6 +221,7 @@ def main(argv=None) -> int:
         "cohort-extract",
         "clinical-baseline",
         "clinical-features",
+        "clinical-age-baseline",
     ):
         try:
             result = dispatch(args)
@@ -230,6 +244,9 @@ def main(argv=None) -> int:
                 ),
                 "clinical-features": (
                     "Clinical feature extraction failed; inspect the private UCSF output.\n"
+                ),
+                "clinical-age-baseline": (
+                    "Clinical age baseline failed; inspect the private UCSF output.\n"
                 ),
             }
             message = messages[args.command]
