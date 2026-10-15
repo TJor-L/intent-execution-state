@@ -328,3 +328,26 @@ def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path,
         str(protocol_path.absolute()),
         str(tmp_path / "output/cohort-eligibility"),
     ]
+
+
+def test_cli_returns_nonzero_for_limited_eligibility(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "ies.cli.dispatch",
+        lambda args: {"mode": "aggregate_cohort_eligibility", "status": "limited"},
+    )
+    assert (
+        main(
+            [
+                "cohort-eligibility",
+                "run",
+                "--mapping",
+                "/private/mapping.local.yaml",
+                "--protocol",
+                "/private/protocol.local.yaml",
+                "--output-dir",
+                "/private/output",
+            ]
+        )
+        == 2
+    )
+    assert "private" not in capsys.readouterr().out

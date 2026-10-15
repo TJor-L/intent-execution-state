@@ -166,7 +166,7 @@ def dispatch(args):
 def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
-    if args.command in ("feasibility", "cohort-vocabulary"):
+    if args.command in ("feasibility", "cohort-vocabulary", "cohort-eligibility"):
         try:
             result = dispatch(args)
         except Exception:

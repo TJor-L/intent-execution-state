@@ -465,3 +465,19 @@ caps. No failed bootstrap produced a cohort, report or row extract, and no priva
 value or count entered Git. After the fix, `make check` passed with **210 tests** and the
 synthetic demo remained unchanged. The real aggregate eligibility job remains the next
 operation.
+
+The first real aggregate eligibility job 34406 scanned until the independent CPU cap and
+returned only a sanitized `limited` report. It suppressed all counts and made no
+readiness claim. The scheduler incorrectly displayed success because the CLI had omitted
+the new command from its non-complete exit-code branch; the restricted report remained
+authoritative and correct. No rows or cohort were written.
+
+Fixed the exit-code defect and replaced per-row Python filtering with exact Arrow batch
+filters for medication criteria and retained patient, encounter, administration and
+observation keys. Only matched rows are converted to Python objects; source traversal,
+stability checks, caps and outcome semantics are unchanged. Added a regression test that
+requires a nonzero CLI result for limited eligibility. The retry will use the same CPU,
+memory, wall-time and data bounds rather than expanding resources.
+
+After this optimization, `make check` passed with **211 tests** and `make demo` retained
+the unchanged synthetic result.

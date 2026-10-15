@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 import yaml
 
@@ -281,6 +283,7 @@ def _scan(
     files: tuple[FileState, ...],
     limits: EligibilityLimits,
     started: float,
+    filters: dict[str, set] | None = None,
 ):
     physical = list(dict.fromkeys(source.columns.values()))
     rows = 0
@@ -305,6 +308,23 @@ def _scan(
                     ):
                         if time.monotonic() - started > limits.runtime_seconds:
                             raise EligibilityError("eligibility_runtime_limit")
+                        if filters:
+                            mask = None
+                            for logical, accepted in filters.items():
+                                column = batch.column(
+                                    batch.schema.get_field_index(source.columns[logical])
+                                )
+                                try:
+                                    value_set = pa.array(list(accepted), type=column.type)
+                                    matched = pc.fill_null(
+                                        pc.is_in(column, value_set=value_set), False
+                                    )
+                                except (pa.ArrowException, TypeError, ValueError):
+                                    raise EligibilityError("eligibility_filter_type") from None
+                                mask = matched if mask is None else pc.and_(mask, matched)
+                            batch = batch.filter(mask)
+                            if batch.num_rows == 0:
+                                continue
                         arrays = {
                             logical: batch.column(batch.schema.get_field_index(name)).to_pylist()
                             for logical, name in source.columns.items()
@@ -336,6 +356,10 @@ def _adult(birth, occurred) -> bool:
     return years >= 18
 
 
+def _raw(values: frozenset[tuple]) -> set:
+    return {value for _, value in values}
+
+
 def audit_eligibility(
     mapping: EligibilityMapping, minimum_orders: int, minimum_events: int
 ) -> dict:
@@ -352,19 +376,13 @@ def audit_eligibility(
     counts = Counter()
     selected_keys = set()
     order_rows = []
-    for row in _scan(sources["orders"], before["orders"], limits, started):
-        counts["orders_scanned"] += 1
-        if (
-            criterion_identity(row.get("therapeutic_class")) not in mapping.therapeutic_class_values
-            or criterion_identity(row.get("route")) not in mapping.route_values
-        ):
-            continue
-        counts["medication_route_orders"] += 1
-        if (
-            criterion_identity(row.get("prn")) not in mapping.non_prn_values
-            or criterion_identity(row.get("frequency")) not in mapping.one_time_frequency_values
-        ):
-            continue
+    order_filters = {
+        "therapeutic_class": _raw(mapping.therapeutic_class_values),
+        "route": _raw(mapping.route_values),
+        "prn": _raw(mapping.non_prn_values),
+        "frequency": _raw(mapping.one_time_frequency_values),
+    }
+    for row in _scan(sources["orders"], before["orders"], limits, started, filters=order_filters):
         counts["one_time_non_prn_orders"] += 1
         key = identity(row.get("order_id"))
         if key is None:
@@ -381,21 +399,28 @@ def audit_eligibility(
     encounter_keys = {identity(row.get("encounter_id")) for row in order_rows} - {None}
     patients: dict[tuple, list] = {}
     retained_patient_rows = 0
-    for row in _scan(sources["patients"], before["patients"], limits, started):
+    patient_filters = {
+        "patient_id": {value for _, value in patient_keys},
+        "current_status": _raw(mapping.current_values),
+        "valid_status": _raw(mapping.valid_values),
+    }
+    for row in _scan(
+        sources["patients"], before["patients"], limits, started, filters=patient_filters
+    ):
         key = identity(row.get("patient_id"))
-        if key not in patient_keys:
-            continue
-        if (
-            criterion_identity(row.get("current_status")) in mapping.current_values
-            and criterion_identity(row.get("valid_status")) in mapping.valid_values
-        ):
-            patients.setdefault(key, []).append(row.get("birth_date"))
-            retained_patient_rows += 1
-            if retained_patient_rows > limits.max_retained_rows_per_source:
-                raise EligibilityError("eligibility_retained_rows_limit")
+        patients.setdefault(key, []).append(row.get("birth_date"))
+        retained_patient_rows += 1
+        if retained_patient_rows > limits.max_retained_rows_per_source:
+            raise EligibilityError("eligibility_retained_rows_limit")
     encounters: dict[tuple, list] = {}
     retained_encounter_rows = 0
-    for row in _scan(sources["encounters"], before["encounters"], limits, started):
+    for row in _scan(
+        sources["encounters"],
+        before["encounters"],
+        limits,
+        started,
+        filters={"encounter_id": {value for _, value in encounter_keys}},
+    ):
         key = identity(row.get("encounter_id"))
         if key in encounter_keys:
             encounters.setdefault(key, []).append(row)
@@ -422,17 +447,27 @@ def audit_eligibility(
     eligible_keys = {identity(row.get("order_id")) for row in eligible_orders} - {None}
     observation_keys = {identity(row.get("observation_id")) for row in eligible_orders} - {None}
     administration_rows = []
-    for row in _scan(sources["administrations"], before["administrations"], limits, started):
-        if identity(row.get("order_id")) in eligible_keys:
-            administration_rows.append(row)
-            if len(administration_rows) > limits.max_retained_rows_per_source:
-                raise EligibilityError("eligibility_retained_rows_limit")
+    for row in _scan(
+        sources["administrations"],
+        before["administrations"],
+        limits,
+        started,
+        filters={"order_id": {value for _, value in eligible_keys}},
+    ):
+        administration_rows.append(row)
+        if len(administration_rows) > limits.max_retained_rows_per_source:
+            raise EligibilityError("eligibility_retained_rows_limit")
     observation_rows = []
-    for row in _scan(sources["observations"], before["observations"], limits, started):
-        if identity(row.get("observation_id")) in observation_keys:
-            observation_rows.append(row)
-            if len(observation_rows) > limits.max_retained_rows_per_source:
-                raise EligibilityError("eligibility_retained_rows_limit")
+    for row in _scan(
+        sources["observations"],
+        before["observations"],
+        limits,
+        started,
+        filters={"observation_id": {value for _, value in observation_keys}},
+    ):
+        observation_rows.append(row)
+        if len(observation_rows) > limits.max_retained_rows_per_source:
+            raise EligibilityError("eligibility_retained_rows_limit")
     after = {name: _inventory(source, limits) for name, source in sources.items()}
     if before != after:
         raise EligibilityError("eligibility_source_changed")
