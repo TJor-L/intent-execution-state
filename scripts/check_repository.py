@@ -21,6 +21,7 @@ CONFIGS = {
     "configs/feasibility.example.yaml",
     "configs/coherent_access.example.yaml",
     "configs/clinical_protocol.example.yaml",
+    "configs/cohort_vocabulary.example.yaml",
 }
 
 

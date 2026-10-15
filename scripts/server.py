@@ -11,6 +11,8 @@ from uuid import uuid4
 
 import yaml
 
+from ies.cohort_readiness.contract import load_vocabulary_mapping
+from ies.cohort_readiness.runner import plan_vocabulary_audit
 from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
@@ -163,6 +165,29 @@ def sbatch_command(
                 str(run_dir / "coherent"),
             ]
         )
+    elif job == "cohort-vocabulary":
+        if mapping_path is None or access_manifest is not None:
+            raise ValueError("Cohort vocabulary audit requires only its private mapping")
+        mapping, digest = load_vocabulary_mapping(mapping_path)
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_COHORT_AUDIT_SHA256={digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/cohort_vocabulary.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(run_dir / "cohort-vocabulary"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -176,7 +201,13 @@ def main() -> int:
     parser.add_argument(
         "job",
         nargs="?",
-        choices=("schema-audit", "synthetic", "feasibility", "coherent-prepare"),
+        choices=(
+            "schema-audit",
+            "synthetic",
+            "feasibility",
+            "coherent-prepare",
+            "cohort-vocabulary",
+        ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
     parser.add_argument("--mapping", type=Path)
@@ -210,6 +241,8 @@ def main() -> int:
             # No private paths echoed into a shareable terminal summary.
             if args.job == "feasibility":
                 print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
+            elif args.job == "cohort-vocabulary":
+                print(json.dumps(plan_vocabulary_audit(args.mapping)))
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -236,7 +269,7 @@ def main() -> int:
             raise ValueError("Slurm submission failed; inspect configuration on the server")
         job_id = result.stdout.strip().split(";")[0]
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
-        if args.job not in ("feasibility", "coherent-prepare"):
+        if args.job not in ("feasibility", "coherent-prepare", "cohort-vocabulary"):
             submission["command"] = command
         write_json(
             run_dir / "submission.json",

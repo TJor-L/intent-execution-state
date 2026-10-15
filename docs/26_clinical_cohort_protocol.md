@@ -32,3 +32,10 @@ uv run ies protocol-plan --protocol configs/clinical_protocol.local.yaml
 The planner emits only readiness flags and generic missing-decision names. It never
 prints medication categories or evidence references, reads clinical sources, creates
 directories or submits work. `status: frozen` is rejected until every gate is filled.
+
+After a private protocol is frozen, `cohort-vocabulary` provides the first aggregate-only
+readiness step. It projects only the privately mapped PRN and frequency fields, requires
+a stable complete reviewed snapshot within explicit file, row-group, row, byte, runtime,
+CPU and memory limits, and writes value counts only to a restricted UCSF report. Rare
+values are suppressed and no rows are persisted. A truncated or failed scan cannot be
+used to approve medication eligibility. Real cohort extraction remains disabled.

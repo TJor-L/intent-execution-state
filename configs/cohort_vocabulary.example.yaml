@@ -1,0 +1,25 @@
+# Copy to configs/cohort_vocabulary.local.yaml on UCSF and keep it private.
+schema_version: 1
+execution_context: ucsf
+institutional_access_confirmed: false
+mapping_reviewed: false
+protocol_frozen_reviewed: false
+purpose: frequency_prn_vocabulary
+source:
+  path: null
+  columns:
+    prn: null
+    frequency: null
+limits:
+  max_files: 1000
+  max_entries: 2000
+  max_row_groups: 2000
+  max_rows: 500000000
+  max_source_bytes: 68719476736
+  max_distinct_per_column: 256
+  minimum_report_count: 10
+  batch_rows: 65536
+  runtime_seconds: 900
+  cpu_seconds: 900
+  cpus: 2
+  memory_mb: 4096

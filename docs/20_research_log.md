@@ -392,3 +392,28 @@ planning.
 
 Actual server validation: `make check` passed with **195 tests passing**, Ruff/format
 and repository-boundary checks.
+
+## 2026-10-15 — Aggregate-only cohort vocabulary audit implemented
+
+The private clinical protocol was frozen before any population extraction. It fixes an
+adult inpatient population, one prespecified intravenous medication domain, conservative
+exclusion of continuous/recurring and unresolved PRN orders, patient-level seeded splits,
+24-hour windows, no laboratories and predeclared minimum readiness thresholds. The
+private categories, evidence references and thresholds remain server-local.
+
+Implemented the first cohort-readiness operation without extracting a cohort. The
+`cohort-vocabulary` worker projects only two privately mapped order fields (PRN and
+frequency), requires an unchanged source inventory before and after the scan, and has
+explicit file, entry, row-group, row, source-byte, distinct-value, runtime, CPU and
+memory limits. It persists no rows. Its restricted report suppresses rare vocabulary
+values; the public command reports only `complete`, `limited` or `failed`. Any bound,
+resource failure, schema mismatch or source change prevents a complete semantic review.
+
+The ignored UCSF mapping was generated only after the reviewed order schema had exactly
+one PRN-token field and one frequency-token field. A data-free plan passed. No physical
+mapping or vocabulary value entered Git or terminal summaries, and no clinical pages
+had been scanned at the time of this entry. Actual UCSF validation: `make check` passed
+with **204 tests passing**, including generated projected-read, suppression, limit,
+mapping and CLI tests. `make demo` passed with unchanged synthetic NLL
+2.729264271658528. The next step is the bounded Slurm vocabulary scan, followed by a
+private semantic classification only if its report is complete.
