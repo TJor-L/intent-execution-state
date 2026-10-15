@@ -1,6 +1,7 @@
 """Run on UCSF after Git pull: validate settings, preview or submit a small CPU job."""
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -12,6 +13,8 @@ from uuid import uuid4
 import yaml
 
 from ies.cohort_readiness.contract import load_vocabulary_mapping
+from ies.cohort_readiness.eligibility import load_eligibility_mapping
+from ies.cohort_readiness.eligibility_runner import plan_eligibility
 from ies.cohort_readiness.runner import plan_vocabulary_audit
 from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
@@ -86,6 +89,7 @@ def sbatch_command(
     run_dir: Path,
     mapping_path: Path | None = None,
     access_manifest: Path | None = None,
+    protocol_path: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -188,6 +192,31 @@ def sbatch_command(
                 str(run_dir / "cohort-vocabulary"),
             ]
         )
+    elif job == "cohort-eligibility":
+        if mapping_path is None or protocol_path is None or access_manifest is not None:
+            raise ValueError("Cohort eligibility requires a private mapping and protocol")
+        mapping, digest = load_eligibility_mapping(mapping_path)
+        protocol_digest = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_ELIGIBILITY_SHA256={digest},IES_PROTOCOL_SHA256={protocol_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/cohort_eligibility.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(protocol_path.absolute()),
+                str(run_dir / "cohort-eligibility"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -207,11 +236,13 @@ def main() -> int:
             "feasibility",
             "coherent-prepare",
             "cohort-vocabulary",
+            "cohort-eligibility",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--access-manifest", type=Path)
+    parser.add_argument("--protocol", type=Path)
     args = parser.parse_args()
     try:
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
@@ -236,13 +267,22 @@ def main() -> int:
             / "jobs"
             / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8])
         )
-        command = sbatch_command(config, args.job, run_dir, args.mapping, args.access_manifest)
+        command = sbatch_command(
+            config,
+            args.job,
+            run_dir,
+            args.mapping,
+            args.access_manifest,
+            args.protocol,
+        )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
             if args.job == "feasibility":
                 print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
             elif args.job == "cohort-vocabulary":
                 print(json.dumps(plan_vocabulary_audit(args.mapping)))
+            elif args.job == "cohort-eligibility":
+                print(json.dumps(plan_eligibility(args.mapping, args.protocol)))
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -269,7 +309,12 @@ def main() -> int:
             raise ValueError("Slurm submission failed; inspect configuration on the server")
         job_id = result.stdout.strip().split(";")[0]
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
-        if args.job not in ("feasibility", "coherent-prepare", "cohort-vocabulary"):
+        if args.job not in (
+            "feasibility",
+            "coherent-prepare",
+            "cohort-vocabulary",
+            "cohort-eligibility",
+        ):
             submission["command"] = command
         write_json(
             run_dir / "submission.json",

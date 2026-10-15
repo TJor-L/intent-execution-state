@@ -428,3 +428,22 @@ one-time/non-PRN allowlist that excludes recurring, continuous, null, rare and
 unclassified values. Vocabulary values and all counts remain in the restricted UCSF
 report. This establishes filter semantics only; it is not a cohort yield or execution
 rate result.
+
+Implemented the next aggregate-only readiness operation. A strict private eligibility
+mapping binds the already reviewed feasibility mapping and adds exact adult-patient,
+direct inpatient-encounter, therapeutic-class, route, PRN and frequency semantics.
+The executor scans only fixed projections from five reviewed sources and verifies each
+inventory is unchanged. It retains a deterministic bounded medication-domain subset in
+memory, applies adult status at order time and encounter patient agreement, and then
+reuses the existing availability-aware three-source validator for direct observations,
+repeat rejection, first execution and right censoring. No rows are written.
+
+The report distinguishes a complete population count from sound lower-bound threshold
+evidence. Candidate saturation therefore cannot be mislabeled as total cohort yield;
+it can only prove that predeclared minima are met within the retained domain. Generated
+tests cover adult/outpatient exclusion, direct linkage, execution/censoring, Boolean
+status criteria, changed mapping rejection, candidate saturation, data-free planning
+and digest-bound Slurm submission. A real eligibility job had not yet been submitted at
+the time of this entry. `make check` passed with **209 tests passing**, Ruff/format and
+repository-boundary checks. `make demo` passed with unchanged synthetic NLL
+2.729264271658528.

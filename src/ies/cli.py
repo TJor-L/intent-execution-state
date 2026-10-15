@@ -64,10 +64,23 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("action", choices=("plan", "run"))
     command.add_argument("--mapping", type=Path, required=True)
     command.add_argument("--output-dir", type=Path)
+    command = commands.add_parser("cohort-eligibility")
+    command.add_argument("action", choices=("plan", "run"))
+    command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--protocol", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path)
     return root
 
 
 def dispatch(args):
+    if args.command == "cohort-eligibility":
+        from ies.cohort_readiness.eligibility_runner import plan_eligibility, run_eligibility
+
+        if args.action == "plan":
+            return plan_eligibility(args.mapping, args.protocol)
+        if args.output_dir is None:
+            raise ValueError("Output directory required")
+        return run_eligibility(args.mapping, args.protocol, args.output_dir)
     if args.command == "cohort-vocabulary":
         from ies.cohort_readiness.runner import plan_vocabulary_audit, run_vocabulary_audit
 
@@ -80,7 +93,7 @@ def dispatch(args):
         from ies.clinical_protocol import plan_protocol
 
         return plan_protocol(args.protocol)
-    if args.command in ("feasibility", "cohort-vocabulary"):
+    if args.command in ("feasibility", "cohort-vocabulary", "cohort-eligibility"):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
         if args.action == "plan":
@@ -157,11 +170,18 @@ def main(argv=None) -> int:
         try:
             result = dispatch(args)
         except Exception:
-            message = (
-                "Feasibility command failed; verify the server-local mapping and context.\n"
-                if args.command == "feasibility"
-                else "Cohort vocabulary audit failed; inspect the private server report.\n"
-            )
+            messages = {
+                "feasibility": (
+                    "Feasibility command failed; verify the server-local mapping and context.\n"
+                ),
+                "cohort-vocabulary": (
+                    "Cohort vocabulary audit failed; inspect the private server report.\n"
+                ),
+                "cohort-eligibility": (
+                    "Cohort eligibility audit failed; inspect the private server report.\n"
+                ),
+            }
+            message = messages[args.command]
             root.exit(2, message)
         print(json.dumps(result, allow_nan=False))
         return 0 if result.get("status", "complete") == "complete" else 2

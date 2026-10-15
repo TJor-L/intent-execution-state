@@ -39,3 +39,12 @@ a stable complete reviewed snapshot within explicit file, row-group, row, byte, 
 CPU and memory limits, and writes value counts only to a restricted UCSF report. Rare
 values are suppressed and no rows are persisted. A truncated or failed scan cannot be
 used to approve medication eligibility. Real cohort extraction remains disabled.
+
+After private vocabulary review, `cohort-eligibility` can establish threshold evidence
+without exporting or persisting a cohort. It scans fixed projections from the reviewed
+orders, patient, encounter, administration and observation sources; requires direct
+patient/encounter agreement; derives adult status at the order date; and reuses the
+availability-aware first-execution validator. A deterministic retained candidate domain
+may prove a lower bound against predeclared thresholds but is never reported as a full
+population count. Repeats, mismatches, invalid times, incomplete coverage and resource
+limits fail closed. All true counts and mappings remain in a restricted UCSF report.

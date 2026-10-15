@@ -1,0 +1,50 @@
+# Copy to configs/cohort_eligibility.local.yaml on UCSF. Never commit populated values.
+schema_version: 1
+execution_context: ucsf
+institutional_access_confirmed: false
+mapping_reviewed: false
+protocol_frozen_reviewed: false
+criteria_reviewed: false
+evidence_reference: null
+feasibility_mapping:
+  path: null
+  sha256: null
+order_criteria_columns:
+  therapeutic_class: null
+  route: null
+  prn: null
+  frequency: null
+patients:
+  path: null
+  columns:
+    patient_id: null
+    birth_date: null
+    current_status: null
+    valid_status: null
+encounters:
+  path: null
+  columns:
+    encounter_id: null
+    patient_id: null
+    patient_class: null
+accepted_values:
+  therapeutic_class: []
+  route: []
+  non_prn: []
+  one_time_frequency: []
+  current_status: []
+  valid_status: []
+  inpatient_class: []
+limits:
+  max_files_per_source: 1000
+  max_entries_per_source: 2000
+  max_row_groups_per_source: 2000
+  max_rows_per_source: 500000000
+  max_source_bytes: 68719476736
+  max_candidate_orders: 30000
+  max_retained_rows_per_source: 90000
+  batch_rows: 65536
+  runtime_seconds: 1200
+  cpu_seconds: 1200
+  cpus: 2
+  memory_mb: 4096
