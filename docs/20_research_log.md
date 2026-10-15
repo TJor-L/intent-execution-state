@@ -481,3 +481,60 @@ memory, wall-time and data bounds rather than expanding resources.
 
 After this optimization, `make check` passed with **211 tests** and `make demo` retained
 the unchanged synthetic result.
+
+Optimized retry 34407 failed quickly with a sanitized filter-type error, and the fixed-
+code diagnostic jobs 34409 and 34410 localized it to the logical current-status field
+without printing its physical name or values. The private configuration generator had
+used Python's equality between Boolean `True` and integer `1`, violating the contract's
+strict no-coercion rule. The generator now uses exact types. Private regeneration job
+34411 completed in 3 minutes 26 seconds and produced a contract-valid mapping; its
+data-free eligibility plan passed. The executor retains strict Arrow typing and now
+includes only the generic logical role in a sanitized type error. No cohort or aggregate
+eligibility result has yet been produced.
+
+The next formal retry, job 34429, used the corrected private status types and optimized
+scan. It completed all projected traversal but failed closed when the outcome validator's
+shared identity-key budget was reached; no counts or threshold decision were emitted.
+Fixed-code diagnostics 34430 and 34431 localized this to the generic outcome `keys`
+limit. Reducing the retained domain from 30,000 to 20,000 deterministic candidates did
+not remove the issue because multiple direct administration records legitimately consume
+more than one identity per order.
+
+Implemented exact batched outcome validation without increasing any source or resource
+bound. Order identities remain in one batch, while a global administration-identity pass
+detects duplicates across batches and pre-rejects every linked order before aggregation.
+Generated tests use an artificially tiny key budget to prove equivalence and verify that
+a duplicate administration identity spanning batches rejects both orders.
+
+Private diagnostics 34434 and 34435 completed in about 90 seconds without reaching a
+limit. In the deterministic 20,000-candidate domain, both predeclared readiness gates—
+minimum eligible orders and minimum execution events—were met. Population counts remain
+explicitly incomplete because the candidate bound was saturated; this is sufficient
+lower-bound evidence to proceed, not a population prevalence estimate. No cohort rows
+were persisted, and all counts remain UCSF-only. A formal pinned report still requires a
+clean source commit; persistent cohort extraction has not started.
+
+Implemented the bounded Phase 0 extraction path without expanding the validated source,
+candidate, CPU, memory or runtime limits. It reuses the availability-aware eligibility
+validator, emits only classified first-outcome rows, preserves terminal-without-execution
+and right-censoring labels, rejects repeated or duplicate-linked administrations, and
+assigns deterministic patient-exclusive train/validation/test partitions. Identifiers
+are type-tagged before Parquet serialization so mixed source identifier types cannot be
+silently coerced. Laboratory features remain disabled.
+
+The extractor is Slurm-only, binds the private eligibility mapping and frozen protocol
+digests to a clean source commit, prohibits output inside the repository, source trees or
+outside `/scratch/tliu7`, refuses overwrite, and writes a private Parquet cohort, aggregate
+QC report and checksum manifest with directory/file modes `0700`/`0600`. The manifest
+explicitly labels the cohort as bounded and carries the population-count completeness
+flag; candidate saturation therefore remains visible rather than becoming a population
+yield claim. No database write or GPU path exists.
+
+Generated tests cover accepted-only row persistence, cross-batch duplicate rejection,
+deterministic patient-exclusive splits, checksum/config/commit binding, restrictive file
+modes, no-overwrite behavior and digest-bound Slurm submission. `make check` passed with
+**216 tests**, Ruff/format and repository-boundary checks. `make demo` retained synthetic
+NLL 2.729264271658528. UCSF preflight and the data-free extraction plan passed against the
+current private mapping and protocol. No clinical row extraction has run yet: formal
+submission is correctly blocked until these verified working-tree changes are committed
+and the job can be pinned to that clean commit.

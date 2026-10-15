@@ -69,10 +69,19 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--mapping", type=Path, required=True)
     command.add_argument("--protocol", type=Path, required=True)
     command.add_argument("--output-dir", type=Path)
+    command = commands.add_parser("cohort-extract")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--protocol", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "cohort-extract":
+        from ies.cohort_readiness.extract_runner import run_extraction
+
+        return run_extraction(args.mapping, args.protocol, args.output_dir)
     if args.command == "cohort-eligibility":
         from ies.cohort_readiness.eligibility_runner import plan_eligibility, run_eligibility
 
@@ -93,7 +102,12 @@ def dispatch(args):
         from ies.clinical_protocol import plan_protocol
 
         return plan_protocol(args.protocol)
-    if args.command in ("feasibility", "cohort-vocabulary", "cohort-eligibility"):
+    if args.command in (
+        "feasibility",
+        "cohort-vocabulary",
+        "cohort-eligibility",
+        "cohort-extract",
+    ):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
         if args.action == "plan":
@@ -179,6 +193,9 @@ def main(argv=None) -> int:
                 ),
                 "cohort-eligibility": (
                     "Cohort eligibility audit failed; inspect the private server report.\n"
+                ),
+                "cohort-extract": (
+                    "Cohort extraction failed; inspect the private UCSF output directory.\n"
                 ),
             }
             message = messages[args.command]

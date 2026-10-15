@@ -139,6 +139,8 @@ def analyze(
     observation_rows,
     mapping: Mapping,
     budget: Budget | None = None,
+    preinvalid_order_keys: frozenset[tuple[str, str | int]] = frozenset(),
+    result_sink: list[dict] | None = None,
 ) -> dict:
     budget = budget or Budget(mapping)
     counts = Counter(dict.fromkeys(COUNT_NAMES, 0))
@@ -196,7 +198,7 @@ def analyze(
             occurred,
             None,
             terminals,
-            invalid or patient is None,
+            invalid or patient is None or key in preinvalid_order_keys,
         )
 
     for row in observation_rows:
@@ -322,7 +324,7 @@ def analyze(
         if order is not None:
             order.invalid |= invalid
 
-    for order in orders.values():
+    for key, order in orders.items():
         budget.check_time()
         counts["single_qualifying_orders"] += int(order.qualifying == 1)
         counts["repeated_qualifying_orders"] += int(order.qualifying > 1)
@@ -348,10 +350,37 @@ def analyze(
             counts["rejected_orders"] += 1
         elif execution < terminal:
             counts["accepted_execution_orders"] += 1
+            if result_sink is not None:
+                result_sink.append(
+                    {
+                        "order_id": key[1],
+                        "outcome": "execution",
+                        "index_time_hours": order.occurred,
+                        "duration_hours": execution - order.occurred,
+                    }
+                )
         elif math.isfinite(terminal):
             counts["terminal_without_execution_orders"] += 1
+            if result_sink is not None:
+                result_sink.append(
+                    {
+                        "order_id": key[1],
+                        "outcome": "terminal_without_execution",
+                        "index_time_hours": order.occurred,
+                        "duration_hours": terminal - order.occurred,
+                    }
+                )
         else:
             counts["right_censored_orders"] += 1
+            if result_sink is not None:
+                result_sink.append(
+                    {
+                        "order_id": key[1],
+                        "outcome": "right_censored",
+                        "index_time_hours": order.occurred,
+                        "duration_hours": order.boundary - order.occurred,
+                    }
+                )
     return {
         "schema_version": 2,
         "mode": "bounded_feasibility",

@@ -52,8 +52,10 @@ No large/GPU training during Phase 0. Server agents may inspect metadata, implem
 test an appropriate access backend, then run bounded aggregate-only feasibility after
 institutional access, server context, mapping semantics, coverage and resource bounds
 are verified on the server. Routine implementation, bug fixes and bounded CPU runs
-inside that established scope do not require another Mac handoff. Real cohort extraction
-remains unimplemented and outside this milestone. Do not persist rows during feasibility.
+inside that established scope do not require another Mac handoff. The bounded Phase 0
+cohort extractor is implemented and generated-test verified; formal clinical extraction
+must run only through its clean-commit Slurm entry point. Do not persist rows during
+feasibility.
 Treat truncated scans as incomplete evidence: do not confirm single executions or
 censoring when another qualifying dose could be outside the scan. Encounter mismatch
 handling is explicit and counted; patient mismatches always reject the order.
@@ -76,6 +78,10 @@ Do not disguise them as bounded probing. Missing access, essential semantics or 
 access capabilities are genuine blockers; ordinary code defects are work to fix locally.
 
 ## Handoffs
+
+Do not create Git commits or push unless the user explicitly requests it. Continue
+implementation, testing and authorized UCSF jobs in the working tree; when a clean
+commit is required for a formal job, report that concrete need to the user.
 
 Commit source and docs only after checks pass. A handoff SHA identifies the initial
 entry version, not a permanent freeze: server changes and later jobs use their own

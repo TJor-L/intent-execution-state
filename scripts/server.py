@@ -217,6 +217,31 @@ def sbatch_command(
                 str(run_dir / "cohort-eligibility"),
             ]
         )
+    elif job == "cohort-extract":
+        if mapping_path is None or protocol_path is None or access_manifest is not None:
+            raise ValueError("Cohort extraction requires a private mapping and protocol")
+        mapping, digest = load_eligibility_mapping(mapping_path)
+        protocol_digest = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_ELIGIBILITY_SHA256={digest},IES_PROTOCOL_SHA256={protocol_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/cohort_extract.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(protocol_path.absolute()),
+                str(run_dir / "cohort-extract"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -237,6 +262,7 @@ def main() -> int:
             "coherent-prepare",
             "cohort-vocabulary",
             "cohort-eligibility",
+            "cohort-extract",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -283,6 +309,14 @@ def main() -> int:
                 print(json.dumps(plan_vocabulary_audit(args.mapping)))
             elif args.job == "cohort-eligibility":
                 print(json.dumps(plan_eligibility(args.mapping, args.protocol)))
+            elif args.job == "cohort-extract":
+                plan = plan_eligibility(args.mapping, args.protocol)
+                plan.update(
+                    mode="bounded_phase0_cohort_extraction",
+                    row_persistence=True,
+                    slurm_only=True,
+                )
+                print(json.dumps(plan))
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -314,6 +348,7 @@ def main() -> int:
             "coherent-prepare",
             "cohort-vocabulary",
             "cohort-eligibility",
+            "cohort-extract",
         ):
             submission["command"] = command
         write_json(

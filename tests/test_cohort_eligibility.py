@@ -18,6 +18,8 @@ from ies.cohort_readiness.eligibility import (
     load_eligibility_mapping,
 )
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
+from ies.cohort_readiness.extract import extract_cohort
+from ies.io import sha256
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -286,6 +288,144 @@ def test_candidate_cap_produces_sound_lower_bound_not_population_count(tmp_path)
     assert report["threshold_evidence_complete"] is True
 
 
+def _set_tiny_outcome_key_budget(mapping_path: Path) -> dict:
+    eligibility = yaml.safe_load(mapping_path.read_text())
+    base_path = Path(eligibility["feasibility_mapping"]["path"])
+    base = yaml.safe_load(base_path.read_text())
+    base["limits"]["max_keys"] = 3
+    base_path.write_text(yaml.safe_dump(base, sort_keys=False))
+    eligibility["feasibility_mapping"]["sha256"] = hashlib.sha256(
+        base_path.read_bytes()
+    ).hexdigest()
+    mapping_path.write_text(yaml.safe_dump(eligibility, sort_keys=False))
+    return base
+
+
+def test_outcomes_are_batched_without_expanding_mapping_key_budget(tmp_path):
+    mapping_path, _ = _write_case(tmp_path)
+    _set_tiny_outcome_key_budget(mapping_path)
+    report = audit_eligibility(load_eligibility_mapping(mapping_path)[0], 2, 1)
+    assert report["thresholds"]["ready"] is True
+    assert report["outcome_counts"]["accepted_execution_orders"] == 1
+    assert report["outcome_counts"]["right_censored_orders"] == 1
+
+
+def test_cross_batch_administration_duplicates_reject_every_linked_order(tmp_path):
+    mapping_path, _ = _write_case(tmp_path)
+    base = _set_tiny_outcome_key_budget(mapping_path)
+    path = Path(base["administrations"]["path"]) / "part.parquet"
+    table = pq.read_table(path)
+    duplicate = table.to_pylist()[0]
+    columns = base["administrations"]["columns"]
+    duplicate.update(
+        {
+            columns["order_id"]: "order-1",
+            columns["patient_id"]: "person-1",
+            columns["encounter_id"]: "visit-1",
+        }
+    )
+    duplicate_table = pa.Table.from_pylist([duplicate], schema=table.schema)
+    pq.write_table(pa.concat_tables([table, duplicate_table]), path)
+    report = audit_eligibility(load_eligibility_mapping(mapping_path)[0], 2, 1)
+    assert report["thresholds"]["ready"] is False
+    assert report["outcome_counts"]["duplicate_administration_identities"] == 1
+    assert report["outcome_counts"]["rejected_orders"] >= 2
+
+
+def test_cohort_rows_include_only_classified_orders_with_patient_exclusive_splits(tmp_path):
+    mapping_path, _ = _write_case(tmp_path)
+    value = yaml.safe_load(mapping_path.read_text())
+    patient_path = Path(value["patients"]["path"]) / "part.parquet"
+    patients = pq.read_table(patient_path).to_pylist()
+    patients[2][value["patients"]["columns"]["birth_date"]] = date(1980, 1, 1)
+    pq.write_table(pa.Table.from_pylist(patients), patient_path)
+    encounter_path = Path(value["encounters"]["path"]) / "part.parquet"
+    encounters = pq.read_table(encounter_path).to_pylist()
+    encounters[2][value["encounters"]["columns"]["patient_class"]] = "toy-inpatient"
+    pq.write_table(pa.Table.from_pylist(encounters), encounter_path)
+
+    first = []
+    second = []
+    mapping = load_eligibility_mapping(mapping_path)[0]
+    audit_eligibility(mapping, 3, 1, cohort_rows=first)
+    audit_eligibility(mapping, 3, 1, cohort_rows=second)
+
+    assert first == second
+    assert {row["order_id"] for row in first} == {
+        "string:order-0",
+        "string:order-1",
+        "string:order-2",
+    }
+    assert {row["outcome"] for row in first} == {"execution", "right_censored"}
+    patient_splits = {(row["patient_id"], row["split"]) for row in first}
+    assert len(patient_splits) == 3
+    assert {split for _, split in patient_splits} == {"train", "validation", "test"}
+
+
+def test_rejected_cross_batch_duplicate_orders_never_enter_cohort_rows(tmp_path):
+    mapping_path, _ = _write_case(tmp_path)
+    base = _set_tiny_outcome_key_budget(mapping_path)
+    path = Path(base["administrations"]["path"]) / "part.parquet"
+    table = pq.read_table(path)
+    duplicate = table.to_pylist()[0]
+    columns = base["administrations"]["columns"]
+    duplicate.update(
+        {
+            columns["order_id"]: "order-1",
+            columns["patient_id"]: "person-1",
+            columns["encounter_id"]: "visit-1",
+        }
+    )
+    pq.write_table(
+        pa.concat_tables([table, pa.Table.from_pylist([duplicate], schema=table.schema)]),
+        path,
+    )
+    rows = []
+    mapping = load_eligibility_mapping(mapping_path)[0]
+    with pytest.raises(EligibilityError, match="eligibility_thresholds_not_met"):
+        audit_eligibility(mapping, 1, 1, cohort_rows=rows)
+    assert rows == []
+
+
+def test_private_extraction_writes_bound_manifest_and_rejects_overwrite(tmp_path):
+    mapping_path, protocol_path = _write_case(tmp_path)
+    value = yaml.safe_load(mapping_path.read_text())
+    patient_path = Path(value["patients"]["path"]) / "part.parquet"
+    patients = pq.read_table(patient_path).to_pylist()
+    patients[2][value["patients"]["columns"]["birth_date"]] = date(1980, 1, 1)
+    pq.write_table(pa.Table.from_pylist(patients), patient_path)
+    encounter_path = Path(value["encounters"]["path"]) / "part.parquet"
+    encounters = pq.read_table(encounter_path).to_pylist()
+    encounters[2][value["encounters"]["columns"]["patient_class"]] = "toy-inpatient"
+    pq.write_table(pa.Table.from_pylist(encounters), encounter_path)
+
+    mapping, mapping_digest = load_eligibility_mapping(mapping_path)
+    protocol_digest = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+    output = tmp_path / "private-output"
+    output.mkdir(mode=0o700)
+    manifest = extract_cohort(
+        mapping,
+        3,
+        1,
+        output,
+        mapping_digest,
+        protocol_digest,
+        "a" * 40,
+    )
+
+    assert manifest["status"] == "complete"
+    assert manifest["mapping_sha256"] == mapping_digest
+    assert manifest["protocol_sha256"] == protocol_digest
+    assert manifest["population_counts_complete"] is True
+    assert pq.read_table(output / "cohort.parquet").num_rows == 3
+    for filename, digest in manifest["artifacts_sha256"].items():
+        assert sha256(output / filename) == digest
+        assert (output / filename).stat().st_mode & 0o077 == 0
+    assert (output / "manifest.json").stat().st_mode & 0o077 == 0
+    with pytest.raises(EligibilityError, match="extraction_output_not_empty"):
+        extract_cohort(mapping, 3, 1, output, mapping_digest, protocol_digest, "a" * 40)
+
+
 def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path, capsys):
     mapping_path, protocol_path = _write_case(tmp_path)
     assert (
@@ -328,6 +468,18 @@ def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path,
         str(protocol_path.absolute()),
         str(tmp_path / "output/cohort-eligibility"),
     ]
+    extract_command = server.sbatch_command(
+        config,
+        "cohort-extract",
+        tmp_path / "extract-output",
+        mapping_path,
+        protocol_path=protocol_path,
+    )
+    extract_export = next(item for item in extract_command if item.startswith("--export="))
+    assert "IES_ELIGIBILITY_SHA256=" in extract_export
+    assert "IES_PROTOCOL_SHA256=" in extract_export
+    assert str(server.ROOT / "slurm/cohort_extract.sbatch") in extract_command
+    assert extract_command[-1] == str(tmp_path / "extract-output/cohort-extract")
 
 
 def test_cli_returns_nonzero_for_limited_eligibility(monkeypatch, capsys):

@@ -23,6 +23,7 @@ from ies.feasibility.contract import (
     identity,
     load_mapping_snapshot,
 )
+from ies.preprocessing.cohort import patient_partitions
 
 
 class EligibilityError(ValueError):
@@ -320,7 +321,9 @@ def _scan(
                                         pc.is_in(column, value_set=value_set), False
                                     )
                                 except (pa.ArrowException, TypeError, ValueError):
-                                    raise EligibilityError("eligibility_filter_type") from None
+                                    raise EligibilityError(
+                                        f"eligibility_filter_type_{logical}"
+                                    ) from None
                                 mask = matched if mask is None else pc.and_(mask, matched)
                             batch = batch.filter(mask)
                             if batch.num_rows == 0:
@@ -360,8 +363,80 @@ def _raw(values: frozenset[tuple]) -> set:
     return {value for _, value in values}
 
 
+def _canonical_identifier(value) -> str:
+    key = identity(value)
+    if key is None:
+        raise EligibilityError("missing_cohort_identity")
+    return f"{key[0]}:{key[1]}"
+
+
+def _batched_outcomes(
+    order_rows,
+    administration_rows,
+    observation_rows,
+    mapping: Mapping,
+    result_sink: list[dict] | None = None,
+):
+    orders_by_key = {}
+    for row in order_rows:
+        orders_by_key.setdefault(identity(row.get("order_id")), []).append(row)
+    administrations_by_order = {}
+    administration_orders = {}
+    duplicate_administrations = 0
+    for row in administration_rows:
+        order_key = identity(row.get("order_id"))
+        administrations_by_order.setdefault(order_key, []).append(row)
+        administration_key = identity(row.get("administration_id"))
+        if administration_key is None:
+            continue
+        if administration_key in administration_orders:
+            duplicate_administrations += 1
+        administration_orders.setdefault(administration_key, set()).add(order_key)
+    forced_rejects = {
+        order_key
+        for order_keys in administration_orders.values()
+        if len(order_keys) > 1
+        for order_key in order_keys
+        if order_key is not None
+    }
+    observations_by_key = {}
+    for row in observation_rows:
+        observations_by_key.setdefault(identity(row.get("observation_id")), []).append(row)
+    batch_size = max(1, min(2_000, mapping.limits.max_keys // 4))
+    keys = [key for key in orders_by_key if key is not None]
+    combined = Counter()
+    for offset in range(0, len(keys), batch_size):
+        batch_keys = set(keys[offset : offset + batch_size])
+        batch_orders = [row for key in batch_keys for row in orders_by_key[key]]
+        batch_administrations = [
+            row for key in batch_keys for row in administrations_by_order.get(key, [])
+        ]
+        observation_keys = {identity(row.get("observation_id")) for row in batch_orders} - {None}
+        batch_observations = [
+            row for key in observation_keys for row in observations_by_key.get(key, [])
+        ]
+        result = analyze(
+            batch_orders,
+            batch_administrations,
+            batch_observations,
+            mapping,
+            preinvalid_order_keys=frozenset(forced_rejects & batch_keys),
+            result_sink=result_sink,
+        )
+        if result["status"] != "complete":
+            reached = sorted(name for name, value in result["limits_reached"].items() if value)
+            suffix = "_".join(reached) if reached else "unknown"
+            raise EligibilityError(f"eligibility_outcome_incomplete_{suffix}")
+        combined.update(result["counts"])
+    combined["duplicate_administration_identities"] = duplicate_administrations
+    return dict(combined)
+
+
 def audit_eligibility(
-    mapping: EligibilityMapping, minimum_orders: int, minimum_events: int
+    mapping: EligibilityMapping,
+    minimum_orders: int,
+    minimum_events: int,
+    cohort_rows: list[dict] | None = None,
 ) -> dict:
     limits = mapping.limits
     started = time.monotonic()
@@ -471,15 +546,14 @@ def audit_eligibility(
     after = {name: _inventory(source, limits) for name, source in sources.items()}
     if before != after:
         raise EligibilityError("eligibility_source_changed")
-    outcome = analyze(
+    classified_rows = [] if cohort_rows is not None else None
+    outcome_counts = _batched_outcomes(
         eligible_orders,
         administration_rows,
         observation_rows,
         mapping.feasibility,
+        classified_rows,
     )
-    if outcome["status"] != "complete":
-        raise EligibilityError("eligibility_outcome_incomplete")
-    outcome_counts = outcome["counts"]
     classified_orders = (
         outcome_counts["accepted_execution_orders"]
         + outcome_counts["terminal_without_execution_orders"]
@@ -487,6 +561,35 @@ def audit_eligibility(
     )
     orders_met = classified_orders >= minimum_orders
     events_met = outcome_counts["accepted_execution_orders"] >= minimum_events
+    if cohort_rows is not None:
+        if not orders_met or not events_met:
+            raise EligibilityError("eligibility_thresholds_not_met")
+        order_metadata = {}
+        for row in eligible_orders:
+            key = identity(row.get("order_id"))
+            if key not in order_metadata:
+                order_metadata[key] = row
+        patients_for_split = [
+            _canonical_identifier(order_metadata[identity(row["order_id"])]["patient_id"])
+            for row in classified_rows
+        ]
+        splits = patient_partitions(patients_for_split, 20_261_014)
+        cause = {"right_censored": 0, "execution": 1, "terminal_without_execution": 2}
+        for result in classified_rows:
+            metadata = order_metadata[identity(result["order_id"])]
+            patient_id = _canonical_identifier(metadata["patient_id"])
+            cohort_rows.append(
+                {
+                    "patient_id": patient_id,
+                    "order_id": _canonical_identifier(result["order_id"]),
+                    "encounter_id": _canonical_identifier(metadata.get("encounter_id")),
+                    "split": splits[patient_id],
+                    "index_time_hours": result["index_time_hours"],
+                    "duration_hours": result["duration_hours"],
+                    "cause": cause[result["outcome"]],
+                    "outcome": result["outcome"],
+                }
+            )
     return {
         "schema_version": 1,
         "mode": "aggregate_cohort_eligibility",
