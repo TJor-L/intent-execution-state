@@ -79,10 +79,20 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--cohort-dir", type=Path, required=True)
     command.add_argument("--baseline-config", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("clinical-features")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--protocol", type=Path, required=True)
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "clinical-features":
+        from ies.clinical_features_runner import run_features
+
+        return run_features(args.mapping, args.protocol, args.cohort_dir, args.output_dir)
     if args.command == "clinical-baseline":
         from ies.clinical_baseline_runner import run_baseline
 
@@ -117,6 +127,7 @@ def dispatch(args):
         "cohort-eligibility",
         "cohort-extract",
         "clinical-baseline",
+        "clinical-features",
     ):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
@@ -209,6 +220,9 @@ def main(argv=None) -> int:
                 ),
                 "clinical-baseline": (
                     "Clinical baseline failed; inspect the private UCSF output directory.\n"
+                ),
+                "clinical-features": (
+                    "Clinical feature extraction failed; inspect the private UCSF output.\n"
                 ),
             }
             message = messages[args.command]

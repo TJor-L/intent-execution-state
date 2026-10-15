@@ -348,15 +348,20 @@ def _base_source(source, extra: dict[str, str] | None = None) -> DimensionSource
     return DimensionSource(source.path, columns)
 
 
-def _adult(birth, occurred) -> bool:
+def _age_years(birth, occurred) -> int | None:
     if isinstance(birth, datetime):
         birth = birth.date()
     if isinstance(occurred, datetime):
         occurred = occurred.date()
     if not isinstance(birth, date) or not isinstance(occurred, date) or occurred < birth:
-        return False
+        return None
     years = occurred.year - birth.year - ((occurred.month, occurred.day) < (birth.month, birth.day))
-    return years >= 18
+    return years
+
+
+def _adult(birth, occurred) -> bool:
+    age = _age_years(birth, occurred)
+    return age is not None and age >= 18
 
 
 def _raw(values: frozenset[tuple]) -> set:
@@ -508,7 +513,8 @@ def audit_eligibility(
         encounter = identity(row.get("encounter_id"))
         births = patients.get(patient, [])
         encounter_rows = encounters.get(encounter, [])
-        adult = len(births) == 1 and _adult(births[0], row.get("occurred_at"))
+        age = _age_years(births[0], row.get("occurred_at")) if len(births) == 1 else None
+        adult = age is not None and age >= 18
         inpatient = (
             len(encounter_rows) == 1
             and identity(encounter_rows[0].get("patient_id")) == patient
@@ -518,7 +524,7 @@ def audit_eligibility(
         counts["adult_orders"] += int(adult)
         counts["adult_inpatient_orders"] += int(adult and inpatient)
         if adult and inpatient:
-            eligible_orders.append(row)
+            eligible_orders.append(dict(row, age_years_at_order=age))
     eligible_keys = {identity(row.get("order_id")) for row in eligible_orders} - {None}
     observation_keys = {identity(row.get("observation_id")) for row in eligible_orders} - {None}
     administration_rows = []
@@ -588,6 +594,7 @@ def audit_eligibility(
                     "duration_hours": result["duration_hours"],
                     "cause": cause[result["outcome"]],
                     "outcome": result["outcome"],
+                    "age_years_at_order": metadata["age_years_at_order"],
                 }
             )
     return {

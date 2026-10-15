@@ -1,6 +1,6 @@
 # Clinical cohort protocol gate
 
-Status: **draft contract implemented; real cohort extraction remains disabled**.
+Status: **frozen privately and executed for a bounded Phase 0 cohort**.
 
 The complete coherent feasibility run establishes that direct linkage and first-event
 classification are technically runnable for a fixed small seed domain. It does not
@@ -38,7 +38,8 @@ readiness step. It projects only the privately mapped PRN and frequency fields, 
 a stable complete reviewed snapshot within explicit file, row-group, row, byte, runtime,
 CPU and memory limits, and writes value counts only to a restricted UCSF report. Rare
 values are suppressed and no rows are persisted. A truncated or failed scan cannot be
-used to approve medication eligibility. Real cohort extraction remains disabled.
+used to approve medication eligibility. The later bounded extraction completed, but it
+is not a population census because its deterministic candidate cap was saturated.
 
 After private vocabulary review, `cohort-eligibility` can establish threshold evidence
 without exporting or persisting a cohort. It scans fixed projections from the reviewed
@@ -48,3 +49,7 @@ availability-aware first-execution validator. A deterministic retained candidate
 may prove a lower bound against predeclared thresholds but is never reported as a full
 population count. Repeats, mismatches, invalid times, incomplete coverage and resource
 limits fail closed. All true counts and mappings remain in a restricted UCSF report.
+
+The separate reviewed feature artifact currently permits only age at order under the
+same adult derivation rule. Laboratory values, outcome-derived features, retrospective
+coverage facts, absolute calendar features and incomplete event histories remain disabled.

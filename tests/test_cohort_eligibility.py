@@ -10,7 +10,9 @@ import pytest
 import yaml
 from conftest import load_script
 
+from ies import clinical_features
 from ies.cli import main
+from ies.clinical_features import extract_clinical_features
 from ies.cohort_readiness.eligibility import (
     EligibilityError,
     _private_mapping_path,
@@ -424,6 +426,70 @@ def test_private_extraction_writes_bound_manifest_and_rejects_overwrite(tmp_path
     assert (output / "manifest.json").stat().st_mode & 0o077 == 0
     with pytest.raises(EligibilityError, match="extraction_output_not_empty"):
         extract_cohort(mapping, 3, 1, output, mapping_digest, protocol_digest, "a" * 40)
+
+
+def test_age_feature_is_preindex_aligned_and_bound_to_cohort(tmp_path, monkeypatch):
+    mapping_path, protocol_path = _write_case(tmp_path)
+    value = yaml.safe_load(mapping_path.read_text())
+    patient_path = Path(value["patients"]["path"]) / "part.parquet"
+    patients = pq.read_table(patient_path).to_pylist()
+    patients[2][value["patients"]["columns"]["birth_date"]] = date(1980, 1, 1)
+    pq.write_table(pa.Table.from_pylist(patients), patient_path)
+    encounter_path = Path(value["encounters"]["path"]) / "part.parquet"
+    encounters = pq.read_table(encounter_path).to_pylist()
+    encounters[2][value["encounters"]["columns"]["patient_class"]] = "toy-inpatient"
+    pq.write_table(pa.Table.from_pylist(encounters), encounter_path)
+    mapping, mapping_digest = load_eligibility_mapping(mapping_path)
+    protocol_digest = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+    cohort = tmp_path / "cohort"
+    cohort.mkdir()
+    extract_cohort(mapping, 3, 1, cohort, mapping_digest, protocol_digest, "a" * 40)
+    cohort_digest = sha256(cohort / "manifest.json")
+    output = tmp_path / "features"
+    output.mkdir()
+    monkeypatch.setattr(clinical_features, "AUTHORIZED_ROOT", tmp_path)
+
+    manifest = extract_clinical_features(
+        mapping,
+        3,
+        1,
+        cohort,
+        output,
+        cohort_digest,
+        mapping_digest,
+        protocol_digest,
+        "b" * 40,
+    )
+
+    assert manifest["features"] == ["age_years_at_order"]
+    assert manifest["outcome_features_used"] is False
+    features = pq.read_table(output / "features.parquet")
+    assert features.num_rows == pq.read_table(cohort / "cohort.parquet").num_rows
+    assert all(value >= 18 for value in features.column("age_years_at_order").to_pylist())
+    assert all(path.stat().st_mode & 0o077 == 0 for path in output.iterdir())
+    server = load_script("server")
+    command = server.sbatch_command(
+        {
+            "python_executable": "/server/python",
+            "output_root": str(tmp_path),
+            "slurm": {
+                "partition": "cpu",
+                "account": None,
+                "cpus": 4,
+                "memory": "8G",
+                "time_limit": "00:20:00",
+            },
+        },
+        "clinical-features",
+        tmp_path / "job",
+        mapping_path,
+        protocol_path=protocol_path,
+        cohort_dir=cohort,
+    )
+    export = next(item for item in command if item.startswith("--export="))
+    assert "IES_COHORT_MANIFEST_SHA256=" in export
+    assert "IES_ELIGIBILITY_SHA256=" in export and "IES_PROTOCOL_SHA256=" in export
+    assert str(server.ROOT / "slurm/clinical_features.sbatch") in command
 
 
 def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path, capsys):

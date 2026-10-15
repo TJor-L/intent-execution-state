@@ -272,6 +272,41 @@ def sbatch_command(
                 str(run_dir / "clinical-baseline"),
             ]
         )
+    elif job == "clinical-features":
+        if mapping_path is None or protocol_path is None or cohort_dir is None:
+            raise ValueError("Clinical features require mapping, protocol and cohort")
+        if access_manifest is not None:
+            raise ValueError("Clinical features do not accept an access manifest")
+        cohort = cohort_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root):
+            raise ValueError("Clinical cohort must be in configured private output storage")
+        mapping, mapping_digest = load_eligibility_mapping(mapping_path)
+        protocol_digest = hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+        manifest_digest = hashlib.sha256((cohort / "manifest.json").read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_ELIGIBILITY_SHA256={mapping_digest}"
+            f",IES_PROTOCOL_SHA256={protocol_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={manifest_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/clinical_features.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(protocol_path.absolute()),
+                str(cohort),
+                str(run_dir / "clinical-features"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -294,6 +329,7 @@ def main() -> int:
             "cohort-eligibility",
             "cohort-extract",
             "clinical-baseline",
+            "clinical-features",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -368,6 +404,20 @@ def main() -> int:
                         }
                     )
                 )
+            elif args.job == "clinical-features":
+                print(
+                    json.dumps(
+                        {
+                            "mode": "bounded_preindex_feature_extraction",
+                            "submitted": False,
+                            "features": ["age_years_at_order"],
+                            "availability": "known_at_order_index",
+                            "laboratory_features_enabled": False,
+                            "outcome_features_used": False,
+                            "gpu_used": False,
+                        }
+                    )
+                )
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -401,6 +451,7 @@ def main() -> int:
             "cohort-eligibility",
             "cohort-extract",
             "clinical-baseline",
+            "clinical-features",
         ):
             submission["command"] = command
         write_json(

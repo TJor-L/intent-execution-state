@@ -568,3 +568,21 @@ Generated tests cover deterministic output, patient separation, zero-duration re
 changed-cohort rejection, private file modes, restricted-clinical classification and
 digest-bound CPU-only Slurm submission. The formal clinical baseline has not run; its
 source must first pass the full checks and be committed so Slurm can pin a clean revision.
+
+The Baseline A implementation was published at its clean milestone and formal Slurm job
+34438 completed successfully in two seconds. Private post-run validation confirmed all
+artifact checksums and permissions, finite validation likelihood and bootstrap bounds,
+exact agreement between the training-patient manifest and cohort training partition,
+and no overlap between training patients and validation predictions. No test metric was
+generated, and no metric value, count, prediction or identifier left UCSF. This validates
+the bounded label/likelihood path only; it is not evidence of individual discrimination.
+
+Implemented the first reviewed pre-index feature contract. It contains only integer age
+at order, derived from the already reviewed birth-date/adult rule and order occurrence
+time. Feature extraction regenerates and exactly aligns the bounded cohort under the same
+mapping, protocol and source limits, then binds its private Parquet output to the cohort,
+mapping, protocol and clean source digests. Laboratory values, outcomes, retrospective
+coverage, absolute calendar features and incomplete event histories are not features.
+Generated tests cover exact cohort alignment, adult feature completeness, private modes
+and digest-bound CPU-only Slurm submission. The data-free UCSF plan passed; the formal
+feature extraction has not yet run.
