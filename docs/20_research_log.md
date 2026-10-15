@@ -538,3 +538,19 @@ NLL 2.729264271658528. UCSF preflight and the data-free extraction plan passed a
 current private mapping and protocol. No clinical row extraction has run yet: formal
 submission is correctly blocked until these verified working-tree changes are committed
 and the job can be pinned to that clean commit.
+
+The verified extraction implementation was committed and published as
+`067ded4ba04e5ed13b3293d95b4985d8205ac0c7`. Formal Slurm job 34436 ran from that clean
+revision and completed successfully in 1 minute 29 seconds with low memory use and no
+resource limit. The private bounded Phase 0 cohort, aggregate QC report and checksum
+manifest were written only to the configured UCSF output storage; no database was
+modified and no GPU was used.
+
+Server-local post-run validation confirmed the pinned source/configuration digests,
+artifact checksums, restrictive directory/file permissions, exact Parquet schema,
+non-null required fields, unique order identities, deterministic patient-exclusive
+partitions and consistent duration/outcome/cause encoding. Both frozen readiness gates
+remain met. Population counts remain explicitly incomplete because the deterministic
+candidate cap was saturated, so this artifact is a completed bounded research cohort,
+not a complete UCSF population census. No clinical row, identifier, mapping, count or
+artifact was copied into Git or reported outside UCSF.
