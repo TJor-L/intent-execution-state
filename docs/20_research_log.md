@@ -417,3 +417,14 @@ with **204 tests passing**, including generated projected-read, suppression, lim
 mapping and CLI tests. `make demo` passed with unchanged synthetic NLL
 2.729264271658528. The next step is the bounded Slurm vocabulary scan, followed by a
 private semantic classification only if its report is complete.
+
+The bounded Slurm vocabulary audit then ran as job 34325 from clean commit
+`9b33f5fe551e556f5f302441954d44464a970ccb`. It completed successfully in 2 minutes
+4 seconds with low memory use. The source inventory was unchanged, every declared file
+and row group fit the limits, and the report is complete for the reviewed snapshot. No
+rows were persisted. Private review identified explicit non-PRN and one-time frequency
+semantics and also observed a continuous-delivery category, allowing a conservative
+one-time/non-PRN allowlist that excludes recurring, continuous, null, rare and
+unclassified values. Vocabulary values and all counts remain in the restricted UCSF
+report. This establishes filter semantics only; it is not a cohort yield or execution
+rate result.
