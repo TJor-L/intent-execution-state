@@ -667,3 +667,16 @@ binding and most-recent sequence truncation are unchanged. A second diagnostic c
 under the original CPU and memory limits. Private validation passed for input bindings,
 checksums, restrictive permissions, the fixed schema, dual-clock lag constraints and frozen
 cohort-key alignment; no test metric, clinical value, count or mapping detail was emitted.
+
+Implemented the first matched CPU history comparison without new clinical sources or
+dependencies. The availability-only and dual-clock encoders each produce eight fixed
+decay features and feed the same convex piecewise proportional competing-risk head. The
+configuration freezes optimization, regularization, patient-bootstrap evaluation, four
+documentation-delay conditions and a three-part advancement gate. Perturbations move
+availability later, remove newly unavailable events and never refit the model. Generated
+tests verify matched dimensions, temporal masking, digest-bound Slurm execution,
+validation-only predictions, restrictive outputs and deterministic results. A private
+resource-limited diagnostic converged and passed artifact validation, but the frozen gate
+held because neither the minimum unshifted gain nor its paired uncertainty condition was
+met; the shift-robustness condition passed. The test partition remains sealed. This is a
+negative validation finding, not evidence that dual clocks are generally uninformative.

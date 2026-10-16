@@ -13,6 +13,7 @@ from uuid import uuid4
 import yaml
 
 from ies.clinical_baseline import load_baseline_config
+from ies.clinical_history_models import load_history_model_config
 from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
@@ -96,6 +97,8 @@ def sbatch_command(
     baseline_config: Path | None = None,
     feature_dir: Path | None = None,
     history_config: Path | None = None,
+    history_dir: Path | None = None,
+    history_model_config: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -376,6 +379,37 @@ def sbatch_command(
                 str(run_dir / "dual-clock-history"),
             ]
         )
+    elif job == "clinical-history-models":
+        if cohort_dir is None or history_dir is None or history_model_config is None:
+            raise ValueError("Clinical history models require cohort, history and config")
+        if any(value is not None for value in (mapping_path, access_manifest, protocol_path)):
+            raise ValueError("Clinical history models do not accept source mappings")
+        cohort = cohort_dir.resolve()
+        history = history_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root) or not history.is_relative_to(output_root):
+            raise ValueError("Clinical artifacts must be in configured private output storage")
+        _, config_digest = load_history_model_config(history_model_config)
+        cohort_digest = hashlib.sha256((cohort / "manifest.json").read_bytes()).hexdigest()
+        history_digest = hashlib.sha256((history / "manifest.json").read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_HISTORY_MODEL_CONFIG_SHA256={config_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={cohort_digest}"
+            f",IES_HISTORY_MANIFEST_SHA256={history_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:20:30"
+        command.extend(
+            [
+                str(ROOT / "slurm/clinical_history_models.sbatch"),
+                python,
+                str(cohort),
+                str(history),
+                str(history_model_config.absolute()),
+                str(run_dir / "clinical-history-models"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -401,6 +435,7 @@ def main() -> int:
             "clinical-features",
             "clinical-age-baseline",
             "dual-clock-history",
+            "clinical-history-models",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -411,6 +446,12 @@ def main() -> int:
     parser.add_argument("--feature-dir", type=Path)
     parser.add_argument(
         "--history-config", type=Path, default=ROOT / "configs/dual_clock_history.yaml"
+    )
+    parser.add_argument("--history-dir", type=Path)
+    parser.add_argument(
+        "--history-model-config",
+        type=Path,
+        default=ROOT / "configs/clinical_history_models.yaml",
     )
     parser.add_argument(
         "--baseline-config", type=Path, default=ROOT / "configs/clinical_baseline.yaml"
@@ -450,6 +491,8 @@ def main() -> int:
             args.baseline_config,
             args.feature_dir,
             args.history_config,
+            args.history_dir,
+            args.history_model_config,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
@@ -523,6 +566,22 @@ def main() -> int:
                         }
                     )
                 )
+            elif args.job == "clinical-history-models":
+                model_config, _ = load_history_model_config(args.history_model_config)
+                print(
+                    json.dumps(
+                        {
+                            "mode": "clinical_matched_history_models",
+                            "submitted": False,
+                            "models": ["availability", "dual_clock"],
+                            "feature_dimension": 8,
+                            "delay_shifts_hours": model_config["delay_shifts_hours"],
+                            "evaluation_split": "validation",
+                            "test_split_evaluated": False,
+                            "gpu_used": False,
+                        }
+                    )
+                )
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -559,6 +618,7 @@ def main() -> int:
             "clinical-features",
             "clinical-age-baseline",
             "dual-clock-history",
+            "clinical-history-models",
         ):
             submission["command"] = command
         write_json(

@@ -73,6 +73,13 @@ After history coverage and CPU controls pass, compare leakage-safe single-clock 
 dual-clock sequence models under prespecified documentation-delay shifts. Keep test sealed
 until architecture, tuning budget, validation rule and reporting are frozen.
 
+The first CPU comparison uses fixed eight-dimensional exponential-decay encoders and
+matched convex piecewise proportional competing-risk heads. Its configuration freezes
+the feature scales, ridge penalty, optimizer, four availability-delay conditions and a
+paired patient-bootstrap advancement gate before the formal run. No hyperparameter search
+is performed. Failure of the gate stops the experiment before test rather than permitting
+post-validation threshold changes.
+
 Primary comparison: structured model P versus type-aware model C with matched inputs,
 capacity and labels. Primary endpoint: test competing-risk NLL; key secondary outcomes
 are calibration and relevant state/transfer performance. Freeze the meaningful effect

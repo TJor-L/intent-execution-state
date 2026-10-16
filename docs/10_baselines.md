@@ -4,6 +4,8 @@
 | --- | --- | --- |
 | A | Piecewise exponential competing risks, intercept only | Implemented for synthetic and bounded private clinical label-pipeline validation; no individualized prediction |
 | A-age | Piecewise exponential competing risks with fixed age bands and global fallback | Implemented for private feature-pipeline validation; validation-only and not a clinical claim |
+| H-availability | Eight-dimensional availability-time history encoder with proportional competing-risk head | Implemented and synthetic-tested; matched CPU control for E003 |
+| H-dual | Eight-dimensional occurrence-plus-availability history encoder with the same head and budget | Implemented and synthetic-tested; test remains gated by frozen validation criteria |
 | B | LightGBM temporal features with a censor-aware target | Planned; must not convert censored cases to negative execution labels |
 | C | Single-stream time-aware type-aware Transformer | Planned; strongest direct test of whether explicit structure is needed |
 | D | Single-stream marked temporal event model | Planned; controls for continuous event dynamics |
