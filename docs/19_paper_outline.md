@@ -1,5 +1,9 @@
 # Manuscript outline
 
+Status: **not proceeding to a primary-method manuscript**. The required leakage-safe
+feature semantics were unavailable. This outline is retained as historical planning only;
+no unexecuted experiment or private result should be presented as completed evidence.
+
 1. Abstract: concrete predictive task, validated cohort, matched comparison and effect
    estimates. Do not prefill positive findings.
 2. Introduction: distinction between decisions, executed care and observations; why

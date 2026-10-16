@@ -608,3 +608,28 @@ same seeded patient bootstrap. It reads the verified cohort and feature manifest
 refuses misalignment or changed artifacts and writes only private UCSF outputs. This is
 a feature-pipeline control, not a causal or clinical-performance claim. Formal execution
 has not yet run.
+
+The fixed age-band baseline was published at clean commit
+`ab97ffbb1b1b316f81721098fac4d0a986bb9c4f` and formal Slurm job 34441 completed in two
+seconds. Private checks verified cohort/feature/config bindings, checksums, permissions,
+training/validation patient separation, validation-row coverage and finite likelihood
+and bootstrap outputs. No test metric was generated and no private result value or count
+left UCSF.
+
+The currently reviewed predictor contract is now exhausted: the bounded feature artifact
+contains age at order only. Eligibility fields are selection criteria, retrospective
+observation coverage is not an index-time predictor, incomplete bounded histories cannot
+support history features, and laboratory/diagnosis availability semantics have not been
+independently reviewed. A richer predictive model would therefore require a new private
+source-and-availability review; inferring availability from field or table names would
+violate the frozen temporal contract. Baseline A and A-age are pipeline controls, not an
+adequate primary method comparison or clinical-performance result.
+
+On 2026-10-16 a final bounded, read-only search of the configured authorized data storage
+found no candidate data dictionary or authoritative documentation jointly defining
+occurrence, recording availability and point-in-time/backfill behavior for a new feature
+source. No payload, path, field name or documentation content was emitted. Because the
+user has no separate semantic evidence channel and requested either autonomous resolution
+or abandonment, the project stops before E002. Existing private cohort/model artifacts
+are preserved on UCSF storage; nothing is deleted or transferred. Test evaluation,
+multi-feature modeling, neural/GPU training and clinical-performance claims are cancelled.

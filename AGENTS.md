@@ -1,5 +1,12 @@
 # Working agreement
 
+## Project status
+
+The primary method project stopped on 2026-10-16 after bounded Phase 1 controls because
+no authoritative point-in-time semantics were available for richer predictors. Preserve
+the private UCSF artifacts, do not run test evaluation, add new feature sources, start
+neural/GPU training or revive E002 without new independently reviewed semantic evidence.
+
 ## Workflow
 
 UCSF is now the primary development and testing environment, as requested by the user.

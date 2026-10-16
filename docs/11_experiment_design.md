@@ -58,6 +58,11 @@ in UCSF private storage.
 
 ## E002: primary method comparison, pending feasibility
 
+**Stopped on 2026-10-16 before execution.** The authorized storage contained no
+authoritative documentation establishing point-in-time availability for a richer feature
+source. The fixed age-only control is insufficient for the proposed primary comparison.
+No test evaluation, neural model or GPU training was performed.
+
 Primary comparison: structured model P versus type-aware model C with matched inputs,
 capacity and labels. Primary endpoint: test competing-risk NLL; key secondary outcomes
 are calibration and relevant state/transfer performance. Freeze the meaningful effect
