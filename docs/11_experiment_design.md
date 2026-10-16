@@ -80,6 +80,12 @@ paired patient-bootstrap advancement gate before the formal run. No hyperparamet
 is performed. Failure of the gate stops the experiment before test rather than permitting
 post-validation threshold changes.
 
+The formal matched CPU validation completed, and the frozen advancement gate held. The
+minimum unshifted improvement and paired uncertainty requirements were not met, while the
+delay-shift requirement passed. Accordingly E003 stops before test evaluation and before
+any neural or GPU experiment. This controlled negative result does not establish absence
+of dual-clock information in other representations, cohorts or tasks.
+
 Primary comparison: structured model P versus type-aware model C with matched inputs,
 capacity and labels. Primary endpoint: test competing-risk NLL; key secondary outcomes
 are calibration and relevant state/transfer performance. Freeze the meaningful effect

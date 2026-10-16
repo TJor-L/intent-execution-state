@@ -680,3 +680,19 @@ resource-limited diagnostic converged and passed artifact validation, but the fr
 held because neither the minimum unshifted gain nor its paired uncertainty condition was
 met; the shift-robustness condition passed. The test partition remains sealed. This is a
 negative validation finding, not evidence that dual clocks are generally uninformative.
+
+The memory-bounded history implementation was published at clean commit
+`8bc784bdd19171b9b10c0b7350635db0f406a6a3`; formal Slurm job 34444 completed under the
+original CPU and memory allocation. Private post-run validation confirmed the clean
+source/config/cohort bindings, checksums, restrictive permissions, fixed schema, dual-clock
+constraints and cohort-key alignment. No test metric was generated.
+
+The matched CPU comparison was published at clean commit
+`d3598607ebb09379aee2105edb8ea113772aecb4`; formal Slurm job 34445 completed and reproduced
+the diagnostic decision. Private checks confirmed convergence, identical feature and
+parameter dimensions, common training patients, disjoint complete validation predictions,
+all prespecified shifts, finite likelihoods, checksums and restrictive permissions. The
+frozen gate remained held for insufficient minimum unshifted gain and paired uncertainty;
+shift robustness passed. Test evaluation, architecture iteration on this validation result,
+and GPU training were not performed. E003 is therefore complete as a gated negative
+validation experiment, with its clinical artifacts retained only on UCSF storage.
