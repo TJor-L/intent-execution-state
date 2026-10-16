@@ -643,3 +643,15 @@ exclusion, duplicate rejection, explicit density/row caps and private Parquet/ch
 outputs. Generated tests cover delayed records, post-index events, source stability,
 cohort alignment, private output and digest-bound Slurm submission. A data-free UCSF plan
 passed; the formal history extraction has not yet run.
+
+Formal history job 34442 stopped before a source scan because real historical rows can
+contain missing or inverted time pairs. These rows are not valid predictors but should
+not invalidate an otherwise frozen outcome cohort, so the extractor now excludes and
+privately counts them while retaining fail-closed duplicate handling. A subsequent full
+private diagnostic scan showed that materializing every eligible index-event relation
+would exceed the initial 500,000-row memory bound. The fixed input contract now retains
+the most recent 24 available events per index after scanning the complete source, with
+exact private accounting of eligible and sequence-truncated relations. This is bounded
+model-input truncation, not source-scan or outcome truncation. The corrected full-source
+diagnostic completed with a verified private manifest; no scope or clinical payload was
+reported.

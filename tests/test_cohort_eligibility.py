@@ -614,6 +614,12 @@ def test_dual_clock_history_excludes_unavailable_and_post_index_events(tmp_path)
             "occurred_at": start,
             "available_at": start,
         },
+        {
+            "order_id": "invalid-time",
+            "patient_id": "person-0",
+            "occurred_at": start - timedelta(hours=1),
+            "available_at": None,
+        },
     ]
     administrations = [
         {
@@ -641,6 +647,10 @@ def test_dual_clock_history_excludes_unavailable_and_post_index_events(tmp_path)
     assert per_order["string:index-0"] == 2
     assert all(row["availability_lag_hours"] >= 0 for row in rows)
     assert all(row["documentation_delay_hours"] >= 0 for row in rows)
+    limited_config = dict(config, max_events_per_order=1)
+    limited, totals = build_history_rows(orders, administrations, indexes, mapping, limited_config)
+    assert [row["event_id"] for row in limited] == ["string:dose-visible"]
+    assert totals["string:index-0"] == 2
 
 
 def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path, capsys):

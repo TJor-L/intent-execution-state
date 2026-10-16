@@ -114,7 +114,9 @@ def _inventory_digest(inventories) -> str:
     return digest.hexdigest()
 
 
-def _history_matches(indexes, event_id, occurred, available, kind, config, sink, per_order):
+def _history_matches(
+    indexes, event_id, occurred, available, kind, config, sink, per_order, diagnostics
+):
     if not known_by(occurred, available, math.inf):
         raise HistoryError("invalid_history_time")
     for index in indexes:
@@ -122,10 +124,10 @@ def _history_matches(indexes, event_id, occurred, available, kind, config, sink,
         if not cutoff - config["lookback_hours"] <= occurred < cutoff or available > cutoff:
             continue
         order_id = index["order_id"]
-        if per_order[order_id] >= config["max_events_per_order"]:
-            raise HistoryError("history_events_per_order_limit")
         per_order[order_id] += 1
-        sink.append(
+        diagnostics["eligible_history_relationships"] += 1
+        bucket = sink.setdefault(order_id, [])
+        bucket.append(
             {
                 "patient_id": index["patient_id"],
                 "index_order_id": order_id,
@@ -136,12 +138,29 @@ def _history_matches(indexes, event_id, occurred, available, kind, config, sink,
                 "documentation_delay_hours": available - occurred,
             }
         )
-        if len(sink) > config["max_history_rows"]:
-            raise HistoryError("history_rows_limit")
+        if len(bucket) > config["max_events_per_order"]:
+            bucket.sort(
+                key=lambda row: (
+                    row["occurrence_lag_hours"],
+                    row["availability_lag_hours"],
+                    row["event_kind"],
+                    row["event_id"],
+                )
+            )
+            bucket.pop()
+            diagnostics["truncated_history_relationships"] += 1
 
 
-def build_history_rows(order_rows, administration_rows, indexes_by_patient, mapping, config):
-    rows = []
+def build_history_rows(
+    order_rows,
+    administration_rows,
+    indexes_by_patient,
+    mapping,
+    config,
+    diagnostics: Counter | None = None,
+):
+    diagnostics = diagnostics if diagnostics is not None else Counter()
+    rows_by_order = {}
     per_order = Counter()
     seen_orders = set()
     counts = Counter()
@@ -155,9 +174,17 @@ def build_history_rows(order_rows, administration_rows, indexes_by_patient, mapp
         seen_orders.add(event)
         times, bad = pair(row, "occurred_at", "available_at", mapping, counts)
         if bad or times is None:
-            raise HistoryError("invalid_history_order_time")
+            diagnostics["excluded_invalid_order_times"] += 1
+            continue
         _history_matches(
-            indexes_by_patient[patient], row["order_id"], *times, 0, config, rows, per_order
+            indexes_by_patient[patient],
+            row["order_id"],
+            *times,
+            0,
+            config,
+            rows_by_order,
+            per_order,
+            diagnostics,
         )
     seen_administrations = set()
     for row in administration_rows:
@@ -179,16 +206,21 @@ def build_history_rows(order_rows, administration_rows, indexes_by_patient, mapp
             availability = "occurred_at"
         times, bad = pair(row, "occurred_at", availability, mapping, counts)
         if bad or times is None:
-            raise HistoryError("invalid_history_administration_time")
+            diagnostics["excluded_invalid_administration_times"] += 1
+            continue
         _history_matches(
             indexes_by_patient[patient],
             row["administration_id"],
             *times,
             1,
             config,
-            rows,
+            rows_by_order,
             per_order,
+            diagnostics,
         )
+    rows = [row for bucket in rows_by_order.values() for row in bucket]
+    if len(rows) > config["max_history_rows"]:
+        raise HistoryError("history_rows_limit")
     rows.sort(
         key=lambda row: (
             row["patient_id"],
@@ -254,8 +286,14 @@ def extract_history(
         started,
         filters,
     )
+    diagnostics = Counter()
     rows, per_order = build_history_rows(
-        order_rows, administration_rows, indexes_by_patient, mapping, config
+        order_rows,
+        administration_rows,
+        indexes_by_patient,
+        mapping,
+        config,
+        diagnostics,
     )
     after = {name: _inventory(source, eligibility_limits) for name, source in sources.items()}
     if before != after:
@@ -290,6 +328,12 @@ def extract_history(
         "complete_full_source_scan": True,
         "laboratory_features_enabled": False,
         "outcome_features_used": False,
+        "excluded_invalid_order_times": diagnostics["excluded_invalid_order_times"],
+        "excluded_invalid_administration_times": diagnostics[
+            "excluded_invalid_administration_times"
+        ],
+        "eligible_history_relationships": diagnostics["eligible_history_relationships"],
+        "truncated_history_relationships": diagnostics["truncated_history_relationships"],
     }
     qc_path = output_dir / "qc_report.json"
     write_json(qc_path, qc)
@@ -306,6 +350,8 @@ def extract_history(
         "config_sha256": config_sha256,
         "lookback_hours": config["lookback_hours"],
         "event_kinds": ["order", "qualifying_administration"],
+        "max_events_per_order": config["max_events_per_order"],
+        "sequence_truncation_rule": "most_recent_occurrence_then_availability",
         "availability_masked": True,
         "outcome_features_used": False,
         "database_write": False,
