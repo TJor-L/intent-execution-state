@@ -8,13 +8,15 @@ import re
 import tempfile
 import time
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
+from typing import NamedTuple
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
 
-from ies.cohort_readiness.eligibility import _base_source, _inventory, _scan
+from ies.cohort_readiness.eligibility import _base_source, _inventory
 from ies.cohort_readiness.extract import SCHEMA as COHORT_SCHEMA
 from ies.feasibility.analysis import known_by, pair
 from ies.feasibility.contract import ROOT, Mapping, identity
@@ -41,6 +43,16 @@ HISTORY_SCHEMA = pa.schema(
 )
 
 
+class HistoryRow(NamedTuple):
+    patient_id: str
+    index_order_id: str
+    event_id: str
+    event_kind: int
+    occurrence_lag_hours: float
+    availability_lag_hours: float
+    documentation_delay_hours: float
+
+
 def load_history_config(path: Path) -> tuple[dict, str]:
     content = path.read_bytes()
     try:
@@ -52,6 +64,7 @@ def load_history_config(path: Path) -> tuple[dict, str]:
             "minimum_orders_with_history",
             "max_history_rows",
             "max_events_per_order",
+            "batch_rows",
         }:
             raise HistoryError("invalid_history_config")
         if value["schema_version"] != 1:
@@ -67,10 +80,13 @@ def load_history_config(path: Path) -> tuple[dict, str]:
             "minimum_orders_with_history",
             "max_history_rows",
             "max_events_per_order",
+            "batch_rows",
         ):
             if type(value[name]) is not int or value[name] <= 0:
                 raise HistoryError("invalid_history_config")
         if value["minimum_history_events"] > value["max_history_rows"]:
+            raise HistoryError("invalid_history_config")
+        if not 1024 <= value["batch_rows"] <= 65_536:
             raise HistoryError("invalid_history_config")
         return value, hashlib.sha256(content).hexdigest()
     except (OSError, yaml.YAMLError, TypeError, KeyError):
@@ -114,6 +130,64 @@ def _inventory_digest(inventories) -> str:
     return digest.hexdigest()
 
 
+def _scan_history(source, files, limits, started, accepted_patients, code):
+    """Stream selected rows without Arrow set filters or per-batch row dictionaries."""
+    physical = list(dict.fromkeys(source.columns.values()))
+    patient_column = source.columns["patient_id"]
+    rows = 0
+    groups = 0
+    try:
+        for item in files:
+            with pq.ParquetFile(item.path, pre_buffer=False) as parquet:
+                if any(parquet.schema_arrow.names.count(name) != 1 for name in physical):
+                    raise HistoryError(code)
+                for group in range(parquet.metadata.num_row_groups):
+                    groups += 1
+                    group_rows = parquet.metadata.row_group(group).num_rows
+                    if (
+                        groups > limits.max_row_groups_per_source
+                        or rows + group_rows > limits.max_rows_per_source
+                    ):
+                        raise HistoryError(code)
+                    for batch in parquet.iter_batches(
+                        batch_size=limits.batch_rows,
+                        row_groups=[group],
+                        columns=physical,
+                        use_threads=True,
+                    ):
+                        if time.monotonic() - started > limits.runtime_seconds:
+                            raise HistoryError(code)
+                        patient_index = batch.schema.get_field_index(patient_column)
+                        selected = [
+                            index
+                            for index, patient in enumerate(batch.column(patient_index).to_pylist())
+                            if patient in accepted_patients
+                        ]
+                        for index in selected:
+                            yield {
+                                logical: batch.column(batch.schema.get_field_index(name))[
+                                    index
+                                ].as_py()
+                                for logical, name in source.columns.items()
+                            }
+                    rows += group_rows
+    except HistoryError:
+        raise
+    except (MemoryError, pa.ArrowMemoryError):
+        raise HistoryError(f"{code}_memory") from None
+    except Exception:
+        raise HistoryError(code) from None
+
+
+def _identity_digest(value) -> bytes:
+    kind, raw = value
+    digest = hashlib.sha256()
+    digest.update(kind.encode())
+    digest.update(b"\0")
+    digest.update(str(raw).encode())
+    return digest.digest()
+
+
 def _history_matches(
     indexes, event_id, occurred, available, kind, config, sink, per_order, diagnostics
 ):
@@ -128,23 +202,23 @@ def _history_matches(
         diagnostics["eligible_history_relationships"] += 1
         bucket = sink.setdefault(order_id, [])
         bucket.append(
-            {
-                "patient_id": index["patient_id"],
-                "index_order_id": order_id,
-                "event_id": _canonical(event_id),
-                "event_kind": kind,
-                "occurrence_lag_hours": cutoff - occurred,
-                "availability_lag_hours": cutoff - available,
-                "documentation_delay_hours": available - occurred,
-            }
+            HistoryRow(
+                index["patient_id"],
+                order_id,
+                _canonical(event_id),
+                kind,
+                cutoff - occurred,
+                cutoff - available,
+                available - occurred,
+            )
         )
         if len(bucket) > config["max_events_per_order"]:
             bucket.sort(
                 key=lambda row: (
-                    row["occurrence_lag_hours"],
-                    row["availability_lag_hours"],
-                    row["event_kind"],
-                    row["event_id"],
+                    row.occurrence_lag_hours,
+                    row.availability_lag_hours,
+                    row.event_kind,
+                    row.event_id,
                 )
             )
             bucket.pop()
@@ -169,9 +243,10 @@ def build_history_rows(
         event = identity(row.get("order_id"))
         if patient not in indexes_by_patient:
             continue
-        if event is None or event in seen_orders:
+        event_digest = None if event is None else _identity_digest(event)
+        if event_digest is None or event_digest in seen_orders:
             raise HistoryError("duplicate_history_order")
-        seen_orders.add(event)
+        seen_orders.add(event_digest)
         times, bad = pair(row, "occurred_at", "available_at", mapping, counts)
         if bad or times is None:
             diagnostics["excluded_invalid_order_times"] += 1
@@ -192,9 +267,10 @@ def build_history_rows(
         event = identity(row.get("administration_id"))
         if patient not in indexes_by_patient:
             continue
-        if event is None or event in seen_administrations:
+        event_digest = None if event is None else _identity_digest(event)
+        if event_digest is None or event_digest in seen_administrations:
             raise HistoryError("duplicate_history_administration")
-        seen_administrations.add(event)
+        seen_administrations.add(event_digest)
         if identity(row.get("action")) not in mapping.qualifying_actions:
             continue
         availability = "available_at"
@@ -223,11 +299,11 @@ def build_history_rows(
         raise HistoryError("history_rows_limit")
     rows.sort(
         key=lambda row: (
-            row["patient_id"],
-            row["index_order_id"],
-            -row["occurrence_lag_hours"],
-            row["event_kind"],
-            row["event_id"],
+            row.patient_id,
+            row.index_order_id,
+            -row.occurrence_lag_hours,
+            row.event_kind,
+            row.event_id,
         )
     )
     return rows, per_order
@@ -271,20 +347,31 @@ def extract_history(
         indexes_by_patient.setdefault(patient, []).append(row)
 
     started = time.monotonic()
+    scan_limits = replace(
+        eligibility_limits,
+        batch_rows=min(eligibility_limits.batch_rows, config["batch_rows"]),
+    )
     sources = {
         "orders": _base_source(mapping.orders),
         "administrations": _base_source(mapping.administrations),
     }
-    before = {name: _inventory(source, eligibility_limits) for name, source in sources.items()}
+    before = {name: _inventory(source, scan_limits) for name, source in sources.items()}
     inventory_digest = _inventory_digest(before)
-    filters = {"patient_id": raw_patients}
-    order_rows = _scan(sources["orders"], before["orders"], eligibility_limits, started, filters)
-    administration_rows = _scan(
+    order_rows = _scan_history(
+        sources["orders"],
+        before["orders"],
+        scan_limits,
+        started,
+        raw_patients,
+        "history_order_scan_failed",
+    )
+    administration_rows = _scan_history(
         sources["administrations"],
         before["administrations"],
-        eligibility_limits,
+        scan_limits,
         started,
-        filters,
+        raw_patients,
+        "history_administration_scan_failed",
     )
     diagnostics = Counter()
     rows, per_order = build_history_rows(
@@ -295,7 +382,7 @@ def extract_history(
         config,
         diagnostics,
     )
-    after = {name: _inventory(source, eligibility_limits) for name, source in sources.items()}
+    after = {name: _inventory(source, scan_limits) for name, source in sources.items()}
     if before != after:
         raise HistoryError("history_source_changed")
     if len(rows) < config["minimum_history_events"]:
@@ -303,7 +390,13 @@ def extract_history(
     if sum(value > 0 for value in per_order.values()) < config["minimum_orders_with_history"]:
         raise HistoryError("insufficient_orders_with_history")
 
-    table = pa.Table.from_pylist(rows, schema=HISTORY_SCHEMA)
+    table = pa.Table.from_arrays(
+        [
+            pa.array([getattr(row, field.name) for row in rows], type=field.type)
+            for field in HISTORY_SCHEMA
+        ],
+        schema=HISTORY_SCHEMA,
+    )
     descriptor, temporary_name = tempfile.mkstemp(
         dir=output_dir, prefix=".history-", suffix=".parquet"
     )
@@ -351,6 +444,7 @@ def extract_history(
         "lookback_hours": config["lookback_hours"],
         "event_kinds": ["order", "qualifying_administration"],
         "max_events_per_order": config["max_events_per_order"],
+        "batch_rows": config["batch_rows"],
         "sequence_truncation_rule": "most_recent_occurrence_then_availability",
         "availability_masked": True,
         "outcome_features_used": False,

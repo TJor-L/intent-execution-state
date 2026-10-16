@@ -640,16 +640,16 @@ def test_dual_clock_history_excludes_unavailable_and_post_index_events(tmp_path)
         },
     ]
     rows, per_order = build_history_rows(orders, administrations, indexes, mapping, config)
-    assert {row["event_id"] for row in rows} == {
+    assert {row.event_id for row in rows} == {
         "string:prior-visible",
         "string:dose-visible",
     }
     assert per_order["string:index-0"] == 2
-    assert all(row["availability_lag_hours"] >= 0 for row in rows)
-    assert all(row["documentation_delay_hours"] >= 0 for row in rows)
+    assert all(row.availability_lag_hours >= 0 for row in rows)
+    assert all(row.documentation_delay_hours >= 0 for row in rows)
     limited_config = dict(config, max_events_per_order=1)
     limited, totals = build_history_rows(orders, administrations, indexes, mapping, limited_config)
-    assert [row["event_id"] for row in limited] == ["string:dose-visible"]
+    assert [row.event_id for row in limited] == ["string:dose-visible"]
     assert totals["string:index-0"] == 2
 
 

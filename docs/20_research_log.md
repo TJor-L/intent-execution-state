@@ -655,3 +655,15 @@ exact private accounting of eligible and sequence-truncated relations. This is b
 model-input truncation, not source-scan or outcome truncation. The corrected full-source
 diagnostic completed with a verified private manifest; no scope or clinical payload was
 reported.
+
+The first resource-limited retry still failed during the complete administration-history
+scan even though an unrestricted diagnostic had succeeded. Fixed-code staged diagnostics
+localized the difference to memory pressure after the order-history scan, rather than an
+input, semantic or runtime failure. The history path now streams patient selection from
+small Arrow batches without materializing filtered batches or batch-wide row dictionaries,
+stores duplicate identities as fixed-size cryptographic digests and constructs the final
+Arrow artifact column-wise. The duplicate rejection rule, complete-source scan, inventory
+binding and most-recent sequence truncation are unchanged. A second diagnostic completed
+under the original CPU and memory limits. Private validation passed for input bindings,
+checksums, restrictive permissions, the fixed schema, dual-clock lag constraints and frozen
+cohort-key alignment; no test metric, clinical value, count or mapping detail was emitted.

@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+import pyarrow as pa
+
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.dual_clock_history import HistoryError, extract_history, load_history_config
 from ies.feasibility.worker import apply_limits
@@ -33,7 +35,7 @@ def main() -> int:
             os.environ.get("IES_EXPECTED_COMMIT", ""),
         )
         return 0
-    except MemoryError:
+    except (MemoryError, pa.ArrowMemoryError):
         return 72
     except Exception:
         return 70

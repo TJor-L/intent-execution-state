@@ -287,6 +287,7 @@ def _scan(
     filters: dict[str, set] | None = None,
 ):
     physical = list(dict.fromkeys(source.columns.values()))
+    filter_value_sets = {}
     rows = 0
     groups = 0
     for item in files:
@@ -316,7 +317,11 @@ def _scan(
                                     batch.schema.get_field_index(source.columns[logical])
                                 )
                                 try:
-                                    value_set = pa.array(list(accepted), type=column.type)
+                                    cache_key = (logical, str(column.type))
+                                    value_set = filter_value_sets.get(cache_key)
+                                    if value_set is None:
+                                        value_set = pa.array(list(accepted), type=column.type)
+                                        filter_value_sets[cache_key] = value_set
                                     matched = pc.fill_null(
                                         pc.is_in(column, value_set=value_set), False
                                     )
@@ -337,6 +342,8 @@ def _scan(
                     rows += group_rows
         except EligibilityError:
             raise
+        except (MemoryError, pa.ArrowMemoryError):
+            raise EligibilityError("eligibility_scan_memory") from None
         except Exception:
             raise EligibilityError("eligibility_scan_failed") from None
 
