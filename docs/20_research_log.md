@@ -633,3 +633,13 @@ user has no separate semantic evidence channel and requested either autonomous r
 or abandonment, the project stops before E002. Existing private cohort/model artifacts
 are preserved on UCSF storage; nothing is deleted or transferred. Test evaluation,
 multi-feature modeling, neural/GPU training and clinical-performance claims are cancelled.
+
+The user then authorized a narrower autonomous continuation that does not require a new
+semantic source: complete prediction-time histories from the already reviewed order and
+qualifying-administration mappings. This does not revive laboratory, diagnosis, physiology
+or causal claims. Implemented a 24-hour dual-clock history contract with full-source
+inventory binding, occurrence-plus-availability masking, retrospective documentation
+exclusion, duplicate rejection, explicit density/row caps and private Parquet/checksum
+outputs. Generated tests cover delayed records, post-index events, source stability,
+cohort alignment, private output and digest-bound Slurm submission. A data-free UCSF plan
+passed; the formal history extraction has not yet run.

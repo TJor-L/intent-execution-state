@@ -63,6 +63,16 @@ authoritative documentation establishing point-in-time availability for a richer
 source. The fixed age-only control is insufficient for the proposed primary comparison.
 No test evaluation, neural model or GPU training was performed.
 
+## E003: scoped dual-clock workflow continuation
+
+E003 uses only the already reviewed order and qualifying-administration sources. For each
+frozen index order, a complete full-source scan retains prior events in the 24-hour window
+only when both occurrence and availability are no later than the prediction cutoff. The
+first artifact contains no laboratory, diagnosis, physiology or outcome-derived feature.
+After history coverage and CPU controls pass, compare leakage-safe single-clock and
+dual-clock sequence models under prespecified documentation-delay shifts. Keep test sealed
+until architecture, tuning budget, validation rule and reporting are frozen.
+
 Primary comparison: structured model P versus type-aware model C with matched inputs,
 capacity and labels. Primary endpoint: test competing-risk NLL; key secondary outcomes
 are calibration and relevant state/transfer performance. Freeze the meaningful effect

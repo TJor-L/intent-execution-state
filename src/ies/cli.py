@@ -91,10 +91,20 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--feature-dir", type=Path, required=True)
     command.add_argument("--baseline-config", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("dual-clock-history")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--mapping", type=Path, required=True)
+    command.add_argument("--history-config", type=Path, required=True)
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "dual-clock-history":
+        from ies.dual_clock_history_runner import run_history
+
+        return run_history(args.mapping, args.history_config, args.cohort_dir, args.output_dir)
     if args.command == "clinical-age-baseline":
         from ies.clinical_age_baseline_runner import run_age_baseline
 
@@ -141,6 +151,7 @@ def dispatch(args):
         "clinical-baseline",
         "clinical-features",
         "clinical-age-baseline",
+        "dual-clock-history",
     ):
         from ies.feasibility.runner import plan_feasibility, run_feasibility
 
@@ -222,6 +233,7 @@ def main(argv=None) -> int:
         "clinical-baseline",
         "clinical-features",
         "clinical-age-baseline",
+        "dual-clock-history",
     ):
         try:
             result = dispatch(args)
@@ -247,6 +259,9 @@ def main(argv=None) -> int:
                 ),
                 "clinical-age-baseline": (
                     "Clinical age baseline failed; inspect the private UCSF output.\n"
+                ),
+                "dual-clock-history": (
+                    "Dual-clock history extraction failed; inspect the private UCSF output.\n"
                 ),
             }
             message = messages[args.command]

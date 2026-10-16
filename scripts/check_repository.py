@@ -24,6 +24,7 @@ CONFIGS = {
     "configs/cohort_vocabulary.example.yaml",
     "configs/cohort_eligibility.example.yaml",
     "configs/clinical_baseline.yaml",
+    "configs/dual_clock_history.yaml",
 }
 
 

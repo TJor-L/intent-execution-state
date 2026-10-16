@@ -1,0 +1,6 @@
+schema_version: 1
+lookback_hours: 24.0
+minimum_history_events: 100
+minimum_orders_with_history: 100
+max_history_rows: 500000
+max_events_per_order: 1024

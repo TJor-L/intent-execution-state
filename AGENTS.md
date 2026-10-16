@@ -2,10 +2,13 @@
 
 ## Project status
 
-The primary method project stopped on 2026-10-16 after bounded Phase 1 controls because
-no authoritative point-in-time semantics were available for richer predictors. Preserve
-the private UCSF artifacts, do not run test evaluation, add new feature sources, start
-neural/GPU training or revive E002 without new independently reviewed semantic evidence.
+The original multimodal/state project stopped on 2026-10-16 because no authoritative
+point-in-time semantics were available for laboratory, diagnosis or other richer sources.
+The user subsequently authorized a scoped workflow-only continuation using the already
+reviewed order/administration occurrence and availability semantics. Do not add new source
+roles or physiology claims. Keep test evaluation sealed until the dual-clock design and
+validation decision rule are frozen; start with CPU and use at most one GPU only after
+the history artifact and CPU controls pass.
 
 ## Workflow
 

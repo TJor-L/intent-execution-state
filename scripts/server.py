@@ -17,6 +17,7 @@ from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
 from ies.cohort_readiness.runner import plan_vocabulary_audit
+from ies.dual_clock_history import load_history_config
 from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
@@ -94,6 +95,7 @@ def sbatch_command(
     cohort_dir: Path | None = None,
     baseline_config: Path | None = None,
     feature_dir: Path | None = None,
+    history_config: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -339,6 +341,41 @@ def sbatch_command(
                 str(run_dir / "clinical-age-baseline"),
             ]
         )
+    elif job == "dual-clock-history":
+        if mapping_path is None or cohort_dir is None or history_config is None:
+            raise ValueError("Dual-clock history requires mapping, cohort and history config")
+        if access_manifest is not None or protocol_path is not None:
+            raise ValueError("Dual-clock history does not accept access/protocol inputs")
+        cohort = cohort_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root):
+            raise ValueError("Clinical cohort must be in configured private output storage")
+        mapping, mapping_digest = load_eligibility_mapping(mapping_path)
+        _, history_digest = load_history_config(history_config)
+        cohort_digest = hashlib.sha256((cohort / "manifest.json").read_bytes()).hexdigest()
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_ELIGIBILITY_SHA256={mapping_digest}"
+            f",IES_HISTORY_CONFIG_SHA256={history_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={cohort_digest}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = (
+            f"--cpus-per-task={mapping.limits.cpus}"
+        )
+        command[command.index(f"--mem={slurm['memory']}")] = f"--mem={mapping.limits.memory_mb}M"
+        seconds = mapping.limits.runtime_seconds + 30
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            f"--time=00:{seconds // 60:02d}:{seconds % 60:02d}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/dual_clock_history.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(history_config.absolute()),
+                str(cohort),
+                str(run_dir / "dual-clock-history"),
+            ]
+        )
     else:
         raise ValueError(
             "Only metadata audit, bounded feasibility and synthetic CPU jobs are supported"
@@ -363,6 +400,7 @@ def main() -> int:
             "clinical-baseline",
             "clinical-features",
             "clinical-age-baseline",
+            "dual-clock-history",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -371,6 +409,9 @@ def main() -> int:
     parser.add_argument("--protocol", type=Path)
     parser.add_argument("--cohort-dir", type=Path)
     parser.add_argument("--feature-dir", type=Path)
+    parser.add_argument(
+        "--history-config", type=Path, default=ROOT / "configs/dual_clock_history.yaml"
+    )
     parser.add_argument(
         "--baseline-config", type=Path, default=ROOT / "configs/clinical_baseline.yaml"
     )
@@ -408,6 +449,7 @@ def main() -> int:
             args.cohort_dir,
             args.baseline_config,
             args.feature_dir,
+            args.history_config,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
@@ -466,6 +508,21 @@ def main() -> int:
                         }
                     )
                 )
+            elif args.job == "dual-clock-history":
+                history, _ = load_history_config(args.history_config)
+                print(
+                    json.dumps(
+                        {
+                            "mode": "dual_clock_history_extraction",
+                            "submitted": False,
+                            "lookback_hours": history["lookback_hours"],
+                            "availability_masked": True,
+                            "full_source_scan": True,
+                            "database_write": False,
+                            "gpu_used": False,
+                        }
+                    )
+                )
             elif args.job == "coherent-prepare":
                 print(
                     json.dumps(
@@ -501,6 +558,7 @@ def main() -> int:
             "clinical-baseline",
             "clinical-features",
             "clinical-age-baseline",
+            "dual-clock-history",
         ):
             submission["command"] = command
         write_json(

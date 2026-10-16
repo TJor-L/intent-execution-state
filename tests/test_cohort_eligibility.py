@@ -10,7 +10,7 @@ import pytest
 import yaml
 from conftest import load_script
 
-from ies import clinical_features
+from ies import clinical_features, dual_clock_history
 from ies.cli import main
 from ies.clinical_features import extract_clinical_features
 from ies.cohort_readiness.eligibility import (
@@ -21,6 +21,7 @@ from ies.cohort_readiness.eligibility import (
 )
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
 from ies.cohort_readiness.extract import extract_cohort
+from ies.dual_clock_history import build_history_rows, extract_history, load_history_config
 from ies.io import sha256
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -490,6 +491,156 @@ def test_age_feature_is_preindex_aligned_and_bound_to_cohort(tmp_path, monkeypat
     assert "IES_COHORT_MANIFEST_SHA256=" in export
     assert "IES_ELIGIBILITY_SHA256=" in export and "IES_PROTOCOL_SHA256=" in export
     assert str(server.ROOT / "slurm/clinical_features.sbatch") in command
+    history_command = server.sbatch_command(
+        {
+            "python_executable": "/server/python",
+            "output_root": str(tmp_path),
+            "slurm": {
+                "partition": "cpu",
+                "account": None,
+                "cpus": 4,
+                "memory": "8G",
+                "time_limit": "00:20:00",
+            },
+        },
+        "dual-clock-history",
+        tmp_path / "history-job",
+        mapping_path,
+        cohort_dir=cohort,
+        history_config=ROOT / "configs/dual_clock_history.yaml",
+    )
+    history_export = next(item for item in history_command if item.startswith("--export="))
+    assert "IES_HISTORY_CONFIG_SHA256=" in history_export
+    assert "IES_COHORT_MANIFEST_SHA256=" in history_export
+    assert str(server.ROOT / "slurm/dual_clock_history.sbatch") in history_command
+
+    eligibility_value = yaml.safe_load(mapping_path.read_text())
+    feasibility_value = yaml.safe_load(
+        Path(eligibility_value["feasibility_mapping"]["path"]).read_text()
+    )
+    order_path = Path(feasibility_value["orders"]["path"]) / "part.parquet"
+    order_table = pq.read_table(order_path)
+    prior_order = order_table.to_pylist()[0]
+    order_columns = feasibility_value["orders"]["columns"]
+    prior_order.update(
+        {
+            order_columns["order_id"]: "prior-order",
+            order_columns["occurred_at"]: datetime(2020, 1, 2, 10),
+            order_columns["available_at"]: datetime(2020, 1, 2, 10, 30),
+        }
+    )
+    pq.write_table(
+        pa.concat_tables(
+            [order_table, pa.Table.from_pylist([prior_order], schema=order_table.schema)]
+        ),
+        order_path,
+    )
+    administration_path = Path(feasibility_value["administrations"]["path"]) / "part.parquet"
+    administration_table = pq.read_table(administration_path)
+    prior_dose = administration_table.to_pylist()[0]
+    administration_columns = feasibility_value["administrations"]["columns"]
+    prior_dose.update(
+        {
+            administration_columns["administration_id"]: "prior-dose",
+            administration_columns["order_id"]: "prior-order",
+            administration_columns["occurred_at"]: datetime(2020, 1, 2, 11),
+            administration_columns["available_at"]: datetime(2020, 1, 2, 11, 15),
+        }
+    )
+    pq.write_table(
+        pa.concat_tables(
+            [
+                administration_table,
+                pa.Table.from_pylist([prior_dose], schema=administration_table.schema),
+            ]
+        ),
+        administration_path,
+    )
+    history_config, history_digest = load_history_config(ROOT / "configs/dual_clock_history.yaml")
+    history_config.update(minimum_history_events=1, minimum_orders_with_history=1)
+    history_output = tmp_path / "history-output"
+    history_output.mkdir()
+    monkeypatch.setattr(dual_clock_history, "AUTHORIZED_ROOT", tmp_path)
+    history_manifest = extract_history(
+        mapping.feasibility,
+        mapping.limits,
+        cohort,
+        history_output,
+        history_config,
+        history_digest,
+        cohort_digest,
+        mapping_digest,
+        "c" * 40,
+    )
+    assert history_manifest["status"] == "complete"
+    assert history_manifest["availability_masked"] is True
+    history_table = pq.read_table(history_output / "history.parquet")
+    assert {row["event_id"] for row in history_table.to_pylist()} == {
+        "string:prior-order",
+        "string:prior-dose",
+    }
+
+
+def test_dual_clock_history_excludes_unavailable_and_post_index_events(tmp_path):
+    mapping_path, _ = _write_case(tmp_path)
+    mapping = load_eligibility_mapping(mapping_path)[0].feasibility
+    config = load_history_config(ROOT / "configs/dual_clock_history.yaml")[0]
+    start = datetime(2020, 1, 2, 12)
+    indexes = {
+        ("string", "person-0"): [
+            {
+                "patient_id": "string:person-0",
+                "order_id": "string:index-0",
+                "index_time_hours": (start - datetime(1970, 1, 1)).total_seconds() / 3600,
+            }
+        ]
+    }
+    orders = [
+        {
+            "order_id": "prior-visible",
+            "patient_id": "person-0",
+            "occurred_at": start - timedelta(hours=2),
+            "available_at": start - timedelta(hours=1),
+        },
+        {
+            "order_id": "prior-unavailable",
+            "patient_id": "person-0",
+            "occurred_at": start - timedelta(hours=2),
+            "available_at": start + timedelta(hours=1),
+        },
+        {
+            "order_id": "index-0",
+            "patient_id": "person-0",
+            "occurred_at": start,
+            "available_at": start,
+        },
+    ]
+    administrations = [
+        {
+            "administration_id": "dose-visible",
+            "order_id": "prior-visible",
+            "patient_id": "person-0",
+            "occurred_at": start - timedelta(minutes=30),
+            "available_at": start - timedelta(minutes=15),
+            "action": "given",
+        },
+        {
+            "administration_id": "dose-future",
+            "order_id": "index-0",
+            "patient_id": "person-0",
+            "occurred_at": start + timedelta(hours=1),
+            "available_at": start + timedelta(hours=1),
+            "action": "given",
+        },
+    ]
+    rows, per_order = build_history_rows(orders, administrations, indexes, mapping, config)
+    assert {row["event_id"] for row in rows} == {
+        "string:prior-visible",
+        "string:dose-visible",
+    }
+    assert per_order["string:index-0"] == 2
+    assert all(row["availability_lag_hours"] >= 0 for row in rows)
+    assert all(row["documentation_delay_hours"] >= 0 for row in rows)
 
 
 def test_cli_plan_and_server_submission_are_sanitized_and_digest_bound(tmp_path, capsys):
@@ -615,6 +766,18 @@ def test_cli_returns_nonzero_for_limited_eligibility(monkeypatch, capsys):
             "/private/features",
             "--baseline-config",
             "/private/baseline.yaml",
+            "--output-dir",
+            "/private/output",
+        ],
+        [
+            "dual-clock-history",
+            "run",
+            "--mapping",
+            "/private/mapping.local.yaml",
+            "--history-config",
+            "/private/history.yaml",
+            "--cohort-dir",
+            "/private/cohort",
             "--output-dir",
             "/private/output",
         ],
