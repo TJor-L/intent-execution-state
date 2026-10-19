@@ -32,6 +32,7 @@ from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
 from ies.workflow_cv import MODE as WORKFLOW_MODE
+from ies.workflow_review import review_workflow
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -481,7 +482,7 @@ def sbatch_command(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("preflight", "plan", "submit"))
+    parser.add_argument("action", choices=("preflight", "plan", "submit", "review"))
     parser.add_argument(
         "job",
         nargs="?",
@@ -503,6 +504,8 @@ def main() -> int:
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
+    parser.add_argument("--job-id", help="Review only: exact existing scheduler job ID")
+    parser.add_argument("--source-commit", help="Review only: original job's full source SHA")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
@@ -533,6 +536,33 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if args.action == "review":
+            if (
+                args.job != "workflow-cv"
+                or not args.job_id
+                or not args.source_commit
+                or args.auto_artifacts
+                or args.wait
+                or any(
+                    value is not None
+                    for value in (
+                        args.mapping,
+                        args.access_manifest,
+                        args.protocol,
+                        args.cohort_dir,
+                        args.history_dir,
+                        args.feature_dir,
+                    )
+                )
+            ):
+                raise ValueError("Review requires an existing workflow job and source commit")
+            config = load_server_config(args.config)
+            reviewer_commit = source_revision()
+            result = review_workflow(Path(config["output_root"]), args.job_id, args.source_commit)
+            print(json.dumps(dict(result, reviewer_commit=reviewer_commit), indent=2))
+            return 0
+        if args.job_id is not None or args.source_commit is not None:
+            raise ValueError("Job binding options apply only to review")
         if (args.auto_artifacts or args.wait) and args.job not in {"clock-audit", "workflow-cv"}:
             raise ValueError("Artifact discovery/monitor options require a supported artifact job")
         if args.wait and args.action != "submit":

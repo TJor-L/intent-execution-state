@@ -337,8 +337,24 @@ The private entry point is `workflow-cv`, using existing compatible cohort/histo
 manifests, the same input bounds as A001, and the already established model-job budget
 of 2 CPU, 4,096 MiB and a 1,200-second worker (Slurm 20 minutes 30 seconds). It writes
 private fold models and aggregate metrics without prediction rows; no terminal metrics,
-counts or identifiers are exported. Real execution is pending; local verification and
-any actual results must be recorded separately in docs/20.
+counts or identifiers are exported. The user reported UCSF job 39332 complete at
+`9fcdc32`, including monitor artifact verification. Subsequent qualitative feedback
+reports that the fixed primary support rule failed, with typed timing having higher
+mean loss than pooled timing. Counts versus intercept, pooled timing versus counts and
+typed timing versus intercept have lower mean loss. No numerical effect size, conditional
+interval or fold pattern has been supplied. Preserve this negative primary result;
+the remaining review concerns already-defined secondary descriptions, not a replacement
+primary endpoint or a new advancement rule. Local checks, operational evidence and
+research conclusions are recorded separately in docs/20.
+
+`scripts/server.py review workflow-cv` reads the existing report by exact job ID and
+original source commit. It checks artifact hashes and consistency of the original support
+flag, then reports all four predefined contrasts with qualitative mean direction,
+conditional interval position relative to zero, and whether fold directions agree.
+An endpoint exactly zero is classified as including zero. No fit, bootstrap, new feature,
+row access or secondary pass rule is added. These conditional intervals retain all the
+limitations above. Qualitative summaries cannot establish effect magnitude or clinical
+utility, and favorable secondary findings do not overturn W001's primary failure.
 
 Methodological context: [Cawley and Talbot, JMLR 2010](https://www.jmlr.org/papers/v11/cawley10a.html)
 show why repeated model selection can bias performance estimates; this motivates the

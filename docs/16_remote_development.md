@@ -142,6 +142,10 @@ PYTHONPATH="$PWD/src" "$IES_JOB_PYTHON" scripts/server.py submit clock-audit \
 
 ## 当前任务 W001：固定数据的单时钟工作流开发实验
 
+用户已回传 `9fcdc32` 上的 job `39332` 完成且产物校验通过。类型特异时间未通过固定
+支持条件且平均损失高于合并时间；简单数量和合并时间对照的平均方向较好，条件区间
+与折间方向待只读核验。以下提交命令保留作记录，不要再次提交已完成任务。
+
 用户已授权换方向，且明确无法增加／修改数据或获得进一步解释。W001 完全复用已有
 cohort/history 的审核语义与覆盖，不更改来源、映射、窗口、保留上限或原始患者划分。
 首次执行、其他终止原因与右删失沿用原标签。历史数量、合并类型的时间分布、区分类型
@@ -193,3 +197,43 @@ export PYTHONPATH="$PWD/src"
 是否满足；原始损失值、区间、计数、权重、路径、报告和日志均留在 UCSF。
 支持标志仅决定是否值得设计下一轮验证，不代表已证明临床价值或论文贡献。失败或
 未获支持均保留，由 Mac 做生成复现和代码诊断，不依赖服务器编码 agent。
+
+### 已完成 job 39332 的只读核验
+
+首次长段内联命令的定性反馈已收到。现改用经过生成测试的短入口，核验原有报告中的
+条件区间和折间方向。只读既有 receipt、manifest、报告和配置，并核验模型文件摘要；
+不解码模型权重、不读临床行、不拟合、不重采样、不提交作业、不修改临床产物。
+最多查看 1,000 个直接 job 目录，每份 receipt 最多 16 KiB；报告与配置各最多 1 MiB，
+模型摘要检查最多 64 MiB。必须恰好匹配指定 job ID、原作业提交和完整产物。
+
+在仓库任一 checkout 内运行以下步骤。把 `IES_REVIEW_COMMIT` 替换为本次交付的
+完整审阅工具 SHA；原作业版本仍固定为 `9fcdc32`，不修改它的 checkout。
+
+```bash
+(
+set -euo pipefail
+cd "$(git rev-parse --git-common-dir)/.."
+git fetch origin main
+IES_REVIEW_COMMIT="REPLACE_WITH_DELIVERED_REVIEW_COMMIT"
+IES_REVIEW_DIR="handoff/workflow-review-${IES_REVIEW_COMMIT:0:7}"
+git worktree add --detach "$IES_REVIEW_DIR" "$IES_REVIEW_COMMIT"
+bash "$IES_REVIEW_DIR/scripts/review_workflow.sh" 39332 9fcdc32f3200931c780e0931130a3a07fc20ddaa
+)
+```
+
+包装脚本复用原项目的 `configs/remote.local.yaml` 和已有 Python 环境（`uv --no-sync`），
+进入新的干净审阅 checkout，再执行：
+
+```bash
+python scripts/server.py review workflow-cv --config /SERVER_ONLY/remote.local.yaml --job-id 39332 --source-commit 9fcdc32f3200931c780e0931130a3a07fc20ddaa
+```
+
+输出只包含固定 job/source/reviewer 绑定、完整性状态、既有支持标志及四个预设比较：
+
+- `mean_loss_direction`: `lower` / `higher` / `equal`，仅代表平均损失方向。
+- `conditional_interval`: `below_zero` / `above_zero` / `includes_zero`；触及零也归入包含零。
+- `fold_directions`: `all_lower` / `all_higher` / `all_equal` / `mixed`。
+
+这些是已有探索性结果的定性描述，没有新设次要比较的通过规则。条件区间不含重拟合、
+折间训练依赖和设计选择的不确定性；方向也不说明改善幅度或临床效用。按当地共享规则
+反馈定性结论即可，完整指标、计数、报告、日志、私有路径和权重留在 UCSF。

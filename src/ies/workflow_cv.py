@@ -26,6 +26,14 @@ def load_workflow_config(path: Path) -> tuple[dict, str]:
     content = path.read_bytes()
     try:
         value = yaml.safe_load(content)
+    except yaml.YAMLError:
+        raise ClinicalBaselineError("invalid_workflow_config") from None
+    return validate_workflow_config(value), hashlib.sha256(content).hexdigest()
+
+
+def validate_workflow_config(value: dict) -> dict:
+    """Validate the same contract for YAML inputs and JSON artifact snapshots."""
+    try:
         expected = {
             "schema_version",
             "experiment",
@@ -75,9 +83,9 @@ def load_workflow_config(path: Path) -> tuple[dict, str]:
                 or any(type(x) not in (int, float) or not math.isfinite(x) for x in values)
             ):
                 raise ValueError
-    except (ValueError, TypeError, KeyError, yaml.YAMLError):
+    except (ValueError, TypeError, KeyError):
         raise ClinicalBaselineError("invalid_workflow_config") from None
-    return value, hashlib.sha256(content).hexdigest()
+    return value
 
 
 def encode_workflow(rows: list[dict], scales: list[float]) -> dict[str, np.ndarray]:

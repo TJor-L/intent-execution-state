@@ -1027,3 +1027,84 @@ The user's earlier explicit publish/operator-run/feedback workflow supplies the 
 authorization; the release contains code, generated tests and documentation only. A
 clean release commit and pinned handoff identify the server entry version. Real W001
 performance remains unknown and must not be inferred from these local checks.
+
+## 2026-10-19 — W001 operator-reported UCSF execution complete; research review pending
+
+The user reported a clean detached checkout of published commit
+`9fcdc32f3200931c780e0931130a3a07fc20ddaa`, successful preflight and the fixed W001 plan.
+Slurm job `39332` was submitted and the monitor returned `status: complete` with
+`private_review_required: true`. Under that version's monitor contract, this requires
+scheduler success, the expected source/mode/data classification, validation/test flags
+remaining false, and report/model/config checksum verification.
+
+This is operator-provided execution evidence, not independent Mac access or evidence
+of predictive benefit. No research metrics or private artifacts were supplied or copied
+here. All four models and five development folds ran under the fixed original-training
+scope; the next step is read-only review of the existing private result. Do not resubmit
+W001, change thresholds, open held-out evaluation or start GPU work based on completion.
+No source scan, clinical artifact transfer or model execution occurred on the Mac.
+
+Updated current operational status and prepared a bounded, read-only report-review
+command pinned to job 39332 and its source commit. It locates the exact submission
+receipt, verifies the report binding and emits only fixed qualitative conclusions;
+counts, metric values, identifiers, weights, logs and private paths remain on UCSF.
+No commit or push is needed for the operator to run the inline command against the
+existing clean job checkout. Research conclusions remain pending authorized feedback.
+
+Verification of the exact inline command used ten generated-only cases: supported and
+unsupported flags, wrong source commit, sanitized configuration exceptions, altered
+report checksum, invalid flag type, nonfinite metrics, duplicate matching receipts,
+unexpected test-evaluation flag and the discovery bound. All passed; snapshots confirmed
+the command wrote no artifact files. Shell syntax, `git diff --check` and the repository
+file-boundary check passed. Production code is unchanged, so model tests and synthetic
+training were not repeated. Status/documentation changes remain local on `9fcdc32`.
+
+## 2026-10-19 — W001 primary hypothesis unsupported; existing secondary evidence review
+
+The user returned the qualitative review of job 39332 at
+`9fcdc32f3200931c780e0931130a3a07fc20ddaa`, with report verification confirmed. The fixed
+type-specific timing development support flag is false. Mean loss is higher for typed
+than pooled timing, lower for counts than intercept, lower for pooled timing than counts,
+and lower for typed timing than intercept. These are operator-reported qualitative
+directions; no numerical losses, intervals, fold patterns, private identifiers or other
+clinical artifacts have been supplied to or inspected by the Mac.
+
+Disposition: retain W001's negative primary result and stop advancing the typed timing
+hypothesis on this evidence. The favorable secondary mean directions do not establish
+stability, magnitude, calibration, clinical usefulness or a novel contribution. They do
+not turn W001 into a successful primary experiment. The next step only reads the already
+computed conditional intervals and fold directions for all four predefined contrasts.
+No new threshold, feature, model selection claim, bootstrap, fit, held-out evaluation or
+GPU job is introduced. E003 and A001's prior negative findings remain unchanged.
+
+Replaced the long operator-pasted Python with `scripts/server.py review workflow-cv`
+and `scripts/review_workflow.sh`. Review binds an exact existing job receipt and its
+original source commit separately from the clean reviewer commit. It checks complete
+manifest state, report/config/model checksums, original partition flags, fold identities,
+finite summaries, intervals and consistency of the original support rule. It emits only
+allowlisted qualitative findings. Secondary summaries are descriptive; there is no new
+secondary pass rule. Zero-touching intervals include zero. The command does not submit
+or query a scheduler, decode source rows or model weights, train, resample, or modify any
+clinical artifacts. Bounds are 1,000 direct job entries, 16 KiB per receipt, 1 MiB per
+report/config and 64 MiB for model-file hashing. Errors use fixed codes, not payloads.
+
+Generated integration tests initially caught a JSON/YAML parser mismatch in the new
+reader: JSON scientific-notation floats could become strings under YAML parsing. The
+reader now parses the JSON snapshot as JSON and reuses the extracted config validator;
+the original YAML training configuration and validation rules are unchanged. No clinical
+job ran with this new reader, and no existing W001 result is altered by the correction.
+
+Validation: 70 focused workflow/model-boundary/review tests passed, including 25 new
+review cases; the strengthened read-only file-open check also passed. `make check`
+passed Ruff lint, formatting (129 files), 378 tests and repository boundary checks, with
+two Linux resource tests skipped on macOS. Tests verify qualitative boundary cases,
+unchanged artifact snapshots, no row/fitting/submission access, source and digest binding,
+malformed reports, discovery limits, mutations, sanitized errors and the CLI's early
+read-only return. A generated shell rehearsal verified spaced paths, reuse of original
+config/environment and exact review arguments. Shell syntax passed. `make demo` retained
+synthetic NLL 2.729264271658528 in `artifacts/synthetic/20261019T190817Z-cc9c8168`.
+
+Publication follows the user's explicit publish/operator-run/feedback workflow. Only
+source, generated tests and operational/research documentation are included. The next
+server action is one bounded read of the completed report using a separate review checkout,
+not a repeat of job 39332. Actual secondary uncertainty and fold evidence remain pending.

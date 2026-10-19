@@ -46,6 +46,14 @@ exploratory information-value study, not a claimed novel architecture or an E003
 Do not claim independent confirmation after this data-informed pivot. Existing source
 roles, semantic exclusions, windows, cap and cohort splits remain unchanged. No further
 semantic-review request is a prerequisite for this bounded existing-artifact experiment.
+The user reported W001 UCSF job 39332 complete at `9fcdc32`, with artifact verification.
+Subsequent qualitative feedback failed the fixed type-specific timing support rule:
+typed timing has higher mean loss than pooled timing. Counts improve mean loss over
+intercepts, pooled timing over counts, and typed timing over intercepts. These directions
+alone do not establish uncertainty, effect size or clinical usefulness. Preserve W001's
+negative primary result; do not promote a secondary contrast to a successful primary
+or retune to rescue it. Next, only review existing conditional intervals and fold
+directions; no new model run, validation/test access or GPU work is scheduled.
 
 ## Workflow
 
