@@ -1,5 +1,6 @@
 """Bounded manifest discovery and scheduler monitoring; no clinical result export."""
 
+import hashlib
 import json
 import os
 import re
@@ -174,7 +175,7 @@ def _wait_for_result(
                     or manifest.get("data_class") != data_class
                 ):
                     raise ClockAuditOpsError(f"{prefix}_result_invalid")
-                if job == "workflow-cv" and (
+                if job in {"workflow-cv", "workflow-diagnostics"} and (
                     manifest.get("validation_split_evaluated") is not False
                     or manifest.get("test_split_evaluated") is not False
                 ):
@@ -198,3 +199,36 @@ def _wait_for_result(
                 raise ClockAuditOpsError(f"{prefix}_job_failed_no_automatic_retry")
         time.sleep(poll_seconds)
     raise ClockAuditOpsError("monitor_timeout_job_not_cancelled_or_resubmitted")
+
+
+def wait_for_workflow_diagnostics(
+    job_id, run_dir, commit, *, timeout_seconds=3600, poll_seconds=15
+):
+    from ies.workflow_diagnostics import MODE as DIAGNOSTIC_MODE
+    from ies.workflow_diagnostics import summarize_diagnostics
+    from ies.workflow_review import _read
+
+    result = _wait_for_result(
+        job_id,
+        run_dir,
+        commit,
+        job="workflow-diagnostics",
+        mode=DIAGNOSTIC_MODE,
+        data_class="restricted_aggregate",
+        artifacts={"diagnostic_report.json": 1024**2},
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+    try:
+        output = run_dir / "workflow-diagnostics"
+        content = _read(output / "diagnostic_report.json")
+        manifest = json.loads(_read(output / "manifest.json"))
+        if (
+            hashlib.sha256(content).hexdigest()
+            != manifest["artifacts_sha256"]["diagnostic_report.json"]
+        ):
+            raise ValueError
+        result["diagnostics"] = summarize_diagnostics(json.loads(content))
+        return result
+    except Exception:
+        raise ClockAuditOpsError("workflow_diagnostics_summary_invalid") from None

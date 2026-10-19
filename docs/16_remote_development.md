@@ -237,3 +237,48 @@ python scripts/server.py review workflow-cv --config /SERVER_ONLY/remote.local.y
 这些是已有探索性结果的定性描述，没有新设次要比较的通过规则。条件区间不含重拟合、
 折间训练依赖和设计选择的不确定性；方向也不说明改善幅度或临床效用。按当地共享规则
 反馈定性结论即可，完整指标、计数、报告、日志、私有路径和权重留在 UCSF。
+
+### W001 审阅已完成；W002 固定模型诊断待运行
+
+用户已回传 `5836dbc` 的完整定性核验：合并时间相对数量、类型特异时间相对无特征
+的条件区间低于零、五折均较低；数量相对无特征、类型特异时间相对合并时间的区间
+包含零、折间方向混合。无需重复只读审阅或重提 W001。主假设仍未获支持。
+
+下一步 W002 只重放 job `39332` 已保存的模型。它先复现原五折损失，再直接补充合并
+时间与无特征的对比，并诊断 1/4/12/24 小时首次执行概率。提前删失保留为未知结局；
+误差范围与描述性校准均是探索性结果，没有新通过规则，也不用于重训／调参。
+原验证和测试结局／特征不参与。不会重新扫描原始来源或写预测行。
+
+2 CPU、4,096 MiB；worker 300 秒，Slurm 上限 5 分 30 秒。复用原配置和依赖环境，
+不扩容、不用 GPU。下面只新增独立代码 worktree 和私有 aggregate 诊断产物，原模型
+与旧 checkout 不改动。`IES_DIAGNOSTIC_COMMIT` 使用聊天中交付的完整发布 SHA。
+
+```bash
+(
+set -euo pipefail
+cd "$(git rev-parse --git-common-dir)/.."
+git fetch origin main
+IES_DIAGNOSTIC_COMMIT="REPLACE_WITH_DELIVERED_DIAGNOSTIC_COMMIT"
+IES_DIAGNOSTIC_DIR="handoff/workflow-diagnostics-${IES_DIAGNOSTIC_COMMIT:0:7}"
+git worktree add --detach "$IES_DIAGNOSTIC_DIR" "$IES_DIAGNOSTIC_COMMIT"
+bash "$IES_DIAGNOSTIC_DIR/scripts/diagnose_workflow.sh" 39332 9fcdc32f3200931c780e0931130a3a07fc20ddaa
+)
+```
+
+脚本自动 preflight → plan → submit → wait。指定的原 job receipt 必须唯一，模型
+manifest 必须绑定原 SHA、发现的 cohort/history 和未改动的 W001 配置。不满足则停止，
+不会猜路径、选最新模型或重训。监控最多等待一小时；到时不会取消／重新提交作业。
+失败后只反馈固定错误类别与 job ID，不自动重跑，不粘贴日志。
+
+完成后最后一个 JSON 自带 `diagnostics`，不再需要另贴 Python 来读取报告：
+
+- `nll_comparisons`：五项平均方向、条件区间位置和折间方向。新增的
+  `pooled_minus_intercept` 明确属于事后描述性比较。
+- `paired_brier_completion_bounds`：每个固定时点，配对概率误差的可能范围相对零的
+  位置。`below_zero` 表示在当前样本允许的二元结局补全下均较低；不是置信区间或显著性结论。
+- `empirical_mean_risk_vs_outcome_bounds`：平均预测概率在当前样本结局比例范围的
+  `below`／`inside`／`above`。`inside` 不是校准通过，`outside` 也不是总体失准的统计证明。
+
+按当地允许的共享规则反馈最后的定性 JSON 即可。完整 `diagnostic_report.json`、
+计数、指标、分箱、日志、模型与私有路径留在 UCSF。W002 尚未运行，不能提前宣称
+概率误差改善、校准良好或研究成功。现有数据范围以外的泛化与临床效用仍未验证。

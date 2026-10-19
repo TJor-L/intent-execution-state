@@ -95,6 +95,32 @@ def _summarize(report, config):
     }
 
 
+def find_workflow_job(output_root: Path, job_id: str, source_commit: str) -> Path:
+    """Locate exactly one receipt-bound completed-workflow directory; no source scan."""
+    root = _verify_artifact_directory(output_root, "workflow_review_invalid_storage")
+    jobs = root / "jobs"
+    _require(not jobs.is_symlink() and jobs.is_dir())
+    matches = []
+    with os.scandir(jobs) as entries:
+        for index, entry in enumerate(entries, 1):
+            _require(index <= 1000, "workflow_review_discovery_limit")
+            _require(not entry.is_symlink())
+            if not entry.is_dir(follow_symlinks=False):
+                continue
+            receipt = Path(entry.path) / "submission.json"
+            _require(not receipt.is_symlink())
+            if not receipt.exists():
+                continue
+            value = json.loads(_read(receipt, 16 * 1024))
+            _require(isinstance(value, dict))
+            if value.get("job_id") == job_id:
+                _require(value == dict(job_id=job_id, job="workflow-cv", commit=source_commit))
+                matches.append(Path(entry.path))
+    _require(len(matches) == 1, "workflow_review_job_not_unique")
+    output = matches[0] / "workflow-cv"
+    return output
+
+
 def review_workflow(output_root: Path, job_id: str, source_commit: str) -> dict:
     """Return only allowlisted qualitative findings; source rows/models are never decoded."""
     try:
@@ -107,26 +133,7 @@ def review_workflow(output_root: Path, job_id: str, source_commit: str) -> dict:
             and bool(re.fullmatch(r"[0-9a-f]{40}", source_commit)),
             "workflow_review_invalid_job_binding",
         )
-        root = _verify_artifact_directory(output_root, "workflow_review_invalid_storage")
-        jobs = root / "jobs"
-        _require(not jobs.is_symlink() and jobs.is_dir())
-        matches = []
-        with os.scandir(jobs) as entries:
-            for index, entry in enumerate(entries, 1):
-                _require(index <= 1000, "workflow_review_discovery_limit")
-                _require(not entry.is_symlink())
-                if not entry.is_dir(follow_symlinks=False):
-                    continue
-                receipt = Path(entry.path) / "submission.json"
-                _require(not receipt.is_symlink())
-                if not receipt.exists():
-                    continue
-                value = json.loads(_read(receipt, 16 * 1024))
-                if value.get("job_id") == job_id:
-                    _require(value == dict(job_id=job_id, job="workflow-cv", commit=source_commit))
-                    matches.append(Path(entry.path))
-        _require(len(matches) == 1, "workflow_review_job_not_unique")
-        output = matches[0] / "workflow-cv"
+        output = find_workflow_job(output_root, job_id, source_commit)
         _require(not output.is_symlink())
         manifest_bytes = _read(output / "manifest.json")
         manifest = json.loads(manifest_bytes)

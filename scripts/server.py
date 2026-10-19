@@ -20,6 +20,7 @@ from ies.clock_audit_ops import (
     discover_clock_artifacts,
     wait_for_clock_audit,
     wait_for_workflow_cv,
+    wait_for_workflow_diagnostics,
 )
 from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
@@ -32,7 +33,8 @@ from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
 from ies.workflow_cv import MODE as WORKFLOW_MODE
-from ies.workflow_review import review_workflow
+from ies.workflow_diagnostics import MODE as DIAGNOSTIC_MODE
+from ies.workflow_review import find_workflow_job, review_workflow
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -110,6 +112,8 @@ def sbatch_command(
     history_dir: Path | None = None,
     history_model_config: Path | None = None,
     workflow_config: Path | None = None,
+    workflow_dir: Path | None = None,
+    original_commit: str | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -390,7 +394,7 @@ def sbatch_command(
                 str(run_dir / "dual-clock-history"),
             ]
         )
-    elif job in {"clock-audit", "workflow-cv"}:
+    elif job in {"clock-audit", "workflow-cv", "workflow-diagnostics"}:
         if cohort_dir is None or history_dir is None:
             raise ValueError("Clock audit requires existing cohort and history")
         if any(
@@ -414,8 +418,52 @@ def sbatch_command(
         command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
         command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
         command[command.index(f"--time={slurm['time_limit']}")] = (
-            "--time=00:05:30" if job == "clock-audit" else "--time=00:20:30"
+            "--time=00:20:30" if job == "workflow-cv" else "--time=00:05:30"
         )
+        if job == "workflow-diagnostics":
+            if (
+                workflow_dir is None
+                or workflow_config is None
+                or original_commit is None
+                or not re.fullmatch(r"[0-9a-f]{40}", original_commit)
+            ):
+                raise ValueError("Frozen workflow inputs required")
+            workflow = workflow_dir.resolve()
+            if not workflow.is_relative_to(output_root) or workflow_dir.is_symlink():
+                raise ValueError("Invalid frozen workflow storage")
+            path = workflow / "manifest.json"
+            if path.is_symlink() or path.stat().st_size > 1024**2:
+                raise ValueError("Invalid frozen workflow manifest")
+            original_bytes = path.read_bytes()
+            original = json.loads(original_bytes)
+            if not isinstance(original, dict):
+                raise ValueError("Invalid frozen workflow manifest")
+            _, digest = load_workflow_config(workflow_config)
+            if (
+                original.get("mode") != WORKFLOW_MODE
+                or original.get("status") != "complete"
+                or original.get("source_commit") != original_commit
+                or original.get("cohort_manifest_sha256") != digests[0]
+                or original.get("history_manifest_sha256") != digests[1]
+                or original.get("config_sha256") != digest
+            ):
+                raise ValueError("Frozen workflow does not match discovered inputs")
+            export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
+            command[export_index] += (
+                f",IES_WORKFLOW_CONFIG_SHA256={digest},IES_WORKFLOW_MANIFEST_SHA256={hashlib.sha256(original_bytes).hexdigest()},IES_ORIGINAL_WORKFLOW_COMMIT={original_commit}"
+            )
+            command.extend(
+                [
+                    str(ROOT / "slurm/workflow_diagnostics.sbatch"),
+                    python,
+                    str(cohort),
+                    str(history),
+                    str(workflow_config.resolve()),
+                    str(workflow),
+                    str(run_dir / job),
+                ]
+            )
+            return command
         if job == "workflow-cv":
             if workflow_config is None:
                 raise ValueError("Workflow config required")
@@ -501,6 +549,7 @@ def main() -> int:
             "clinical-history-models",
             "clock-audit",
             "workflow-cv",
+            "workflow-diagnostics",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -519,12 +568,12 @@ def main() -> int:
     parser.add_argument(
         "--auto-artifacts",
         action="store_true",
-        help="Clock audit or workflow CV: discover a unique existing bound artifact pair",
+        help="Artifact jobs: discover a unique existing bound cohort/history pair",
     )
     parser.add_argument(
         "--wait",
         action="store_true",
-        help="Clock audit or workflow CV: monitor for up to one hour; never resubmit",
+        help="Artifact jobs: monitor for up to one hour; never resubmit",
     )
     parser.add_argument(
         "--history-model-config",
@@ -561,13 +610,31 @@ def main() -> int:
             result = review_workflow(Path(config["output_root"]), args.job_id, args.source_commit)
             print(json.dumps(dict(result, reviewer_commit=reviewer_commit), indent=2))
             return 0
-        if args.job_id is not None or args.source_commit is not None:
+        if (
+            args.job_id is not None or args.source_commit is not None
+        ) and args.job != "workflow-diagnostics":
             raise ValueError("Job binding options apply only to review")
-        if (args.auto_artifacts or args.wait) and args.job not in {"clock-audit", "workflow-cv"}:
+        if (args.auto_artifacts or args.wait) and args.job not in {
+            "clock-audit",
+            "workflow-cv",
+            "workflow-diagnostics",
+        }:
             raise ValueError("Artifact discovery/monitor options require a supported artifact job")
         if args.wait and args.action != "submit":
             raise ValueError("Wait applies only to submission")
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
+        workflow_dir = None
+        if args.job == "workflow-diagnostics":
+            if (
+                not args.job_id
+                or not args.source_commit
+                or not re.fullmatch(r"\d+", args.job_id)
+                or not re.fullmatch(r"[0-9a-f]{40}", args.source_commit)
+            ):
+                raise ValueError("Original workflow job ID and source SHA required")
+            workflow_dir = find_workflow_job(
+                Path(config["output_root"]), args.job_id, args.source_commit
+            )
         if args.auto_artifacts:
             if args.cohort_dir is not None or args.history_dir is not None:
                 raise ValueError("Use either explicit artifacts or automatic discovery")
@@ -609,10 +676,34 @@ def main() -> int:
             args.history_dir,
             args.history_model_config,
             args.workflow_config,
+            workflow_dir,
+            args.source_commit,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "workflow-cv":
+            if args.job == "workflow-diagnostics":
+                print(
+                    json.dumps(
+                        dict(
+                            mode=DIAGNOSTIC_MODE,
+                            submitted=False,
+                            original_job_id=args.job_id,
+                            evaluation_scope="original_training_out_of_fold_replay",
+                            model_fitted=False,
+                            validation_split_evaluated=False,
+                            test_split_evaluated=False,
+                            raw_source_scan=False,
+                            cpus=2,
+                            memory_mb=4096,
+                            worker_seconds=300,
+                            gpu_used=False,
+                            max_cohort_rows=20000,
+                            max_history_rows=500000,
+                            clinical_advancement_decision="not_applicable",
+                        )
+                    )
+                )
+            elif args.job == "workflow-cv":
                 settings, _ = load_workflow_config(args.workflow_config)
                 print(
                     json.dumps(
@@ -752,6 +843,7 @@ def main() -> int:
         if args.job not in (
             "clock-audit",
             "workflow-cv",
+            "workflow-diagnostics",
             "feasibility",
             "coherent-prepare",
             "cohort-vocabulary",
@@ -770,7 +862,11 @@ def main() -> int:
         )
         print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}), flush=True)
         if args.wait:
-            monitor = wait_for_clock_audit if args.job == "clock-audit" else wait_for_workflow_cv
+            monitor = {
+                "clock-audit": wait_for_clock_audit,
+                "workflow-cv": wait_for_workflow_cv,
+                "workflow-diagnostics": wait_for_workflow_diagnostics,
+            }[args.job]
             print(json.dumps(monitor(job_id, run_dir, revision)))
         return 0
     except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as error:

@@ -1108,3 +1108,82 @@ Publication follows the user's explicit publish/operator-run/feedback workflow. 
 source, generated tests and operational/research documentation are included. The next
 server action is one bounded read of the completed report using a separate review checkout,
 not a repeat of job 39332. Actual secondary uncertainty and fold evidence remain pending.
+
+## 2026-10-19 — W001 qualitative review complete; W002 frozen diagnostics implemented
+
+The user returned the read-only review for original job `39332` at source
+`9fcdc32f3200931c780e0931130a3a07fc20ddaa`, using reviewer
+`5836dbc90bb71275ad04d009fbc2d007dca902f5`. Artifact verification passed; original
+validation/test were not evaluated, and the typed-timing support flag remains false.
+The approved qualitative feedback is:
+
+| Predefined W001 contrast | Mean loss | Conditional interval | Fold directions |
+| --- | --- | --- | --- |
+| Counts minus intercept | Lower | Includes zero | Mixed |
+| Pooled timing minus counts | Lower | Below zero | All lower |
+| Typed timing minus pooled | Higher | Includes zero | Mixed |
+| Typed timing minus intercept | Lower | Below zero | All lower |
+
+Interpretation: pooled temporal summaries have consistent exploratory incremental
+evidence relative to counts in this development analysis. Counts alone are not
+consistently better than intercepts; type-specific timing has no supported incremental
+benefit under the original rule. An interval including zero does not establish
+equivalence or prove types harmful. Typed versus intercept does not isolate the value
+of type-specific timing. No numeric magnitude, clinical benefit or independent
+confirmation follows from the shared directions. Conditional intervals omit fitting
+and data-informed selection uncertainty. Preserve W001's negative primary and E003's
+negative validation result; no tuning, original validation/test evaluation or GPU work.
+
+Implemented W002, explicitly post-selection and without an advancement gate. It binds
+the original W001 receipt/SHA, models, configuration and existing cohort/history
+digests; verifies patient folds, training-assignment hashes and normalization; and
+reproduces all original per-fold and overall likelihood losses without fitting. All
+four models remain included. It adds a direct descriptive pooled-versus-intercept NLL
+contrast using the same conditional bootstrap draws, not an inferred interval from
+the other comparisons or a replacement primary endpoint.
+
+Frozen cause-specific hazards now yield first-execution cumulative incidence at fixed
+1/4/12/24-hour horizons, accounting for both competing causes. Earlier right censoring
+leaves the binary outcome unknown. Brier completion bounds, paired Brier differences
+using a common unknown label, and fixed-bin empirical calibration ranges introduce
+no additional censoring-independence assumption. They are finite-sample descriptions,
+not confidence intervals, population calibration tests, effect-size claims or a new
+estimator contribution. Inside a completion range is not proof of calibration;
+outside alone is not statistical evidence of population miscalibration. This does not
+remove assumptions from the original fitted likelihood. Detailed specification and
+primary methodological references are in docs/11.
+
+The new `workflow-diagnostics` entry reuses the bounded training-only reader, runs
+under 2 CPU / 4,096 MiB / 300 worker seconds (Slurm 5:30), and writes only a private
+aggregate report and manifest. No new model weights or prediction rows are persisted,
+no original source is scanned, and held-out labels/features remain unread. The
+`diagnose_workflow.sh` wrapper reuses the original environment/config and combines
+preflight, plan, submission, monitoring and allowlisted qualitative feedback. There is
+no automatic retry or result download. Exact original job/SHA and artifact mismatch
+stop execution. Malformed JSON object types now fail with fixed operational errors
+when the shared receipt finder is called directly by the new server entry.
+
+Validation: 85 focused tests passed. Final `make check` passed Ruff lint/format
+(135 files), 414 tests and the repository boundary check; two Linux-only resource
+tests remain skipped on this Mac. Tests cover analytic probability mass and competing
+risks, exact horizon ties, early censoring, exhaustive binary completion bounds, paired
+label consistency, no-refit replay, fold/normalization/weight/input changes, original
+interval reproduction, private permissions, suppressed exception payloads, worker
+limits and serialized arguments, submission/monitor routing and sanitized receipts.
+Both new shell files pass syntax checks. `make demo` retained synthetic NLL
+2.729264271658528 at `artifacts/synthetic/20261019T192218Z-5da71c32`.
+
+`make workflow-demo` completed all 12 generated cases at
+`artifacts/synthetic/20261019T192200Z-workflow-e04f044b`, now including frozen W002
+reports. All replays passed with no further fitting, including negative/null controls.
+Source/config/dependency and all artifact hashes were independently verified. Generated
+fixture creation still fits W001 models; this is separate from the no-fit diagnostic.
+The generated mechanisms and W001 contrast values are unchanged. Synthetic results
+are not clinical evidence or Linux resource-cap verification.
+
+Publication follows the user's existing explicit publish/operator-run/feedback
+instruction. Only source, generated tests and approved qualitative/operational docs
+are included. **No real W002 job has run.** The remaining dependency is one bounded
+replay of existing UCSF artifacts by the operator in a new clean checkout. No new data,
+semantic explanation or server coding agent is needed. Original W001 outputs and
+running/old checkouts must not be edited; test remains sealed.

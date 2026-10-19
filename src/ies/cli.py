@@ -121,10 +121,20 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--history-dir", type=Path, required=True)
     command.add_argument("--config", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("workflow-diagnostics")
+    command.add_argument("action", choices=("run",))
+    for name in ("cohort-dir", "history-dir", "config", "workflow-dir", "output-dir"):
+        command.add_argument("--" + name, type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "workflow-diagnostics":
+        from ies.workflow_diagnostics_runner import run_diagnostics
+
+        return run_diagnostics(
+            args.cohort_dir, args.history_dir, args.config, args.workflow_dir, args.output_dir
+        )
     if args.command == "workflow-cv":
         from ies.workflow_runner import run_workflow
 
@@ -279,6 +289,7 @@ def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
     if args.command in (
+        "workflow-diagnostics",
         "workflow-cv",
         "clock-audit",
         "feasibility",
@@ -295,6 +306,9 @@ def main(argv=None) -> int:
             result = dispatch(args)
         except Exception:
             messages = {
+                "workflow-diagnostics": (
+                    "Workflow diagnostics failed; inspect the private UCSF run directory.\n"
+                ),
                 "workflow-cv": "Workflow CV failed; inspect the private UCSF run directory.\n",
                 "clock-audit": "Clock audit failed; inspect the private UCSF run directory.\n",
                 "feasibility": (

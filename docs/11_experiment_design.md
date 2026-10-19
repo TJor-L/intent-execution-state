@@ -341,11 +341,14 @@ counts or identifiers are exported. The user reported UCSF job 39332 complete at
 `9fcdc32`, including monitor artifact verification. Subsequent qualitative feedback
 reports that the fixed primary support rule failed, with typed timing having higher
 mean loss than pooled timing. Counts versus intercept, pooled timing versus counts and
-typed timing versus intercept have lower mean loss. No numerical effect size, conditional
-interval or fold pattern has been supplied. Preserve this negative primary result;
-the remaining review concerns already-defined secondary descriptions, not a replacement
-primary endpoint or a new advancement rule. Local checks, operational evidence and
-research conclusions are recorded separately in docs/20.
+typed timing versus intercept have lower mean loss. The subsequent read-only review at
+`5836dbc` verified that pooled timing versus counts and typed timing versus intercept
+each have a conditional interval below zero and all five fold losses lower. Counts
+versus intercept and typed versus pooled each have an interval including zero and mixed
+fold directions. No numerical effect size has been supplied. Preserve this negative
+primary result: descriptive secondary evidence is not a replacement primary endpoint
+or a new advancement rule. Local checks, operational evidence and research conclusions
+are recorded separately in docs/20.
 
 `scripts/server.py review workflow-cv` reads the existing report by exact job ID and
 original source commit. It checks artifact hashes and consistency of the original support
@@ -364,6 +367,84 @@ healthcare-process variables can carry predictive information and introduce bias
 That study does not establish a medication-execution effect, transportability or novelty
 for W001. The protocol above is our scoped design choice, not a claim that those papers
 validate this particular predictor or these cohort semantics.
+
+## W002: frozen W001 probability diagnostics (post-selection, no refit)
+
+This diagnostic was designed after inspecting W001's qualitative secondary results.
+It is explicitly exploratory and cannot provide independent confirmation, a replacement
+primary endpoint or a new advancement decision. E003 and W001 remain negative under
+their original rules. Clinical W002 execution is pending; implementation and generated
+verification alone do not supply clinical evidence.
+
+Inputs are exactly the existing W001 cohort/history artifacts, original configuration,
+fold models and report, bound by the original job receipt, source SHA and artifact
+digests. Only original training outcomes/history enter prediction. The existing bounded
+reader inspects identities/split membership across partitions to reject patient overlap;
+it does not evaluate held-out outcomes or features. Mapping, source roles, cohort,
+lookback, retained-history cap, censoring labels and fold assignment do not change.
+
+For all four models, reproduce original patient folds, verify training-assignment
+hashes and training-only feature normalization, then use saved coefficients without
+fitting. Require each fold's and each model's overall likelihood loss to reproduce
+the original report (relative tolerance 1e-9, absolute tolerance 1e-10). A mismatch is
+an explicit failure, not a reason to refit. Original models and artifacts are read-only.
+
+Report the four original NLL contrasts plus **pooled timing minus intercept**, directly
+computed from paired out-of-fold losses. The new contrast is post hoc, not a frozen
+W001 primary. Use the same 1,000 patient-cluster bootstrap draws and seed as W001;
+intervals are conditional on the original fitted models, omit fitting/selection
+uncertainty and do not correct for inspecting several comparisons. Lower loss alone
+does not establish a useful magnitude or clinical benefit.
+
+Compute first-execution cumulative incidence at **1, 4, 12 and 24 hours** from the
+saved piecewise cause-specific hazards. In each interval of width d, with total hazard
+L, surviving probability S contributes `S * (1 - exp(-L*d)) * lambda_execution/L`;
+zero L contributes zero. All three competing hazards reduce survival. This is not
+the survival complement obtained by ignoring competing terminal events.
+
+At horizon h, execution by h is one; a competing terminal event by h or observation
+through h without execution is zero. Right censoring strictly before h is unknown.
+The existing inclusive boundary convention counts an event exactly at h; censoring
+at h supplies observation through h. No new assumption about independent censoring
+or known potential administrative censoring time is introduced by this diagnostic.
+This does not remove assumptions from the original fitted likelihood model.
+
+For each unknown binary outcome, evaluate both zero and one and aggregate lower/upper
+squared-error bounds. For model differences, evaluate both models at the **same**
+unknown label before taking bounds. Separately bounded scores must not be subtracted.
+These finite-sample, order-weighted Brier completion bounds are not confidence intervals,
+population risk estimates or a significance test. They may be wide. Bounds are marginal
+for each horizon, not a joint trajectory band; within-patient statistical dependence
+is not modeled by these descriptive ranges.
+
+Privately report mean predicted execution probability and event-fraction completion
+bounds overall and in ten fixed probability bins with edges 0, 0.1, ..., 1. Empty bins
+are explicit. These are descriptive calibration checks without sampling intervals.
+Being inside the outcome range does not establish calibration; being outside it does
+not alone establish population miscalibration. Do not select bins, thresholds or a new
+model based on these results. All four models and all five contrasts remain visible.
+
+The bounded `workflow-diagnostics` Slurm job uses 2 CPU, 4,096 MiB, a 300-second worker
+and 5 minutes 30 seconds of Slurm time. Unchanged limits: 20,000 cohort rows, 500,000
+retained history rows, 256 MiB per Parquet file, 512 MiB declared decoded size per file.
+No raw-source scan, prediction-row persistence, new model weights or GPU use occurs.
+Only a private aggregate report and manifest are written. The monitor verifies the
+report and prints allowlisted qualitative directions/range positions automatically;
+numeric metrics, counts, calibration bins and models stay on UCSF. No automatic retry.
+
+`make workflow-demo` constructs the same 12 generated W001 cases, fits those generated
+fixtures, then runs W002 replay without further fitting. It now also saves
+`diagnostics.json` with artifact hashes. Tests separately exercise early censoring,
+analytic competing-risk probabilities and exhaustive binary completions. Generated
+fixture fitting is separate from the no-refit clinical diagnostic.
+
+Method context: [Kvamme and Borgan, JMLR 2023](https://www.jmlr.org/papers/v24/19-1030.html)
+explain problems with censoring weights when censoring depends on predictors and study
+an administrative-censoring alternative. We neither assume that setting here nor use
+their estimator. [Gerds, Andersen and Kattan, Statistics in Medicine 2014](https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.6152)
+address calibration for competing-risk predictions with censored observations. W002's
+elementary finite binary-completion ranges are not their calibration estimator, a
+validated clinical evaluation method or a claim of methodological novelty.
 
 ## Archived broader proposal (inactive)
 

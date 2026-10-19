@@ -52,8 +52,21 @@ typed timing has higher mean loss than pooled timing. Counts improve mean loss o
 intercepts, pooled timing over counts, and typed timing over intercepts. These directions
 alone do not establish uncertainty, effect size or clinical usefulness. Preserve W001's
 negative primary result; do not promote a secondary contrast to a successful primary
-or retune to rescue it. Next, only review existing conditional intervals and fold
-directions; no new model run, validation/test access or GPU work is scheduled.
+or retune to rescue it. The subsequent read-only review at `5836dbc` verified all four
+contrasts: pooled timing versus counts and typed timing versus intercept each have a
+conditional interval below zero and all folds lower. Counts versus intercept and typed
+versus pooled each have an interval including zero and mixed fold directions. Conditional
+intervals omit fitting and selection uncertainty; no effect magnitude is established.
+
+W002 is an explicitly post-selection diagnostic of the same frozen W001 models, not a
+new model comparison or advancement gate. It verifies the original out-of-fold losses,
+adds a direct pooled-versus-intercept descriptive contrast and computes first-execution
+probabilities at fixed horizons. Early-censored binary outcomes remain unknown; finite
+completion bounds are not confidence intervals or proof of calibration. Original
+validation/test outcomes and features stay unread. No fitting, tuning, raw source scan,
+source-role expansion or GPU work is scheduled. See docs/11 for the fixed diagnostic
+specification and docs/16 for the single bounded server command. W002 clinical execution
+is pending; generated checks do not supply clinical evidence.
 
 ## Workflow
 

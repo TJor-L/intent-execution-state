@@ -10,6 +10,7 @@ import numpy as np
 from ies.io import sha256, write_json
 from ies.training.pipeline import git_provenance
 from ies.workflow_cv import load_workflow_config, workflow_cross_validation
+from ies.workflow_diagnostics import replay_diagnostics
 
 ROOT = Path(__file__).resolve().parents[2]
 SCENARIOS = ("volume_signal", "pooled_timing_signal", "type_timing_signal", "null")
@@ -92,7 +93,7 @@ def run_workflow_demo(config_path, run_dir):
     write_json(run_dir / "manifest.json", manifest)
     try:
         write_json(run_dir / "config.json", config)
-        cases, fitted = [], {}
+        cases, fitted, diagnostics = [], {}, []
         for seed in SEEDS:
             for scenario in SCENARIOS:
                 cohort, grouped = generate_workflow_case(seed, scenario)
@@ -102,6 +103,11 @@ def run_workflow_demo(config_path, run_dir):
                 report.update(seed=seed, scenario=scenario)
                 cases.append(report)
                 fitted[f"{seed}:{scenario}"] = models
+                diagnostic = replay_diagnostics(
+                    cohort, grouped, config, models, report, data_class="synthetic"
+                )
+                diagnostic.update(seed=seed, scenario=scenario)
+                diagnostics.append(diagnostic)
         summary = {
             scenario: {
                 contrast: float(
@@ -126,10 +132,12 @@ def run_workflow_demo(config_path, run_dir):
             {"data_class": "synthetic", "cases": cases, "summary": summary},
         )
         write_json(run_dir / "models.json", {"data_class": "synthetic", "models": fitted})
+        write_json(run_dir / "diagnostics.json", {"data_class": "synthetic", "cases": diagnostics})
         if _source_hashes() != manifest["source_files_sha256"] or sha256(config_path) != digest:
             raise ValueError("Workflow demo source or config changed")
         manifest["artifacts_sha256"] = {
-            name: sha256(run_dir / name) for name in ("config.json", "metrics.json", "models.json")
+            name: sha256(run_dir / name)
+            for name in ("config.json", "metrics.json", "models.json", "diagnostics.json")
         }
         manifest["status"] = "complete"
         return {
