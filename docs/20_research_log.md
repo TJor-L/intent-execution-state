@@ -1187,3 +1187,74 @@ are included. **No real W002 job has run.** The remaining dependency is one boun
 replay of existing UCSF artifacts by the operator in a new clean checkout. No new data,
 semantic explanation or server coding agent is needed. Original W001 outputs and
 running/old checkouts must not be edited; test remains sealed.
+
+## 2026-10-19 — W002 completed; mixed horizon findings close this development analysis
+
+The operator reported diagnostic job `39333` complete at entry source
+`1df32744dcbcd2aebaa89174fee1de546f4ddd2a`, binding original W001 job `39332` at
+`9fcdc32f3200931c780e0931130a3a07fc20ddaa`. Preflight and the bounded plan passed.
+The monitor returned a complete verified report and allowlisted qualitative diagnostics;
+the summary requires successful frozen-model replay. No models were fitted, no raw
+sources scanned and no original validation/test outcomes or features evaluated. The
+Mac did not connect to UCSF or receive private reports, rows, weights or metric values.
+
+The four original NLL contrasts retain the W001 qualitative findings. The new post-hoc
+pooled-minus-intercept contrast has lower mean loss, a conditional interval below zero
+and all five fold losses lower. This strengthens the descriptive baseline comparison,
+not W001's failed primary or independent confirmation. No numerical magnitude was shared.
+
+The returned paired execution-probability Brier completion bounds are:
+
+| Contrast | 1 hour | 4 hours | 12 hours | 24 hours |
+| --- | --- | --- | --- | --- |
+| Counts minus intercept | Above zero | Below zero | Below zero | Below zero |
+| Pooled minus counts | Below zero | Above zero | Above zero | Above zero |
+| Pooled minus intercept | Below zero | Below zero | Below zero | Includes zero |
+| Typed minus pooled | Above zero | Above zero | Above zero | Above zero |
+| Typed minus intercept | Below zero | Below zero | Includes zero | Includes zero |
+
+Each range concerns binary completions of early-censored outcomes in the current
+sample, pairing the same unknown label between models. It is not a sampling interval
+or a population significance statement. An interval including zero leaves the direction
+unresolved by these bounds; it does not establish equality. Conversely, an interval
+entirely above/below zero does not establish a useful magnitude or population ranking.
+
+All four models' empirical mean predicted probabilities are below the event-fraction
+completion range at 1 hour, above at 4 hours, and inside at 12/24 hours. This is an
+overall sample description, not a calibration-bin assessment or population test.
+Inside does not establish calibration. The operator did not share numerical gaps,
+unknown-outcome counts, bin-level results or private source semantics; do not infer them.
+
+Code review confirms the compared objectives differ: NLL scores joint event time/cause
+and the censoring contribution, whereas horizon Brier errors score execution by a
+single horizon. A local, entirely invented two-order analytic check verified opposite
+rankings without fitting or clinical inputs: both events occur at time 1, with causes
+1 and 2, and constant hazards A=(0.2,0.7,0.1), B=(0.5,0.1,0.4). The closed-form mean
+NLL is `1 - log(lambda_1 * lambda_2)/2`; 4-hour execution probability is
+`lambda_1 * (1 - exp(-4))`. A has lower NLL but higher squared probability error than
+B, matching the production functions. This is a mathematical counterexample only;
+it does not diagnose the mechanism behind the actual clinical rankings or establish
+data error, misspecification or censoring bias. No implementation change was justified
+by the supplied directions.
+
+Disposition: the specified W001/W002 analysis is complete, with partial descriptive
+temporal-information evidence and adverse/mixed horizon results. These findings do not
+establish a common winner across reported objectives/horizons, a calibrated clinical
+predictor, a validated architecture contribution or a successful original primary. Stop advancing type-specific
+timing under this protocol. Do not pick the favorable 1-hour result as a new primary,
+recalibrate, retune, open the original held-out partitions or resubmit unchanged jobs.
+No further server action or missing-data request is needed to conclude these questions.
+Any separate future study would need a distinct fixed target and evaluation design;
+none is scheduled or implemented by this record. The original broader research aim
+has not been achieved merely because this development analysis is complete.
+
+Updated the working agreement, overview, README, fixed design, operator instructions
+and server handoff template. Archived W002's execution commands and retained both
+positive and negative findings. This change is documentation only; models, thresholds,
+data readers, CLI behavior and diagnostic calculations are unchanged. The 36 focused
+diagnostic/clinical-boundary tests passed, including analytic probability checks,
+exhaustive censoring completions, no-refit replay and input/output binding. Publication
+uses the existing authorized milestone workflow. `make check` passed Ruff lint/format
+(135 files), 414 tests and the repository file boundary check; two Linux-only resource
+tests remain skipped on macOS. `git diff --check` passed. No new full synthetic pipeline
+run was needed for this documentation-only change, and no new clinical job was submitted.

@@ -373,8 +373,10 @@ validate this particular predictor or these cohort semantics.
 This diagnostic was designed after inspecting W001's qualitative secondary results.
 It is explicitly exploratory and cannot provide independent confirmation, a replacement
 primary endpoint or a new advancement decision. E003 and W001 remain negative under
-their original rules. Clinical W002 execution is pending; implementation and generated
-verification alone do not supply clinical evidence.
+their original rules. The operator reported W002 job `39333` complete at `1df3274`,
+including verified frozen replay and qualitative diagnostics. Findings and disposition
+are recorded below and in docs/20. Generated verification remains separate from this
+operator-reported clinical evidence.
 
 Inputs are exactly the existing W001 cohort/history artifacts, original configuration,
 fold models and report, bound by the original job receipt, source SHA and artifact
@@ -445,6 +447,45 @@ their estimator. [Gerds, Andersen and Kattan, Statistics in Medicine 2014](https
 address calibration for competing-risk predictions with censored observations. W002's
 elementary finite binary-completion ranges are not their calibration estimator, a
 validated clinical evaluation method or a claim of methodological novelty.
+
+### Completed W002 findings and disposition
+
+The direct pooled-versus-intercept NLL contrast is lower in all five folds with its
+conditional interval below zero. Original NLL contrasts retain the W001 directions.
+The execution-probability diagnostics show the following paired Brier completion-bound
+positions (lower squared error is preferable):
+
+| Contrast | 1 hour | 4 hours | 12 hours | 24 hours |
+| --- | --- | --- | --- | --- |
+| Counts minus intercept | Above zero | Below zero | Below zero | Below zero |
+| Pooled minus counts | Below zero | Above zero | Above zero | Above zero |
+| Pooled minus intercept | Below zero | Below zero | Below zero | Includes zero |
+| Typed minus pooled | Above zero | Above zero | Above zero | Above zero |
+| Typed minus intercept | Below zero | Below zero | Includes zero | Includes zero |
+
+All four models' empirical mean predictions are below the event-fraction completion
+range at 1 hour, above at 4 hours and inside at 12/24 hours. These are overall sample
+descriptions, not calibrated-bin validation, population tests or proof that either
+later horizon is calibrated. Completion-bound directions omit sampling uncertainty;
+no numerical effect magnitude has been shared. In particular, typed versus pooled
+being above zero at all four horizons is not a claim of statistical significance.
+
+The observed likelihood and horizon rankings need not agree: the implemented NLL
+scores the event time and terminal cause (or censoring contribution), whereas this
+Brier diagnostic scores execution by one fixed horizon. Code review and a separate
+closed-form generated counterexample verified that opposite rankings are possible
+without a computational defect. This does not identify the cause of the actual UCSF
+differences or prove model misspecification, censoring bias or a data error.
+
+The specified W001/W002 development analysis is complete. Retain the limited temporal
+information finding and the adverse horizon-specific results together; do not claim
+uniform improvement, clinical utility, a novel architecture or a positive primary.
+No additional job, recalibration, tuning, GPU run or original held-out evaluation is
+scheduled. Do not select 1 hour as a new confirmatory target after seeing these results.
+A future study would need its own distinct question and fixed evaluation design;
+this record does not define or implement that study. Current data cannot establish
+the original intent/execution/state or clock-pairing claims, and the present model
+comparisons do not supply evidence sufficient to advance those claims.
 
 ## Archived broader proposal (inactive)
 

@@ -65,8 +65,24 @@ probabilities at fixed horizons. Early-censored binary outcomes remain unknown; 
 completion bounds are not confidence intervals or proof of calibration. Original
 validation/test outcomes and features stay unread. No fitting, tuning, raw source scan,
 source-role expansion or GPU work is scheduled. See docs/11 for the fixed diagnostic
-specification and docs/16 for the single bounded server command. W002 clinical execution
-is pending; generated checks do not supply clinical evidence.
+specification and docs/16 for the bounded server entry. The user reported W002 job 39333
+complete at `1df3274`, with verified frozen replay and qualitative diagnostics. Pooled
+timing versus intercept has lower NLL in all folds and a conditional interval below
+zero. Execution-probability errors are mixed across horizons: pooled versus counts is
+lower at 1 hour but higher at 4/12/24 hours; pooled versus intercept is lower at 1/4/12
+hours but its completion bounds include zero at 24 hours. Typed versus pooled is
+higher at all four horizons. These finite-sample directions are not significance tests,
+effect-size claims or population rankings. All models' empirical mean risks are below
+the outcome-completion range at 1 hour, above at 4 hours and inside at 12/24 hours;
+inside does not establish calibration. Preserve both favorable and adverse findings.
+
+W001/W002's specified development analysis is complete; no further UCSF action is
+needed for those questions on unchanged inputs. No common winner across the reported
+metrics/horizons, clinical usefulness or new architecture contribution is established.
+Do not repeat the jobs, select a favorable horizon after seeing results, recalibrate,
+refit or reopen original held-out evaluation to rescue this study. Any future experiment
+needs a separate question, fixed target and evaluation design; it is not implemented or
+scheduled by this completion record. Generated checks do not supply clinical evidence.
 
 ## Workflow
 
