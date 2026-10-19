@@ -1430,3 +1430,65 @@ the supplied monitor output, checked current documents for stale R001 pending-ru
 instructions, and preserved the original protocol/configuration and historical log entries.
 No new tests were needed for these text-only changes. The ordinary publisher will run
 its required full checks and generate a clean-commit completion handoff before pushing.
+
+## 2026-10-19 — New format lead; bounded F001 probe and conditional direction assessment
+
+After the closure, the user explicitly requested another direction assessment and
+autonomous implementation, reporting that someone updated an "omar" data format on
+the server. Clarification established only that it was probably a data format, not its
+actual name/version/location. Fetch and remote-branch inspection found only main at
+`28b7abe30f3546bdd9491c8640f0da89588f2316`, with no incoming commits. A second fetch before
+release still found no incoming code. No server update was downloaded or inspected.
+
+Reviewed primary UCSF data documentation, OMOP CDM 5.4 conventions, Matcho et al.'s
+2014 conversion-fidelity study and Liu et al.'s 2026 EHR stability study; links and
+conditional decisions are in docs/27. UCSF publicly lists OMOP, but that does not identify
+this user's resource. Public drug-exposure schemas accommodate prescriptions and
+administrations; fields alone cannot establish either event roles or actual time precision.
+Generic ETL fidelity and version-stability assessment have prior art. No publication
+novelty, clinical feasibility, source availability or restored old hypothesis is claimed.
+
+Prioritize P001, paired execution-phenotype preservation under representation conversion,
+only if existing source/crosswalk/version evidence supports it. P002 is conditional on
+already retained comparable snapshots. Both are planned questions, not implemented row
+analyses. Reference representation is not clinical ground truth; unlinked/ambiguous units
+must remain in denominators. Do not guess links, availability, precision, censoring or
+data coverage. E003/A001/W001/W002/R001 remain closed, with original held-out data sealed.
+
+Implemented F001 to resolve the narrower storage/schema dependency: footer-only sampling
+of an explicitly authorized private root, or the existing configured root by default.
+The shell wrapper reuses original configuration/Python and automates preflight, plan,
+clean-commit submission, waiting, result binding/checksums and categorical feedback.
+Independent limits: 12 files, 100 directories, 10,000 entries, 8 MiB per footer / 32 MiB
+total, 2 CPU / 4 GiB / 120-second worker, 150-second Slurm allocation. Breadth-first
+directory sampling prefers one file per visited directory; it is not representative.
+Bad footer decodes consume the byte budget too. Missing sources reject before submission.
+
+Unbuffered reads request only the header/trailer/footer; Arrow receives a footer-only
+in-memory container so it cannot prefetch source data pages. No rows, statistics, private
+field names, paths, arbitrary metadata or exception payloads appear in feedback. Public
+standard field signatures are not UCSF mappings. Empty schema-shaped generated tables
+can match, intentionally demonstrating why the result never establishes populated values,
+OMOP conformance, provenance, linkage, real precision or research feasibility. Unknown,
+unsupported/non-Parquet and truncated samples cannot establish absence. No database
+backend, host-wide scan, dependency installation, clinical extraction or new fit was added.
+
+Verification: initial focused generated tests passed; later adding the pre-submission
+missing-source regression exposed a missing Path import in its test fixture, which was
+fixed. Final `make check` passed **471 tests, 2 Linux-only skips**, Ruff check/format
+passed for 149 Python files, and repository boundary checks passed. The new probe has
+24 generated tests, including exact read ranges/no buffered prefetch, corrupt-footer
+budgets, distinct-directory sampling, non-Parquet content exclusion, empty-schema
+interpretation, storage isolation, context guards, private permissions, worker limits,
+failure/no-retry behavior, checksum/commit tampering, and submission/monitoring.
+`make demo` passed at `artifacts/synthetic/20261019T201819Z-2308740f`.
+Shell syntax and diff whitespace checks passed. No dependencies changed. Linux limits
+are configured and their parameters are tested; actual Slurm execution remains unverified.
+
+Actual F001 state: **not run**. The remaining dependency is the user's server-side
+metadata probe, not another training experiment. If the new asset is outside the existing
+configured root, its authorized location/access entry is essential; this implementation
+does not invent it or search other projects. Only fixed categorical feedback may return;
+private reports remain on UCSF. Continue with evidence from that result before choosing
+a clinical protocol. Publish this verified code milestone under the user's continuing
+push/run/feedback instruction, without modifying an existing private job checkout.

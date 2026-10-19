@@ -114,6 +114,22 @@ The manuscript now records the qualitative findings; numerical tables and instit
 details remain private and the draft is not submission ready. No method-superiority,
 clinical-usefulness or publication-readiness claim is established.
 
+The user then reopened direction assessment after reporting a new server-side data
+format, tentatively called "omar". Its name, location, version and contents are unknown;
+do not assume OMOP. At this assessment's start, origin/main had no update beyond
+`28b7abe`; this is not evidence that server data did not change. F001 is implemented as
+a bounded Parquet-footer-only format probe, not a clinical experiment or a conformance
+validator. See docs/27 for public-source research review, fixed limits and the conditional
+paired representation-fidelity direction. No new row reading, source role, semantic
+assumption, held-out evaluation, full scan, GPU or old-study tuning is introduced.
+Shape matches never establish populated values, actual precision, provenance or direct
+event linkage. Unknown/truncated samples never establish absence. Only the explicit
+authorized root or existing configured data_root is probed; no whole-server discovery.
+The next genuine dependency is a server-only probe, operated by the user. The existing
+explicit push/run/feedback authorization applies to this verified milestone. Preserve
+all prior negative findings; P001/P002 are conditional candidates, not runnable studies
+or claims of publishability. Do not use another speculative model search to fill gaps.
+
 ## Workflow
 
 As requested on 2026-10-16, the Mac is again the primary implementation environment.

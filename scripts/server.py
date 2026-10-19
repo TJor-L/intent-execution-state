@@ -28,10 +28,12 @@ from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
 from ies.cohort_readiness.runner import plan_vocabulary_audit
+from ies.data.format_probe import plan_format_probe
 from ies.dual_clock_history import load_history_config
 from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
+from ies.format_probe_runner import validate_probe_paths, wait_for_format_probe
 from ies.io import write_json
 from ies.selection_cv import MODE as SELECTION_MODE
 from ies.selection_cv import load_config as load_selection_config
@@ -119,6 +121,7 @@ def sbatch_command(
     workflow_dir: Path | None = None,
     original_commit: str | None = None,
     selection_config: Path | None = None,
+    probe_root: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -136,7 +139,17 @@ def sbatch_command(
     if slurm.get("account"):
         command.append(f"--account={slurm['account']}")
     python = config["python_executable"]
-    if job == "schema-audit":
+    if job == "format-probe":
+        source, output = validate_probe_paths(
+            probe_root if probe_root is not None else Path(config["data_root"]),
+            run_dir / "format-probe",
+            inspect=False,
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:02:30"
+        command.extend([str(ROOT / "slurm/format_probe.sbatch"), python, str(source), str(output)])
+    elif job == "schema-audit":
         command.extend(
             [
                 str(ROOT / "slurm/schema_audit.sbatch"),
@@ -557,6 +570,7 @@ def main() -> int:
         nargs="?",
         choices=(
             "schema-audit",
+            "format-probe",
             "synthetic",
             "feasibility",
             "coherent-prepare",
@@ -578,6 +592,9 @@ def main() -> int:
     parser.add_argument("--job-id", help="Exact existing W001 scheduler job ID")
     parser.add_argument("--source-commit", help="Original W001 job's full source SHA")
     parser.add_argument("--mapping", type=Path)
+    parser.add_argument(
+        "--probe-root", type=Path, help="Format probe only: authorized private root"
+    )
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
     parser.add_argument("--cohort-dir", type=Path)
@@ -598,7 +615,7 @@ def main() -> int:
     parser.add_argument(
         "--wait",
         action="store_true",
-        help="Artifact jobs: monitor for up to one hour; never resubmit",
+        help="Supported jobs: monitor for up to one hour; never resubmit",
     )
     parser.add_argument(
         "--history-model-config",
@@ -610,6 +627,25 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if args.probe_root is not None and (
+            args.job != "format-probe" or args.action not in {"plan", "submit"}
+        ):
+            raise ValueError("Probe root applies only to format probe plan/submission")
+        if args.job == "format-probe" and (
+            args.auto_artifacts
+            or any(
+                value is not None
+                for value in (
+                    args.mapping,
+                    args.access_manifest,
+                    args.protocol,
+                    args.cohort_dir,
+                    args.history_dir,
+                    args.feature_dir,
+                )
+            )
+        ):
+            raise ValueError("Format probe does not accept clinical artifact/mapping options")
         if args.action == "review":
             if (
                 args.job != "workflow-cv"
@@ -641,6 +677,7 @@ def main() -> int:
         }:
             raise ValueError("Job binding options apply only to review")
         if (args.auto_artifacts or args.wait) and args.job not in {
+            "format-probe",
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
@@ -689,6 +726,11 @@ def main() -> int:
             / "jobs"
             / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8])
         )
+        if args.job == "format-probe" and args.action == "submit":
+            validate_probe_paths(
+                args.probe_root if args.probe_root is not None else Path(config["data_root"]),
+                run_dir / "format-probe",
+            )
         command = sbatch_command(
             config,
             args.job,
@@ -706,10 +748,22 @@ def main() -> int:
             workflow_dir,
             args.source_commit,
             args.selection_config,
+            args.probe_root,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "workflow-selection":
+            if args.job == "format-probe":
+                print(
+                    json.dumps(
+                        dict(
+                            plan_format_probe(),
+                            input_scope="explicit_probe_root"
+                            if args.probe_root
+                            else "configured_data_root",
+                        )
+                    )
+                )
+            elif args.job == "workflow-selection":
                 settings, _ = load_selection_config(args.selection_config)
                 print(
                     json.dumps(
@@ -898,6 +952,7 @@ def main() -> int:
         job_id = result.stdout.strip().split(";")[0]
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
         if args.job not in (
+            "format-probe",
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
@@ -921,6 +976,7 @@ def main() -> int:
         print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}), flush=True)
         if args.wait:
             monitor = {
+                "format-probe": wait_for_format_probe,
                 "clock-audit": wait_for_clock_audit,
                 "workflow-cv": wait_for_workflow_cv,
                 "workflow-diagnostics": wait_for_workflow_diagnostics,
