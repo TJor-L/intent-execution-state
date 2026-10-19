@@ -15,7 +15,11 @@ def encode_history(
     occurrence_scales: list[float],
     delay_shift_hours: float = 0.0,
 ) -> np.ndarray:
-    if mode not in {"availability", "dual_clock"} or delay_shift_hours < 0:
+    if (
+        mode not in {"availability", "dual_clock"}
+        or not math.isfinite(delay_shift_hours)
+        or delay_shift_hours < 0
+    ):
         raise ValueError("Invalid history encoding")
     if mode == "availability":
         if len(availability_scales) != 4:
@@ -79,7 +83,11 @@ def fit_history_model(
     max_iterations: int,
     tolerance: float,
     mode: str,
+    *,
+    data_class: str = "restricted_clinical",
 ) -> dict:
+    if data_class not in {"synthetic", "restricted_clinical"}:
+        raise ValueError("Invalid history data class")
     training = [row for row in cohort if row["split"] == "train"]
     if not training or ridge <= 0 or max_iterations <= 0 or tolerance <= 0:
         raise ValueError("Invalid history model fit")
@@ -155,7 +163,7 @@ def fit_history_model(
     return {
         "model": "history_piecewise_proportional_v1",
         "mode": mode,
-        "data_class": "restricted_clinical",
+        "data_class": data_class,
         "edges_hours": edges_array.tolist(),
         "causes": list(CAUSES),
         "feature_dimension": design.shape[1],

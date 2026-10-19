@@ -60,14 +60,20 @@ def load_baseline_config(path: Path) -> tuple[dict, str]:
         raise ClinicalBaselineError("invalid_baseline_config") from None
 
 
-def _verify_cohort(cohort_dir: Path, expected_manifest_sha256: str) -> tuple[list[dict], dict]:
-    cohort_dir = cohort_dir.resolve()
+def _verify_artifact_directory(path: Path, error_code: str) -> Path:
+    """Use one server storage boundary; generated tests replace it in-process only."""
+    resolved = path.resolve()
     if (
-        not cohort_dir.is_absolute()
-        or not cohort_dir.is_relative_to(AUTHORIZED_ROOT)
-        or cohort_dir.is_relative_to(ROOT)
+        not path.is_absolute()
+        or not resolved.is_relative_to(AUTHORIZED_ROOT.resolve())
+        or resolved.is_relative_to(ROOT.resolve())
     ):
-        raise ClinicalBaselineError("invalid_clinical_cohort")
+        raise ClinicalBaselineError(error_code)
+    return resolved
+
+
+def _verify_cohort(cohort_dir: Path, expected_manifest_sha256: str) -> tuple[list[dict], dict]:
+    cohort_dir = _verify_artifact_directory(cohort_dir, "invalid_clinical_cohort")
     manifest_path = cohort_dir / "manifest.json"
     if sha256(manifest_path) != expected_manifest_sha256:
         raise ClinicalBaselineError("clinical_cohort_changed")

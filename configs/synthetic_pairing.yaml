@@ -1,0 +1,17 @@
+schema_version: 1
+data_class: synthetic
+seeds: [20261016, 20261017, 20261018]
+train_patients: 800
+validation_patients: 400
+orders_per_patient: 2
+scales_hours: [2.0, 12.0]
+bin_edges_hours: [0.0, 1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
+occurrence_lags_hours: [8.0, 4.0]
+availability_lags_hours: [3.0, 1.0]
+jitter_hours: 0.25
+base_rates_per_hour: [0.08, 0.04, 0.02]
+pairing_log_rate_effect: 1.2
+ridge: 1.0
+max_iterations: 100
+tolerance: 1.0e-8
+bootstrap_replicates: 200

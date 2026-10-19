@@ -696,3 +696,190 @@ frozen gate remained held for insufficient minimum unshifted gain and paired unc
 shift robustness passed. Test evaluation, architecture iteration on this validation result,
 and GPU training were not performed. E003 is therefore complete as a gated negative
 validation experiment, with its clinical artifacts retained only on UCSF storage.
+
+## 2026-10-16 — Mac development resumed; generated controls and E003 review
+
+At the user's request the Mac resumed primary implementation, with UCSF retaining all
+restricted data and real validation. The entry source was
+`52c49bbc37867624498ff7c0daffad9543c9df59`. This milestone consists of local working-tree
+changes only; no new commit, push, server connection or clinical job was performed.
+
+The entry version failed two generated tests because age/history readers hardcoded the
+server storage root separately from the cohort verifier's test override. Cohort, age and
+history readers now share a resolved artifact-directory guard. Production authorization
+is unchanged; generated tests replace the root in-process only. Added rejection coverage
+for outside, relative, repository and escaping directory-symlink paths. Scale and shift
+configuration now rejects nonfinite numbers; empty histories cannot conceal an invalid
+shift. The clinical model config and E003 thresholds were not changed. Factored the
+existing gate calculation without changing its output or inequalities to test each
+condition and its boundary directly.
+
+Generated diagnostics verify an analytical censored competing-risk likelihood, event-bin
+edge convention, constant-feature rate recovery, train-only normalization/fitting, paired
+patient bootstrap with unequal order counts, and invariance of validation artifacts to
+changes confined to generated test labels/history. A fixed-seed occurrence-signal positive
+control passes using the current CPU encoder/head. Further generated counterexamples
+show that the dual encoder loses event-level delay pairing and duplicates features when
+clocks coincide. None of these diagnostics is evidence of clinical performance.
+
+The source review in docs/08 and docs/11 narrows interpretation of E003: clock comparisons
+also change decay scales; predictor content lacks index-order attributes and historical
+order/administration links; both encoders inherit occurrence-based windowing/capping;
+delay perturbations mask the retained history without refilling it. The frozen shift gate
+compares models at a common shift, not either model against its unshifted performance.
+Clinical coefficients, uncertainty and saturation behavior were not independently
+inspected here. E003 remains a gated negative result, with test sealed and no neural/GPU
+experiment scheduled. A successor requires a separate falsifiable design and an explicit
+plan for already-inspected validation data; it is not implemented or running.
+
+Validation: the initial focused set passed 28 tests. After adding gate-boundary and
+test-isolation cases, final `make check` passed Ruff checks, formatting and 255 tests;
+two Linux production-resource tests were skipped on macOS. The repository file boundary
+check passed. `make demo` passed with unchanged synthetic NLL 2.729264271658528. This does
+not claim Linux CI or new UCSF execution. Updated README, workflow, overview, architecture,
+experiment status, historical schedule and server prompt to remove superseded server-primary
+instructions and premature progression past E003. Existing private artifacts remain on UCSF;
+no repeated clinical extraction or model run is needed for this local milestone.
+
+## 2026-10-16 — S001 generated clock-pairing mechanism implemented and run
+
+Continued from the local review on base commit
+`52c49bbc37867624498ff7c0daffad9543c9df59`, with all changes still uncommitted. Implemented
+`make pairing-demo` / `ies pairing-diagnostic`, a strict generated-only config, and three
+encoders sharing the same clock scales: eight marginal features, sixteen features with
+independent-pair expectations, and sixteen with observed within-event joint terms. All
+reuse the same CPU hazard head. Its data-class argument now permits explicitly synthetic
+model artifacts; existing clinical callers retain their original default and behavior.
+The experiment has no external history/cohort input and no clinical advancement decision.
+
+The generator changes only within-event timestamp pairing to impose a predictive signal.
+Its null case preserves the histories while removing dependence of labels on pairing.
+Its scrambled case preserves the exact signal-case labels and all clock marginals, while
+independently reassigning the visible pairing. All generated permutations respect both
+time constraints. Patient-level splits and bootstrap keep a patient's orders together.
+All seeds, scenarios and models are reported without selection. The mechanism definition,
+fixed configuration and interpretation boundaries are in docs/08 and docs/11.
+
+The first full run, `artifacts/synthetic/20261016T135732Z-pairing-ff424f6a`, completed all
+three preselected seeds and three scenarios. The following are **synthetic-only** mean
+validation NLL differences per order, paired minus the same-dimension unpaired control:
+
+| Generated scenario | Mean difference across three seeds |
+| --- | ---: |
+| Pairing signal | -0.2648343067 |
+| Null | +0.0007467343 |
+| Scrambled pairing | +0.0028898166 |
+
+All three signal-case paired patient-bootstrap intervals were below zero. Null differences
+were small; every null interval included zero, which is not evidence of equivalence.
+Scrambling removed the observed gain; one seed had a small worsening with an interval
+above zero. This negative finding is retained along with all other runs. No thresholds,
+seeds, signal parameters, basis scales or E003 settings were changed in response.
+
+The ignored output directory contains the exact config values, all fitted synthetic
+models, all per-seed losses/intervals, and a manifest with dirty Git status, source file
+hashes, config/lock hashes, versions and artifact checksums. Existing outputs cannot be
+overwritten; failed runs record a failure type without exception payloads. These hashes
+identify the executed dirty source but are not a new committed source snapshot.
+
+Validation: 49 focused tests passed after adding the positive/null/scrambled regression
+cases. Final `make check` passed lint, formatting, 276 tests and the repository boundary
+check; two Linux resource tests were skipped on macOS. `make demo` passed with unchanged
+synthetic NLL 2.729264271658528. No new dependency setup, server connection, clinical run,
+test-set access, commit or push occurred.
+
+This establishes only that the proposed joint features can recover the deliberately
+generated pairing information. It does not establish useful signal in real histories.
+With equal occurrence/availability clocks, joint terms become extra single-clock decay
+scales; any real successor needs a corresponding basis control and server-local evidence
+of reviewed, nondegenerate time pairs. A new clinical diagnostic/experiment remains
+unimplemented and unscheduled. E003 stays closed at its failed gate, and the clinical
+test partition stays sealed.
+
+## 2026-10-19 — S002 stress controls and A001 private clock audit implemented
+
+The user requested autonomous local work until a genuine need for UCSF data access.
+Continued on base `52c49bbc37867624498ff7c0daffad9543c9df59`; the implementation and
+documentation remain uncommitted. No server connection, clinical run, commit or push
+occurred. E003 remains a gated negative experiment; its configuration, decision rule
+and sealed test partition were not changed.
+
+Implemented `make pairing-stress` as a separate generated-only diagnostic. It adds an
+availability-basis control with the same sixteen feature dimensions: the shared
+two-clock marginals plus within-availability products. When the clocks coincide,
+these products exactly match the paired encoder's extra decay scales. Four scenarios
+(signal, null, scrambled pairing and equal clocks) use all three existing seeds.
+Each model is fitted once, then evaluated at availability delays of 0, 1, 4 and 8 hours,
+without refitting or history refill. Reports include each model's deterioration from
+its own unshifted loss, not only comparisons between models at the same delay.
+
+Run `artifacts/synthetic/20261019T175100Z-pairing-7d17e45e` completed all twelve cases;
+its artifact checksums were verified. Original unshifted S001 comparisons reproduced.
+The following results are **synthetic-only**, descriptive means across three seeds:
+
+| Scenario | Paired minus availability-basis NLL, unshifted | Paired NLL increase, 1h delay | 4h delay | 8h delay |
+| --- | ---: | ---: | ---: | ---: |
+| Pairing signal | -0.264834 | +0.411565 | +1.260665 | +1.260665 |
+| Null | +0.000747 | +0.043001 | +0.277758 | +0.277758 |
+| Scrambled pairing | +0.002890 | +0.027329 | +0.160410 | +0.160410 |
+| Equal clocks | 0.000000 | +1.267607 | +83.151471 | +1276.416180 |
+
+These are adverse robustness findings. Equal-clock paired/basis features and fitted
+predictions coincide exactly before perturbation. Shifts move the fixed models outside
+the narrow generated training support and can produce severe deterioration. The toy
+pairing gain does not establish robustness, clinical utility or a reason to reopen E003.
+No seeds, scales, parameters or thresholds were tuned after seeing these results.
+
+Implemented A001, `ies clock-audit run`, with a clean-commit Slurm entry point and
+`scripts/server.py plan/submit clock-audit`. This descriptive prerequisite reuses
+existing private cohort/history artifacts. It verifies manifest/QC bindings, completed
+history coverage, unchanged artifact digests, patient isolation, identities and time
+consistency. Cohort projection reads only patient/order identity and split metadata;
+only training histories are selected for aggregation. No outcomes are projected,
+models fitted, validation/test features evaluated, raw sources scanned or rows saved.
+Whole-file hashing and shared Parquet pages may touch nontraining bytes; this is not
+a claim of physical byte isolation between partitions.
+
+Private counts describe coincident versus delayed clocks, retained history coverage,
+the sequence cap, and same-kind pairs permitting a valid marginal-preserving swap.
+They are not a model gate, power calculation or population claim. Missing swaps exclude
+only this retained-history contrast; positive counts do not establish useful signal or
+replace reviewed timing semantics. All counts and reports stay on UCSF. The tool emits
+only operational status, suppresses private exception payloads, and never exports data.
+
+Fixed bounds are 2 CPU, 4,096 MiB and a 300-second worker, with a 5-minute-30-second
+Slurm allocation; at most 20,000 cohort and 500,000 history rows, 256 MiB per Parquet
+and 512 MiB declared uncompressed row-group bytes per file. Automatic artifact discovery
+examines at most 1,000 direct job entries and 16 MiB of fixed-location manifests. It
+requires exactly one digest-bound compatible pair and refuses to guess among candidates.
+Submission persists a private receipt before monitoring the exact scheduler job ID.
+Monitoring verifies successful artifacts, never retries or cancels a job, and leaves
+an interrupted or timed-out job unchanged. Docs/16 contains commands using a separate
+clean job checkout and the existing Python environment; no server coding agent is needed.
+
+Validation: 52 focused tests passed. Final `make check` passed Ruff lint, formatting
+(119 files), 307 tests and the repository file-boundary check; two Linux resource tests
+were skipped on macOS. Generated tests cover clock/identity failures, train-only
+projection, patient separation, input mutation, resource failures, artifact discovery,
+sanitized output and mocked submission/monitoring. `make demo` passed with unchanged
+synthetic NLL 2.729264271658528 in `artifacts/synthetic/20261019T175428Z-df2f4fdd`.
+The full `make pairing-stress` run passed execution checks; its negative scientific
+findings above remain unchanged. Slurm shell syntax and `git diff --check` passed.
+
+A001 has not run on UCSF. The next research-dependent step needs real retained training
+histories to determine whether reviewed time pairs provide the variation being studied.
+That evidence cannot be inferred from synthetic fixtures. A successor clinical design
+remains unimplemented and unscheduled. Publishing this verified work requires the user's
+explicit commit/push instruction under AGENTS.md; a formal job requires that clean commit.
+
+## 2026-10-19 — User authorized publication for operator-run UCSF audit
+
+The user explicitly requested commit/push, followed by running the prepared commands
+on UCSF and returning approved feedback for Mac-side fixes. Fetched `origin/main`;
+it remained at `52c49bbc37867624498ff7c0daffad9543c9df59` with no divergent commits.
+The reviewed publication set contains source, generated tests, fixed synthetic config
+and documentation only. Existing private inputs and clinical results are not included.
+The operator instructions reuse the installed environment with `uv --no-sync` and a
+separate clean job checkout. Publication uses the repository's checked, ordinary-push
+workflow and generates a handoff pinned to the resulting commit. A001's real UCSF run
+remains pending; publication is not evidence that the audit ran or passed.

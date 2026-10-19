@@ -101,6 +101,24 @@ def test_clinical_baseline_rejects_zero_duration_and_changed_manifest(tmp_path, 
         clinical_baseline._verify_cohort(cohort, hashlib.sha256(b"changed").hexdigest())
 
 
+def test_artifact_boundary_rejects_outside_relative_and_symlink_paths(tmp_path, monkeypatch):
+    authorized = tmp_path / "authorized"
+    authorized.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = authorized / "linked"
+    link.symlink_to(outside, target_is_directory=True)
+    monkeypatch.setattr(clinical_baseline, "AUTHORIZED_ROOT", authorized)
+    verify = clinical_baseline._verify_artifact_directory
+    assert verify(authorized, "invalid_artifact") == authorized.resolve()
+    for path in (outside, link, Path("relative-artifact")):
+        with pytest.raises(ClinicalBaselineError, match="^invalid_artifact$"):
+            verify(path, "invalid_artifact")
+    monkeypatch.setattr(clinical_baseline, "AUTHORIZED_ROOT", ROOT.parent)
+    with pytest.raises(ClinicalBaselineError, match="^invalid_artifact$"):
+        verify(ROOT, "invalid_artifact")
+
+
 def test_server_submission_is_digest_bound_and_cpu_only(tmp_path):
     cohort, cohort_digest = _cohort(tmp_path)
     server = load_script("server")

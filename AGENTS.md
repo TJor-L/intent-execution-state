@@ -10,18 +10,31 @@ roles or physiology claims. Keep test evaluation sealed until the dual-clock des
 validation decision rule are frozen; start with CPU and use at most one GPU only after
 the history artifact and CPU controls pass.
 
+E003 completed as a gated negative validation experiment at entry commit `52c49bb`:
+minimum unshifted gain and paired uncertainty did not pass. Test remains sealed and
+neural/GPU work is not scheduled. Local synthetic diagnostics do not overturn that
+decision or authorize post-validation tuning of E003.
+
+The synthetic clock-pairing diagnostic is runnable locally via `make pairing-demo`.
+Its joint-time features and controls are experimental and generated-only; they are not
+connected to the clinical model runner and do not authorize a new UCSF comparison.
+
+On 2026-10-19 the user requested autonomous local completion up to a genuine server-data
+dependency. Continue independent implementation and verification without interim handoffs.
+`make pairing-stress` is a separate generated stress check. The `clock-audit` Slurm job
+is a bounded, label-free descriptive audit of existing retained training histories;
+it is implemented and generated-test verified, but has not run on UCSF. It does not fit
+models, open clinical test evaluation, rescan raw sources or authorize a new comparison.
+
 ## Workflow
 
-UCSF is now the primary development and testing environment, as requested by the user.
-The server agent owns the implementation -> synthetic tests -> bounded real validation
--> diagnosis -> fix loop. It may edit reusable code, add generated tests, commit and
-publish verified milestones without handing every implementation decision back to the
-Mac. Earlier review-only/return-to-Mac handoff restrictions are superseded.
-
-The Mac agent handles research discussion, code review and synthetic reproduction.
+As requested on 2026-10-16, the Mac is again the primary implementation environment.
+The Mac agent owns code changes, generated tests, research review and synthetic
+reproduction. UCSF remains the only environment for restricted data and real validation;
+the user can run prepared Slurm commands there without a server coding agent.
 Git carries code and approved operational summaries at milestones or genuine blockers,
-not after every check. Keep one active writer per branch; while the server is developing,
-the Mac should review rather than independently push competing implementation changes.
+not after every check. Keep one active writer per branch, currently the Mac. Coordinate
+a transfer before resuming independent server implementation on the same branch.
 Do not connect to UCSF from the Mac agent, modify sibling projects or pull clinical
 artifacts back through Git or other channels.
 
@@ -80,8 +93,9 @@ The first real bounded runs were limited and independent prefixes had no linked 
 do not interpret that as absent linkage. Use docs/25_coherent_access_design.md as the
 starting specification. The server should check available access capabilities and
 continue directly into implementation/testing when evidence supports a backend. The
-coherent/indexed executor is currently unimplemented; update its status only after it
-is runnable and tested. Do not repeat unchanged prefix runs expecting coherent coverage.
+coherent-manifest executor is implemented and has completed a bounded real validation;
+an independent exact-key indexed backend remains unimplemented. Do not repeat unchanged
+prefix runs expecting coherent coverage.
 Persistent index/extract creation, full-source scans and resource expansion beyond the
 established scope remain separate operations: make their scope/cost concrete if needed.
 Do not disguise them as bounded probing. Missing access, essential semantics or physical

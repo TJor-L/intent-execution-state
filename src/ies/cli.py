@@ -39,6 +39,10 @@ def parser() -> argparse.ArgumentParser:
             command.add_argument("--events", type=Path, required=True)
         if name == "train":
             command.add_argument("--cohort", type=Path, required=True)
+    command = commands.add_parser("pairing-diagnostic")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_pairing.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command.add_argument("--stress", action="store_true")
     command = commands.add_parser("validate")
     command.add_argument("--events", type=Path, required=True)
     command = commands.add_parser("evaluate")
@@ -103,10 +107,26 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--history-dir", type=Path, required=True)
     command.add_argument("--model-config", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("clock-audit")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--history-dir", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "clock-audit":
+        from ies.clock_audit_runner import run_clock_audit
+
+        return run_clock_audit(args.cohort_dir, args.history_dir, args.output_dir)
+    if args.command == "pairing-diagnostic":
+        from ies.pairing_diagnostic import run_pairing_diagnostic
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-pairing-") + uuid4().hex[:8]
+        )
+        return run_pairing_diagnostic(args.config, run_dir, stress=args.stress)
     if args.command == "clinical-history-models":
         from ies.clinical_history_models_runner import run_history_models
 
@@ -239,6 +259,7 @@ def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
     if args.command in (
+        "clock-audit",
         "feasibility",
         "cohort-vocabulary",
         "cohort-eligibility",
@@ -253,6 +274,7 @@ def main(argv=None) -> int:
             result = dispatch(args)
         except Exception:
             messages = {
+                "clock-audit": "Clock audit failed; inspect the private UCSF run directory.\n",
                 "feasibility": (
                     "Feasibility command failed; verify the server-local mapping and context.\n"
                 ),

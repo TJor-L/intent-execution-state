@@ -1,7 +1,10 @@
 # Provisional eight-week plan
 
-Status: **multimodal plan stopped; scoped workflow plan active**. Cancelled physiology
-work remains cancelled. CPU history controls precede any one-GPU sequence experiment.
+Status: **historical schedule; E003 stopped at its CPU advancement gate**. Cancelled
+physiology work remains cancelled. Weeks 4–8 below are not an active execution plan:
+no sequence model, test evaluation or GPU job is scheduled. Current work is Mac-led
+implementation review and generated tests. Any successor design must be distinguished
+from E003, with validation reuse addressed before a new clinical comparison.
 
 | Week | Deliverable | Exit criterion |
 | --- | --- | --- |

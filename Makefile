@@ -1,6 +1,6 @@
 UV := $(shell command -v uv 2>/dev/null || echo .tools/bin/uv)
 
-.PHONY: setup check test lint format demo handoff publish
+.PHONY: setup check test lint format demo pairing-demo pairing-stress handoff publish
 setup:
 	$(UV) sync --locked
 lint:
@@ -15,6 +15,10 @@ format:
 	$(UV) run --locked ruff format .
 demo:
 	$(UV) run --locked ies run --config configs/synthetic.yaml
+pairing-demo:
+	$(UV) run --locked ies pairing-diagnostic --config configs/synthetic_pairing.yaml
+pairing-stress:
+	$(UV) run --locked ies pairing-diagnostic --config configs/synthetic_pairing.yaml --stress
 handoff:
 	$(UV) run --locked python scripts/handoff.py
 publish:

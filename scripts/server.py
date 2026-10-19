@@ -14,6 +14,8 @@ import yaml
 
 from ies.clinical_baseline import load_baseline_config
 from ies.clinical_history_models import load_history_model_config
+from ies.clock_audit import plan_clock_audit
+from ies.clock_audit_ops import ClockAuditOpsError, discover_clock_artifacts, wait_for_clock_audit
 from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
@@ -379,6 +381,39 @@ def sbatch_command(
                 str(run_dir / "dual-clock-history"),
             ]
         )
+    elif job == "clock-audit":
+        if cohort_dir is None or history_dir is None:
+            raise ValueError("Clock audit requires existing cohort and history")
+        if any(
+            value is not None
+            for value in (mapping_path, access_manifest, protocol_path, feature_dir)
+        ):
+            raise ValueError("Clock audit does not accept source mappings or other features")
+        cohort, history = cohort_dir.resolve(), history_dir.resolve()
+        output_root = Path(config["output_root"]).resolve()
+        if not cohort.is_relative_to(output_root) or not history.is_relative_to(output_root):
+            raise ValueError("Clock audit inputs must be in configured private output storage")
+        digests = []
+        for directory in (cohort, history):
+            path = directory / "manifest.json"
+            if path.is_symlink() or path.stat().st_size > 1024**2:
+                raise ValueError("Invalid clock audit manifest")
+            digests.append(hashlib.sha256(path.read_bytes()).hexdigest())
+        command[command.index("--export=ALL,IES_EXECUTION_CONTEXT=ucsf")] += (
+            f",IES_COHORT_MANIFEST_SHA256={digests[0]},IES_HISTORY_MANIFEST_SHA256={digests[1]}"
+        )
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:05:30"
+        command.extend(
+            [
+                str(ROOT / "slurm/clock_audit.sbatch"),
+                python,
+                str(cohort),
+                str(history),
+                str(run_dir / "clock-audit"),
+            ]
+        )
     elif job == "clinical-history-models":
         if cohort_dir is None or history_dir is None or history_model_config is None:
             raise ValueError("Clinical history models require cohort, history and config")
@@ -436,6 +471,7 @@ def main() -> int:
             "clinical-age-baseline",
             "dual-clock-history",
             "clinical-history-models",
+            "clock-audit",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -449,6 +485,16 @@ def main() -> int:
     )
     parser.add_argument("--history-dir", type=Path)
     parser.add_argument(
+        "--auto-artifacts",
+        action="store_true",
+        help="Clock audit only: discover a unique bound artifact pair from existing job manifests",
+    )
+    parser.add_argument(
+        "--wait",
+        action="store_true",
+        help="Clock audit only: monitor the submitted job for up to one hour; never resubmit",
+    )
+    parser.add_argument(
         "--history-model-config",
         type=Path,
         default=ROOT / "configs/clinical_history_models.yaml",
@@ -458,7 +504,17 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if (args.auto_artifacts or args.wait) and args.job != "clock-audit":
+            raise ValueError("Clock audit options require clock-audit")
+        if args.wait and args.action != "submit":
+            raise ValueError("Wait applies only to submission")
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
+        if args.auto_artifacts:
+            if args.cohort_dir is not None or args.history_dir is not None:
+                raise ValueError("Use either explicit artifacts or automatic discovery")
+            args.cohort_dir, args.history_dir = discover_clock_artifacts(
+                Path(config["output_root"])
+            )
         if args.action == "preflight":
             result = subprocess.run(
                 [
@@ -496,7 +552,9 @@ def main() -> int:
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "feasibility":
+            if args.job == "clock-audit":
+                print(json.dumps(plan_clock_audit()))
+            elif args.job == "feasibility":
                 print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
             elif args.job == "cohort-vocabulary":
                 print(json.dumps(plan_vocabulary_audit(args.mapping)))
@@ -609,6 +667,7 @@ def main() -> int:
         job_id = result.stdout.strip().split(";")[0]
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
         if args.job not in (
+            "clock-audit",
             "feasibility",
             "coherent-prepare",
             "cohort-vocabulary",
@@ -625,9 +684,17 @@ def main() -> int:
             run_dir / "submission.json",
             submission,
         )
-        print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}))
+        print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}), flush=True)
+        if args.wait:
+            print(json.dumps(wait_for_clock_audit(job_id, run_dir, revision)))
         return 0
-    except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError):
+    except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as error:
+        if isinstance(error, ClockAuditOpsError):
+            parser.exit(
+                2,
+                f"Clock audit action stopped: {error}. "
+                "Inspect locally; do not automatically retry.\n",
+            )
         parser.exit(
             2, "Server action failed. Verify the local config and authorized server context.\n"
         )

@@ -7,9 +7,12 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from ies.clinical_baseline import ClinicalBaselineError, _verify_cohort
+from ies.clinical_baseline import (
+    ClinicalBaselineError,
+    _verify_artifact_directory,
+    _verify_cohort,
+)
 from ies.clinical_features import FEATURE_SCHEMA
-from ies.feasibility.contract import ROOT
 from ies.io import sha256, write_json
 from ies.models.age_stratified import evaluate_age_stratified, fit_age_stratified
 
@@ -27,9 +30,7 @@ def run_clinical_age_baseline(
     if not re.fullmatch(r"[0-9a-f]{40}", source_commit) or any(output_dir.iterdir()):
         raise ClinicalBaselineError("invalid_age_baseline_output")
     cohort, _ = _verify_cohort(cohort_dir, cohort_manifest_sha256)
-    feature_dir = feature_dir.resolve()
-    if not feature_dir.is_relative_to(Path("/scratch/tliu7")) or feature_dir.is_relative_to(ROOT):
-        raise ClinicalBaselineError("invalid_age_features")
+    feature_dir = _verify_artifact_directory(feature_dir, "invalid_age_features")
     manifest_path = feature_dir / "manifest.json"
     if sha256(manifest_path) != feature_manifest_sha256:
         raise ClinicalBaselineError("age_features_changed")

@@ -11,9 +11,12 @@ import numpy as np
 import pyarrow.parquet as pq
 import yaml
 
-from ies.clinical_baseline import ClinicalBaselineError, _verify_cohort
+from ies.clinical_baseline import (
+    ClinicalBaselineError,
+    _verify_artifact_directory,
+    _verify_cohort,
+)
 from ies.dual_clock_history import HISTORY_SCHEMA
-from ies.feasibility.contract import ROOT
 from ies.io import sha256, write_json
 from ies.models.history_piecewise import (
     encode_history,
@@ -64,7 +67,10 @@ def load_history_model_config(path: Path) -> tuple[dict, str]:
             if (
                 not isinstance(values, list)
                 or len(values) != length
-                or any(type(item) not in (int, float) or item <= 0 for item in values)
+                or any(
+                    type(item) not in (int, float) or not math.isfinite(item) or item <= 0
+                    for item in values
+                )
             ):
                 raise ClinicalBaselineError("invalid_history_model_config")
         shifts = value["delay_shifts_hours"]
@@ -72,7 +78,10 @@ def load_history_model_config(path: Path) -> tuple[dict, str]:
             not isinstance(shifts, list)
             or len(shifts) < 2
             or shifts[0] != 0
-            or any(type(item) not in (int, float) or item < 0 for item in shifts)
+            or any(
+                type(item) not in (int, float) or not math.isfinite(item) or item < 0
+                for item in shifts
+            )
             or any(left >= right for left, right in zip(shifts, shifts[1:], strict=False))
         ):
             raise ClinicalBaselineError("invalid_history_model_config")
@@ -133,6 +142,27 @@ def _history_features(grouped, cohort, config, mode, shift=0.0):
     }
 
 
+def _validation_decision(metrics: dict, config: dict) -> dict:
+    """Apply the frozen E003 gate; shift tolerance is a between-model contrast."""
+    base = metrics["shifts"]["0.0"]["dual_minus_availability"]
+    shift_deltas = [
+        metrics["shifts"][str(float(shift))]["dual_minus_availability"]["nll_per_order"]
+        for shift in config["delay_shifts_hours"][1:]
+    ]
+    return {
+        "rule_frozen_before_test": True,
+        "minimum_nll_improvement": config["minimum_nll_improvement"],
+        "max_shift_nll_degradation": config["max_shift_nll_degradation"],
+        "requires_paired_interval_below_zero": True,
+        "advance_dual_clock": (
+            base["nll_per_order"] <= -config["minimum_nll_improvement"]
+            and base["nll_patient_bootstrap_95ci"][1] < 0
+            and all(value <= config["max_shift_nll_degradation"] for value in shift_deltas)
+        ),
+        "test_split_evaluated": False,
+    }
+
+
 def run_clinical_history_models(
     cohort_dir: Path,
     history_dir: Path,
@@ -146,9 +176,7 @@ def run_clinical_history_models(
     if not re.fullmatch(r"[0-9a-f]{40}", source_commit) or any(output_dir.iterdir()):
         raise ClinicalBaselineError("invalid_history_model_output")
     cohort, _ = _verify_cohort(cohort_dir, cohort_manifest_sha256)
-    history_dir = history_dir.resolve()
-    if not history_dir.is_relative_to(Path("/scratch/tliu7")) or history_dir.is_relative_to(ROOT):
-        raise ClinicalBaselineError("invalid_history_artifact")
+    history_dir = _verify_artifact_directory(history_dir, "invalid_history_artifact")
     manifest_path = history_dir / "manifest.json"
     if sha256(manifest_path) != history_manifest_sha256:
         raise ClinicalBaselineError("history_artifact_changed")
@@ -232,23 +260,7 @@ def run_clinical_history_models(
             "nll_per_order": float(losses[f"delta:{shift_key}"].mean()),
             "nll_patient_bootstrap_95ci": intervals[f"delta:{shift_key}"],
         }
-    base = metrics["shifts"]["0.0"]["dual_minus_availability"]
-    shift_deltas = [
-        metrics["shifts"][str(float(shift))]["dual_minus_availability"]["nll_per_order"]
-        for shift in config["delay_shifts_hours"][1:]
-    ]
-    decision = {
-        "rule_frozen_before_test": True,
-        "minimum_nll_improvement": config["minimum_nll_improvement"],
-        "max_shift_nll_degradation": config["max_shift_nll_degradation"],
-        "requires_paired_interval_below_zero": True,
-        "advance_dual_clock": (
-            base["nll_per_order"] <= -config["minimum_nll_improvement"]
-            and base["nll_patient_bootstrap_95ci"][1] < 0
-            and all(value <= config["max_shift_nll_degradation"] for value in shift_deltas)
-        ),
-        "test_split_evaluated": False,
-    }
+    decision = _validation_decision(metrics, config)
     predictions = [
         {
             "patient_id": row["patient_id"],

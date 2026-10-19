@@ -26,6 +26,7 @@ CONFIGS = {
     "configs/clinical_baseline.yaml",
     "configs/dual_clock_history.yaml",
     "configs/clinical_history_models.yaml",
+    "configs/synthetic_pairing.yaml",
 }
 
 
