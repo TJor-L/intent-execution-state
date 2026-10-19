@@ -75,9 +75,12 @@ E003 的既有负结果保留。不能调整其门槛追求通过，也不能把
 里程碑摘要应包含基准 SHA／是否有未提交改动、实际检查、真实任务状态、覆盖限制
 和下一步。检查通过不自动触发提交、发布、临床重跑或数据传输。
 
-## 下一次真正需要 UCSF 数据的步骤
+## A001 已完成：保留的运行流程与后续边界
 
-2026-10-19：`clock-audit` 已通过生成数据及模拟调度器测试，尚未在 UCSF 运行。
+2026-10-19：用户回传提交 `14b8d69` 上的 UCSF job `39325` 已完成，监控器返回
+`status: complete`、`private_review_required: true`，已通过产物校验。随后用户反馈的
+定性结论不支持现有保留训练历史上的配对对照；当前不安排继任模型，也不重复审计。
+报告、具体计数和映射证据不入库。下面保留首次运行步骤供参考，不是新的运行指令。
 它复用既有 cohort/history，检查训练历史是否支持时间配对问题，不拟合模型。
 仅投影 cohort 的患者／医嘱身份及 split 元数据以核验患者隔离；历史时间只聚合训练
 订单。不投影 duration/cause/outcome，不评估验证集或测试集，不保存任何行。
@@ -101,6 +104,7 @@ QC/manifest，不扫描原始数据根、不创建索引／提取，不自动扩
 ```bash
 (
 set -euo pipefail
+cd "$(git rev-parse --git-common-dir)/.."
 IES_REMOTE_CONFIG="$PWD/configs/remote.local.yaml"
 IES_UV="$(command -v uv || printf '%s' "$PWD/.tools/bin/uv")"
 IES_JOB_PYTHON="$("$IES_UV" run --locked --no-sync python -c 'import sys; print(sys.executable)')"
@@ -133,4 +137,59 @@ PYTHONPATH="$PWD/src" "$IES_JOB_PYTHON" scripts/server.py submit clock-audit \
 
 零交换计数只针对保留历史中的这个对照；正计数不说明样本充分、模型有益或时间语义
 获得新验证。相同时钟需要额外单时钟尺度对照。此审计不恢复 E003，不开启测试集，
-不触发新模型训练。下一项研究设计须结合这些真实事实再确定。
+不触发新模型训练。现有结果已排除在这份保留历史上直接推进当前配对对照；下一项
+独立问题及已有验证集的使用方式须先定义，不能靠调整映射或保留上限绕过这一结论。
+
+## 当前任务 W001：固定数据的单时钟工作流开发实验
+
+用户已授权换方向，且明确无法增加／修改数据或获得进一步解释。W001 完全复用已有
+cohort/history 的审核语义与覆盖，不更改来源、映射、窗口、保留上限或原始患者划分。
+首次执行、其他终止原因与右删失沿用原标签。历史数量、合并类型的时间分布、区分类型
+的时间分布与无特征模型逐层比较，不能把历史数量差称为待执行医嘱数量。
+
+本轮只使用原训练患者做五折 CV；原验证／测试结局和历史特征不参与分析。它是数据
+反馈后的探索性开发实验，不是新的独立确认。固定设计和发展支持规则见 docs/11。
+不要求人工补充字段解释，不自动打开测试集或触发 GPU，也不因为负结果改阈值。
+
+范围：最多 20,000 cohort 行、500,000 history 行；每份 Parquet 最多 256 MiB、声明
+的未压缩 row-group 字节最多 512 MiB。发现已有输入沿用 A001 的目录／manifest 限额。
+模型资源沿用既有临床 CPU 模型预算：2 CPU、4,096 MiB，worker wall/CPU 各 1,200 秒，
+Slurm 20 分 30 秒。新任务最多拟合四模型乘五折，不进行超参数搜索或自动扩大资源。
+所有权重和聚合指标留在 UCSF；不保存逐订单预测文件，不向终端输出真实统计量。
+
+代码发布后，在仓库任一 checkout 内运行以下命令；它先定位原项目目录，再创建新的
+独立 job checkout。将 `IES_JOB_COMMIT` 替换为本次交付的完整 SHA。
+
+```bash
+(
+set -euo pipefail
+cd "$(git rev-parse --git-common-dir)/.."
+IES_REMOTE_CONFIG="$PWD/configs/remote.local.yaml"
+IES_UV="$(command -v uv || printf '%s' "$PWD/.tools/bin/uv")"
+IES_JOB_PYTHON="$("$IES_UV" run --locked --no-sync python -c 'import sys; print(sys.executable)')"
+IES_JOB_COMMIT="REPLACE_WITH_DELIVERED_COMMIT"
+git fetch origin main
+IES_JOB_CHECKOUT="$PWD/handoff/workflow-cv-${IES_JOB_COMMIT:0:7}"
+git worktree add --detach "$IES_JOB_CHECKOUT" "$IES_JOB_COMMIT"
+cd "$IES_JOB_CHECKOUT"
+export IES_EXECUTION_CONTEXT=ucsf
+export PYTHONPATH="$PWD/src"
+
+"$IES_JOB_PYTHON" scripts/server.py preflight --config "$IES_REMOTE_CONFIG"
+"$IES_JOB_PYTHON" scripts/server.py plan workflow-cv \
+  --config "$IES_REMOTE_CONFIG" --auto-artifacts
+"$IES_JOB_PYTHON" scripts/server.py submit workflow-cv \
+  --config "$IES_REMOTE_CONFIG" --auto-artifacts --wait
+)
+```
+
+发现不唯一时，仅在 UCSF 显式指定既有 `--cohort-dir` 和 `--history-dir`，不要猜测
+最新目录。已经输出 job ID 时按该 ID 查作业；监控中断或超时不重提、不自动取消。
+监控成功需检查 clean commit、manifest、报告、模型及配置摘要，不能只看进程退出。
+
+本次私有产物是作业目录下 `workflow-cv/workflow_report.json`、`models.json`、
+`config.json` 和 `manifest.json`。反馈先提供 job ID、运行状态与固定错误类别。研究
+反馈仅限当地允许共享的定性结论，特别是固定的 `typed_timing_development_support`
+是否满足；原始损失值、区间、计数、权重、路径、报告和日志均留在 UCSF。
+支持标志仅决定是否值得设计下一轮验证，不代表已证明临床价值或论文贡献。失败或
+未获支持均保留，由 Mac 做生成复现和代码诊断，不依赖服务器编码 agent。

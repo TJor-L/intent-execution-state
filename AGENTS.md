@@ -23,8 +23,29 @@ On 2026-10-19 the user requested autonomous local completion up to a genuine ser
 dependency. Continue independent implementation and verification without interim handoffs.
 `make pairing-stress` is a separate generated stress check. The `clock-audit` Slurm job
 is a bounded, label-free descriptive audit of existing retained training histories;
-it is implemented and generated-test verified, but has not run on UCSF. It does not fit
-models, open clinical test evaluation, rescan raw sources or authorize a new comparison.
+it is implemented and generated-test verified. The user reported UCSF job 39325 complete
+at commit `14b8d69`, including the monitor's artifact verification. Subsequent user
+feedback does not support the proposed clock-pairing contrast in the retained training
+histories: both event types have coincident clocks at the audit resolution, without
+distinct valid pair swaps. This is a scoped artifact finding, not proof that clinical
+documentation has no delays or that all single-clock workflow prediction is futile.
+Do not schedule the pairing successor on these unchanged artifacts, alter reviewed
+time semantics, enlarge history caps or synthesize clinical delays to obtain a contrast.
+Actual mapping-policy evidence remains server-local; no restricted counts are tracked.
+It does not fit models, open clinical test evaluation, rescan raw sources or authorize
+a new comparison. Do not repeat this completed audit on unchanged inputs.
+
+The user then explicitly authorized a change of research direction with the existing
+data fixed: no additional/modified source data and no dependency on someone providing
+new semantic explanations. W001 is the scoped successor: single-clock retained-history
+counts, pooled timing and type-specific timing for the existing first-execution task.
+Use only the already reviewed cohort/history artifacts and original training patients;
+patient-grouped development CV leaves original validation/test untouched. The design
+and fixed development screen are in docs/11 and configs/workflow_cv.yaml. This is an
+exploratory information-value study, not a claimed novel architecture or an E003 rerun.
+Do not claim independent confirmation after this data-informed pivot. Existing source
+roles, semantic exclusions, windows, cap and cohort splits remain unchanged. No further
+semantic-review request is a prerequisite for this bounded existing-artifact experiment.
 
 ## Workflow
 

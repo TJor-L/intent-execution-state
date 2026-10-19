@@ -1,7 +1,8 @@
 # Experiment design
 
-Current status (2026-10-16): E003 is complete with its advancement gate held; test remains
-sealed. The earlier E001 steps below record the progression, not work to repeat. The
+Current status (2026-10-19): E003 is complete with its advancement gate held; A001 does
+not support the proposed pairing contrast on the retained training artifact. Test
+remains sealed. The earlier E001 steps below record the progression, not work to repeat. The
 Mac implementation review is documented in docs/08 and does not change the clinical
 decision, frozen model scales, thresholds or dataset splits.
 
@@ -177,8 +178,10 @@ into extra recency scales; that requires a corresponding single-clock basis cont
 Coverage, cap selection and any perturbation/refill definition must be explicit. Existing
 E003 validation is already observed, so new use would be exploratory unless an independent
 evaluation design is established. The separate label-free `clock-audit` prerequisite
-is now implemented and tested with generated fixtures; it has not run on UCSF. It does
-not schedule a model comparison, and the clinical test set remains sealed.
+is now implemented and tested with generated fixtures. The user reported UCSF job 39325
+complete at `14b8d69`, including artifact verification. Subsequent qualitative feedback
+does not support this pairing contrast on the retained histories. It does not schedule
+a model comparison, and the clinical test set remains sealed.
 
 ## S002: harmonic-basis control and fixed-model delay stress
 
@@ -209,8 +212,12 @@ shift distribution. Results, including adverse findings, are retained in docs/20
 
 ## Prerequisite A001: private training-clock support audit
 
-Implemented and generated-test verified; real execution pending UCSF data access. It
-reads only already-created cohort/history artifacts, verifies their digest and QC
+Implemented and generated-test verified. The user returned a completed UCSF execution
+and successful monitor verification for job 39325 at `14b8d69`. Subsequent user feedback
+does not support the proposed pairing contrast on this retained training artifact.
+No report payload, private counts or source mapping is stored in the repository.
+The Mac did not independently access UCSF artifacts. The audit reads only already-created cohort/history
+artifacts, verifies their digest and QC
 bindings, projects patient/order identities and split metadata across the cohort, and
 materializes timestamp features only for training orders. Outcome columns are never
 projected; file hashing and shared Parquet pages can touch bytes from other splits,
@@ -228,7 +235,119 @@ The reviewed retrospective-exclusion/equality semantics still require local inte
 The cohort remains bounded, and the retained-event cap limits what these diagnostics
 can say about the full history. Do not recreate extracts, expand budgets or inspect
 validation/test labels to resolve an unfavorable audit. Operational commands and resource
-bounds are in docs/16. The next substantive decision depends on these private facts.
+bounds are in docs/16.
+
+### A001 disposition and boundaries of subsequent work
+
+The current pairing successor is not scheduled: both event types' retained clocks
+coincide at the audit resolution and the proposed distinct-pair exchange has no
+observed support. History truncation and absent histories also constrain the artifact.
+These are qualitative operator-provided findings, not population estimates, a new
+clinical performance evaluation or a statement about uninspected validation/test data.
+
+Keep the E003 decision, audit implementation and recorded S001/S002 results unchanged.
+Do not add artificial delays to clinical histories, change mapped timing semantics,
+relax retrospective exclusions, enlarge caps, rerun the same audit or fit a paired
+clinical model in response to this finding. The equal-clock representation and ridge
+implications can be checked locally with generated inputs; see docs/08.
+
+Further clinical model work requires a distinct, falsifiable question. The subsequently
+authorized W001 single-clock design below supplies that separate development protocol;
+it is not an established methodological contribution. Its target, information set,
+controls and handling of already-inspected E003 validation are specified before real
+evaluation. Separately typed historical order/administration events must not be called
+pending-order states without reviewed order-to-execution linkage. Recovering a genuine
+dual-clock question instead requires independent reviewed availability evidence and
+an explicit account of how that evidence would support different retained inputs.
+Neither direction is automatically authorized to add source roles, scan more data,
+open the sealed test set or start GPU work.
+
+## W001: fixed-data single-clock workflow prediction (authorized 2026-10-19)
+
+The user explicitly authorized changing direction, with no additional or modified
+source data and no dependency on further semantic explanation. W001 uses only the
+already reviewed bounded cohort and retained order/administration histories. It does
+not restore dual clocks, physiology, medications-as-categories, inferred pending-order
+states or an order-to-administration history linkage that these artifacts do not carry.
+
+Question: at the existing order index, does the timing of retained prior events, and
+then its association with event type, improve prediction of first execution in the
+presence of the existing terminal competing events and right censoring? This is
+workflow prediction under the existing cohort contract, not treatment-effect estimation.
+No new time interpretations, full-source scans, extracts or changes to the history cap
+are needed. All original data artifacts and split assignments remain unchanged.
+
+The fixed design is `configs/workflow_cv.yaml`. Four CPU models use the same piecewise
+competing-risk head, bin edges, optimizer and ridge. Features use availability lags with
+the existing occurrence/availability eligibility constraints. Per retained event type:
+
+| Model | Features beyond the shared time-bin intercepts | Dimensions |
+| --- | --- | ---: |
+| intercept | None | 0 |
+| counts | Retained counts of orders and administrations | 2 |
+| pooled_timing | Both counts plus four decay sums pooled across event types | 6 |
+| typed_timing | Both counts plus four decay sums separately for each event type | 10 |
+
+The decay scales are 1, 4, 12 and 24 hours throughout. Counts describe the capped
+artifact, not total workload, unexecuted orders or the complete clinical history.
+The information sets are nested but nominal/effective capacities differ; this is an
+incremental predictive-value comparison, not a capacity-matched architectural experiment.
+Same nominal ridge does not guarantee invariant regularization under reparameterization.
+
+Evaluation is restricted to five deterministic patient folds **within the original
+training partition**. Each fold's normalization and fitted model use only other folds.
+All orders for one patient remain together. Original validation/test labels and histories
+are not projected for analysis, and no global calendar split is inferred. Identity/split
+metadata across the cohort verifies patient separation. File hashes/shared Parquet pages
+may touch other-partition bytes; this is not a claim of physical byte isolation.
+
+All four models and all folds are reported. No hyperparameter grid, fold selection or
+automatic retry is performed. Each training fold must contain execution events; absent
+other terminal causes are reported and retain the existing head's near-zero-hazard
+behavior rather than requiring new labels or rejecting a valid cohort. The primary
+contrast is typed_timing minus pooled_timing
+in observed-data NLL per order; negative is better. Secondary contrasts decompose counts
+versus intercept and pooled timing versus counts, plus typed versus intercept. Original
+clinical validation is already used by E003, and this pivot was informed by that work and
+the training audit. These results are explicitly exploratory development CV, not a fresh
+confirmatory experiment. A paired patient bootstrap retains all orders within a sampled
+patient and conditions on the fitted folds. Its intervals omit refitting, fold-training
+dependence and design-selection uncertainty; they are not definitive population CIs.
+The joint likelihood includes all existing causes; an improvement may arise from
+competing-event prediction and alone does not establish better execution-probability
+calibration. Cause-specific probability calibration is not implemented in this screen
+and is required before any future execution-risk or operational-use claim.
+
+Before any W001 clinical run, the fixed descriptive support rule requires the primary
+mean improvement to reach 0.005 NLL per order, its conditional interval upper bound below
+zero, improvement in at least four of five folds, and a lower mean NLL than the intercept
+control. This is an engineering development screen, not a clinically justified minimum
+benefit. Passing only permits consideration of a separately frozen validation design;
+it never opens test, starts GPU work or declares clinical advancement. Failure is retained
+without changing scales/thresholds to pass. Secondary results can reveal usefulness of
+simpler history summaries without supporting the event-type-specific timing hypothesis.
+
+The generated diagnostic `make workflow-demo` uses three prespecified seeds and four
+mechanisms: volume signal, pooled timing signal, type-specific timing signal and a null.
+All synthetic clocks coincide, and competing events/right censoring are generated. It
+checks learnability of the proposed information contrasts, not clinical performance.
+The immutable manifest records configuration, source hashes, dependencies and all cases.
+
+The private entry point is `workflow-cv`, using existing compatible cohort/history
+manifests, the same input bounds as A001, and the already established model-job budget
+of 2 CPU, 4,096 MiB and a 1,200-second worker (Slurm 20 minutes 30 seconds). It writes
+private fold models and aggregate metrics without prediction rows; no terminal metrics,
+counts or identifiers are exported. Real execution is pending; local verification and
+any actual results must be recorded separately in docs/20.
+
+Methodological context: [Cawley and Talbot, JMLR 2010](https://www.jmlr.org/papers/v11/cawley10a.html)
+show why repeated model selection can bias performance estimates; this motivates the
+fixed exploratory comparison and explicit validation-reuse limitation here.
+[Agniel et al., BMJ 2018](https://www.bmj.com/content/361/bmj.k1479) demonstrate that EHR
+healthcare-process variables can carry predictive information and introduce biases.
+That study does not establish a medication-execution effect, transportability or novelty
+for W001. The protocol above is our scoped design choice, not a claim that those papers
+validate this particular predictor or these cohort semantics.
 
 ## Archived broader proposal (inactive)
 

@@ -883,3 +883,147 @@ The operator instructions reuse the installed environment with `uv --no-sync` an
 separate clean job checkout. Publication uses the repository's checked, ordinary-push
 workflow and generates a handoff pinned to the resulting commit. A001's real UCSF run
 remains pending; publication is not evidence that the audit ran or passed.
+
+## 2026-10-19 — A001 operator-reported UCSF execution complete; private review pending
+
+Published implementation commit `14b8d6913d059774ca7fb6f97140eef4eec63416` after
+307 passing tests, two macOS-skipped Linux resource tests, repository checks and the
+unchanged synthetic demo. The user then confirmed a clean detached job checkout at
+that commit, successful server preflight and bounded automatic artifact discovery.
+The supplied operational return reports Slurm job `39325` submitted and the monitor
+returning `status: complete` with `private_review_required: true`. Under the published
+monitor contract, that return requires scheduler success and artifact mode, source
+commit and report-checksum verification.
+
+This is user-provided operational evidence; no Mac connection, restricted artifact
+download or independent inspection of clinical results occurred. It establishes that
+the audit executed and passed its operational checks, not the presence of nondegenerate
+clock pairs, adequate samples or predictive benefit. Private report review is the next
+step on UCSF. Do not resubmit this completed job, reopen E003, access test outcomes or
+start a successor model on the basis of execution success alone. Only locally approved
+operational/research conclusions may be returned; counts, records, evidence references
+and private reports remain on authorized server storage.
+
+## 2026-10-19 — A001 feedback does not support the retained-history pairing contrast
+
+Following job 39325 at `14b8d6913d059774ca7fb6f97140eef4eec63416`, user feedback indicates
+that both event types' retained training clocks coincide at the audit resolution and
+the proposed distinct valid pair-swap contrast has no support. Only this qualitative
+disposition is recorded; the restricted report payload, counts, private mapping and
+time-evidence references are not copied into repository files or generated fixtures.
+No UCSF connection, new extraction, model fit or additional clinical job occurred.
+
+This is a finding about the audited retained training histories, not a claim of exact
+timestamp identity in every source, absence of real-world documentation delay, complete
+population coverage or the behavior of uninspected validation/test histories. Missing
+histories and the retained cap bound interpretation. The audit alone cannot separate
+mapping-policy effects, reviewed exclusions, source behavior and history selection.
+Source review confirms that the administration extractor supports a reviewed equality
+policy, while order times are separately mapped logical concepts. No server mapping
+contents or active evidence classifications are inferred or changed.
+
+Disposition: do not advance the current pairing successor on unchanged artifacts.
+Retain E003's frozen negative decision and S001/S002's synthetic results. Do not seek
+a contrast by manufacturing clinical delays, changing semantics, relaxing retrospective
+exclusions, expanding history caps or rescanning data. No replacement clinical design
+or GPU work is scheduled. A separately defined single-clock workflow question remains
+only a possible direction; it would need controls, an explicit information set and an
+evaluation plan addressing already-inspected E003 validation. It is not evidence that
+the original intent/execution/state architecture is identifiable from current features.
+
+The Mac review also made an existing E003 limitation concrete: at exactly equal clocks,
+its per-type features duplicate the two configured decay bases, whereas the other
+model uses four different scales. A single total coefficient split across two identical
+standardized columns has half the effective ridge penalty of a unique column at the
+same nominal ridge. Added a wholly generated regression test of the implied fitted
+coefficient and hazard equivalence; it does not refit clinical data or alter production
+penalties, features or thresholds. The conditional algebra and interpretation are in
+docs/08; docs/11 records the research disposition. Current status and operator guidance
+now explicitly avoid repeating the completed audit.
+
+Checks: 48 focused model, pairing and audit tests passed. `make check` passed Ruff lint,
+formatting (119 files), 308 tests and the repository file-boundary check, with two Linux
+resource tests skipped on macOS. `git diff --check` passed. Production code and the
+pipeline are unchanged, so the previously verified demo and synthetic stress runs were
+not repeated. Changes are local on base `14b8d69`; no commit or push occurred in this step.
+
+## 2026-10-19 — W001 fixed-data workflow development experiment implemented
+
+The user explicitly authorized changing research direction because the existing source
+data cannot be added to or modified and further semantic explanations are unavailable.
+W001 therefore reuses the reviewed cohort, first-execution/competing-event/censoring
+labels and retained order/administration histories. It changes neither source semantics
+nor artifacts, windows, history caps or original splits. It does not schedule the failed
+pairing contrast, reopen E003 or require a server coding agent. The design is frozen in
+docs/11 and `configs/workflow_cv.yaml` before any W001 clinical execution.
+
+Implemented four fixed CPU models: time-bin intercepts alone, retained counts, counts
+plus pooled timing, and counts plus type-specific timing. Five deterministic patient
+folds use only original training patients; normalization and fitting exclude the held-out
+fold. Original validation/test outcomes and history features are not used for analysis.
+Identity metadata verifies split separation; file hashing and shared Parquet pages are
+not physical byte isolation. Outputs include every model/fold and paired patient-bootstrap
+contrasts conditional on the fitted folds. Those intervals omit model-fitting, shared-fold
+training and design-selection uncertainty. The data-informed pivot is exploratory, not
+independent confirmation. Feature capacities and effective ridge penalties differ.
+
+The fixed primary contrast is typed minus pooled timing. Its development support flag
+requires mean NLL improvement of at least 0.005, conditional interval upper bound below
+zero, improvement in at least four folds and better mean NLL than the intercept control.
+This is an engineering screen, not a clinical benefit threshold. Joint NLL includes all
+causes; improvement alone cannot establish execution-probability calibration. Missing
+nonexecution terminal causes are retained with the existing head's near-zero hazards;
+fold training still requires execution events. Cause-specific calibration and independent
+validation remain unimplemented. No support outcome automatically opens test or GPU work.
+
+Implemented bounded artifact loading, digest binding, private output, clean-commit Slurm
+submission, unique existing-artifact discovery and exact-job monitoring. Input bounds
+match A001; computation uses the existing model-job budget of two CPU, 4,096 MiB and
+1,200 worker seconds, with a 20-minute-30-second Slurm allocation. Aggregate metrics and
+fold weights stay on UCSF; no prediction rows, terminal clinical metrics or automatic
+downloads are produced. Workers suppress private exception payloads. Submission records
+a private receipt before monitoring; interruption never cancels or resubmits a job.
+
+Generated verification uses equal occurrence/availability clocks throughout, four
+mechanisms and seeds 20261019, 20261020 and 20261021. All 12 cases completed in
+`artifacts/synthetic/20261019T183526Z-workflow-60b3928c`; its manifest's artifact,
+configuration and source hashes were verified against the final implementation.
+Mean NLL contrasts across the three generated seeds (negative is better) were:
+
+| Generated mechanism | Counts minus intercept | Pooled minus counts | Typed minus pooled |
+| --- | ---: | ---: | ---: |
+| Volume signal | -0.185160 | +0.003303 | +0.000157 |
+| Pooled timing signal | 0.000000 | -0.172777 | +0.013210 |
+| Type-specific timing signal | 0.000000 | +0.006560 | -0.187197 |
+| Null | 0.000000 | +0.007009 | +0.000615 |
+
+These generated checks show recovery of the intended information contrasts. Extra timing
+or type-specific capacity also worsened mean performance when it carried no added signal;
+the negative controls are retained. They do not establish clinical usefulness, power,
+novelty, calibration or independence of all orders. A separate computational rehearsal
+used 20,000 generated orders and 480,000 generated history rows, completing in about
+3.28 seconds with about 320 MiB peak process RSS on the Mac. It duplicated generated
+patterns with distinct synthetic identifiers to exercise input size; it is a resource
+rehearsal, not performance evidence or verification of Linux address-space limits.
+
+Final review caught and corrected the new CLI's missing private-command dispatch guard:
+failed/limited worker results now yield exit code 2, and exceptions cannot take the
+synthetic command's payload-bearing error path. Generated regression cases cover success,
+both failure statuses and several exception types; no real data was involved.
+
+Checks: 45 focused workflow/clinical-boundary tests passed. Final `make check` passed
+Ruff lint, formatting (127 files), 353 tests and the repository file-boundary check;
+two Linux resource tests were skipped on macOS. Tests cover grouped fold separation,
+train-only normalization and label projection, poisoned unused held-out values,
+censoring/competing causes, temporal and identity failures, incomplete/mutated inputs,
+resource failures, private serialization, discovery, submission and result integrity.
+`make demo` passed with unchanged synthetic NLL 2.729264271658528 in
+`artifacts/synthetic/20261019T183526Z-2b94e758`. Slurm shell syntax and `git diff --check`
+passed. All runs used generated data on base `14b8d69` with the working tree marked dirty;
+there was no UCSF connection, new source scan, clinical W001 run or GPU use.
+
+The remaining research-dependent step is one bounded W001 run on existing UCSF artifacts.
+The user's earlier explicit publish/operator-run/feedback workflow supplies the handoff
+authorization; the release contains code, generated tests and documentation only. A
+clean release commit and pinned handoff identify the server entry version. Real W001
+performance remains unknown and must not be inferred from these local checks.

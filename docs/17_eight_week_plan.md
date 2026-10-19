@@ -5,6 +5,10 @@ physiology work remains cancelled. Weeks 4–8 below are not an active execution
 no sequence model, test evaluation or GPU job is scheduled. Current work is Mac-led
 implementation review and generated tests. Any successor design must be distinguished
 from E003, with validation reuse addressed before a new clinical comparison.
+The completed A001 audit also leaves the proposed clock-pairing successor without
+support in the retained training histories. The user subsequently authorized W001's
+fixed-data single-clock workflow pivot. Its CPU development design is in docs/11;
+the following weeks remain historical and must not be resumed as automatic tasks.
 
 | Week | Deliverable | Exit criterion |
 | --- | --- | --- |

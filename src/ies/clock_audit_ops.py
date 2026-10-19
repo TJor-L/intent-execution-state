@@ -77,6 +77,45 @@ def discover_clock_artifacts(
 def wait_for_clock_audit(
     job_id: str, run_dir: Path, commit: str, *, timeout_seconds=3600, poll_seconds=15
 ) -> dict:
+    return _wait_for_result(
+        job_id,
+        run_dir,
+        commit,
+        job="clock-audit",
+        mode=MODE,
+        data_class="restricted_aggregate",
+        artifacts={"clock_report.json": 1024**2},
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+
+
+def wait_for_workflow_cv(
+    job_id: str, run_dir: Path, commit: str, *, timeout_seconds=3600, poll_seconds=15
+) -> dict:
+    from ies.workflow_cv import MODE as WORKFLOW_MODE
+
+    return _wait_for_result(
+        job_id,
+        run_dir,
+        commit,
+        job="workflow-cv",
+        mode=WORKFLOW_MODE,
+        data_class="restricted_clinical",
+        artifacts={
+            "workflow_report.json": 1024**2,
+            "config.json": 1024**2,
+            "models.json": 64 * 1024**2,
+        },
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+
+
+def _wait_for_result(
+    job_id, run_dir, commit, *, job, mode, data_class, artifacts, timeout_seconds, poll_seconds
+):
+    prefix = job.replace("-", "_")
     if not re.fullmatch(r"\d+", job_id):
         raise ClockAuditOpsError("invalid_job_id")
     deadline = time.monotonic() + timeout_seconds
@@ -121,33 +160,41 @@ def wait_for_clock_audit(
             state = fields[1].split()[0].rstrip("+")
             if state == "COMPLETED":
                 if fields[2] != "0:0":
-                    raise ClockAuditOpsError("clock_audit_job_failed")
-                output = run_dir / "clock-audit"
+                    raise ClockAuditOpsError(f"{prefix}_job_failed")
+                output = run_dir / job
                 path = output / "manifest.json"
                 if path.is_symlink() or not path.is_file() or path.stat().st_size > 1024**2:
-                    raise ClockAuditOpsError("clock_audit_result_missing")
+                    raise ClockAuditOpsError(f"{prefix}_result_missing")
                 manifest = json.loads(path.read_bytes())
-                report = output / "clock_report.json"
                 if (
                     not isinstance(manifest, dict)
-                    or manifest.get("mode") != MODE
+                    or manifest.get("mode") != mode
                     or manifest.get("status") != "complete"
                     or manifest.get("source_commit") != commit
-                    or manifest.get("data_class") != "restricted_aggregate"
-                    or report.is_symlink()
-                    or not report.is_file()
-                    or report.stat().st_size > 1024**2
-                    or manifest.get("artifacts_sha256", {}).get("clock_report.json")
-                    != sha256(report)
+                    or manifest.get("data_class") != data_class
                 ):
-                    raise ClockAuditOpsError("clock_audit_result_invalid")
+                    raise ClockAuditOpsError(f"{prefix}_result_invalid")
+                if job == "workflow-cv" and (
+                    manifest.get("validation_split_evaluated") is not False
+                    or manifest.get("test_split_evaluated") is not False
+                ):
+                    raise ClockAuditOpsError(f"{prefix}_result_invalid")
+                for name, maximum in artifacts.items():
+                    artifact = output / name
+                    if (
+                        artifact.is_symlink()
+                        or not artifact.is_file()
+                        or artifact.stat().st_size > maximum
+                        or manifest.get("artifacts_sha256", {}).get(name) != sha256(artifact)
+                    ):
+                        raise ClockAuditOpsError(f"{prefix}_result_invalid")
                 return {
-                    "mode": MODE,
+                    "mode": mode,
                     "job_id": job_id,
                     "status": "complete",
                     "private_review_required": True,
                 }
             if state not in active:
-                raise ClockAuditOpsError("clock_audit_job_failed_no_automatic_retry")
+                raise ClockAuditOpsError(f"{prefix}_job_failed_no_automatic_retry")
         time.sleep(poll_seconds)
     raise ClockAuditOpsError("monitor_timeout_job_not_cancelled_or_resubmitted")

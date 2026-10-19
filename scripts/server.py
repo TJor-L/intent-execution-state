@@ -15,7 +15,12 @@ import yaml
 from ies.clinical_baseline import load_baseline_config
 from ies.clinical_history_models import load_history_model_config
 from ies.clock_audit import plan_clock_audit
-from ies.clock_audit_ops import ClockAuditOpsError, discover_clock_artifacts, wait_for_clock_audit
+from ies.clock_audit_ops import (
+    ClockAuditOpsError,
+    discover_clock_artifacts,
+    wait_for_clock_audit,
+    wait_for_workflow_cv,
+)
 from ies.cohort_readiness.contract import load_vocabulary_mapping
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.cohort_readiness.eligibility_runner import plan_eligibility
@@ -25,6 +30,8 @@ from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
+from ies.workflow_cv import DIMENSIONS, load_workflow_config
+from ies.workflow_cv import MODE as WORKFLOW_MODE
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -101,6 +108,7 @@ def sbatch_command(
     history_config: Path | None = None,
     history_dir: Path | None = None,
     history_model_config: Path | None = None,
+    workflow_config: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -381,7 +389,7 @@ def sbatch_command(
                 str(run_dir / "dual-clock-history"),
             ]
         )
-    elif job == "clock-audit":
+    elif job in {"clock-audit", "workflow-cv"}:
         if cohort_dir is None or history_dir is None:
             raise ValueError("Clock audit requires existing cohort and history")
         if any(
@@ -404,7 +412,26 @@ def sbatch_command(
         )
         command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
         command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
-        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:05:30"
+        command[command.index(f"--time={slurm['time_limit']}")] = (
+            "--time=00:05:30" if job == "clock-audit" else "--time=00:20:30"
+        )
+        if job == "workflow-cv":
+            if workflow_config is None:
+                raise ValueError("Workflow config required")
+            _, digest = load_workflow_config(workflow_config)
+            export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
+            command[export_index] += f",IES_WORKFLOW_CONFIG_SHA256={digest}"
+            command.extend(
+                [
+                    str(ROOT / "slurm/workflow_cv.sbatch"),
+                    python,
+                    str(cohort),
+                    str(history),
+                    str(workflow_config.resolve()),
+                    str(run_dir / job),
+                ]
+            )
+            return command
         command.extend(
             [
                 str(ROOT / "slurm/clock_audit.sbatch"),
@@ -472,6 +499,7 @@ def main() -> int:
             "dual-clock-history",
             "clinical-history-models",
             "clock-audit",
+            "workflow-cv",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
@@ -484,15 +512,16 @@ def main() -> int:
         "--history-config", type=Path, default=ROOT / "configs/dual_clock_history.yaml"
     )
     parser.add_argument("--history-dir", type=Path)
+    parser.add_argument("--workflow-config", type=Path, default=ROOT / "configs/workflow_cv.yaml")
     parser.add_argument(
         "--auto-artifacts",
         action="store_true",
-        help="Clock audit only: discover a unique bound artifact pair from existing job manifests",
+        help="Clock audit or workflow CV: discover a unique existing bound artifact pair",
     )
     parser.add_argument(
         "--wait",
         action="store_true",
-        help="Clock audit only: monitor the submitted job for up to one hour; never resubmit",
+        help="Clock audit or workflow CV: monitor for up to one hour; never resubmit",
     )
     parser.add_argument(
         "--history-model-config",
@@ -504,8 +533,8 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
-        if (args.auto_artifacts or args.wait) and args.job != "clock-audit":
-            raise ValueError("Clock audit options require clock-audit")
+        if (args.auto_artifacts or args.wait) and args.job not in {"clock-audit", "workflow-cv"}:
+            raise ValueError("Artifact discovery/monitor options require a supported artifact job")
         if args.wait and args.action != "submit":
             raise ValueError("Wait applies only to submission")
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
@@ -549,10 +578,34 @@ def main() -> int:
             args.history_config,
             args.history_dir,
             args.history_model_config,
+            args.workflow_config,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "clock-audit":
+            if args.job == "workflow-cv":
+                settings, _ = load_workflow_config(args.workflow_config)
+                print(
+                    json.dumps(
+                        {
+                            "mode": WORKFLOW_MODE,
+                            "submitted": False,
+                            "evaluation_scope": settings["evaluation_scope"],
+                            "folds": settings["folds"],
+                            "feature_dimensions": DIMENSIONS,
+                            "validation_split_evaluated": False,
+                            "test_split_evaluated": False,
+                            "raw_source_scan": False,
+                            "gpu_used": False,
+                            "cpus": 2,
+                            "memory_mb": 4096,
+                            "worker_seconds": 1200,
+                            "max_cohort_rows": 20000,
+                            "max_history_rows": 500000,
+                            "clinical_advancement_decision": "not_applicable",
+                        }
+                    )
+                )
+            elif args.job == "clock-audit":
                 print(json.dumps(plan_clock_audit()))
             elif args.job == "feasibility":
                 print(json.dumps(plan_feasibility(args.mapping, args.access_manifest)))
@@ -668,6 +721,7 @@ def main() -> int:
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
         if args.job not in (
             "clock-audit",
+            "workflow-cv",
             "feasibility",
             "coherent-prepare",
             "cohort-vocabulary",
@@ -686,13 +740,14 @@ def main() -> int:
         )
         print(json.dumps({"job_id": job_id, "job": args.job, "submitted": True}), flush=True)
         if args.wait:
-            print(json.dumps(wait_for_clock_audit(job_id, run_dir, revision)))
+            monitor = wait_for_clock_audit if args.job == "clock-audit" else wait_for_workflow_cv
+            print(json.dumps(monitor(job_id, run_dir, revision)))
         return 0
     except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as error:
         if isinstance(error, ClockAuditOpsError):
             parser.exit(
                 2,
-                f"Clock audit action stopped: {error}. "
+                f"Private artifact action stopped: {error}. "
                 "Inspect locally; do not automatically retry.\n",
             )
         parser.exit(

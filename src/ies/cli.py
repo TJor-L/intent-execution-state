@@ -43,6 +43,9 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--config", type=Path, default=Path("configs/synthetic_pairing.yaml"))
     command.add_argument("--run-dir", type=Path)
     command.add_argument("--stress", action="store_true")
+    command = commands.add_parser("workflow-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/workflow_cv.yaml"))
+    command.add_argument("--run-dir", type=Path)
     command = commands.add_parser("validate")
     command.add_argument("--events", type=Path, required=True)
     command = commands.add_parser("evaluate")
@@ -112,10 +115,27 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--cohort-dir", type=Path, required=True)
     command.add_argument("--history-dir", type=Path, required=True)
     command.add_argument("--output-dir", type=Path, required=True)
+    command = commands.add_parser("workflow-cv")
+    command.add_argument("action", choices=("run",))
+    command.add_argument("--cohort-dir", type=Path, required=True)
+    command.add_argument("--history-dir", type=Path, required=True)
+    command.add_argument("--config", type=Path, required=True)
+    command.add_argument("--output-dir", type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "workflow-cv":
+        from ies.workflow_runner import run_workflow
+
+        return run_workflow(args.cohort_dir, args.history_dir, args.config, args.output_dir)
+    if args.command == "workflow-demo":
+        from ies.workflow_diagnostic import run_workflow_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-workflow-") + uuid4().hex[:8]
+        )
+        return run_workflow_demo(args.config, run_dir)
     if args.command == "clock-audit":
         from ies.clock_audit_runner import run_clock_audit
 
@@ -259,6 +279,7 @@ def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
     if args.command in (
+        "workflow-cv",
         "clock-audit",
         "feasibility",
         "cohort-vocabulary",
@@ -274,6 +295,7 @@ def main(argv=None) -> int:
             result = dispatch(args)
         except Exception:
             messages = {
+                "workflow-cv": "Workflow CV failed; inspect the private UCSF run directory.\n",
                 "clock-audit": "Clock audit failed; inspect the private UCSF run directory.\n",
                 "feasibility": (
                     "Feasibility command failed; verify the server-local mapping and context.\n"

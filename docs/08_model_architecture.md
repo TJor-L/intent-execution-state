@@ -66,6 +66,43 @@ generated controls are not a numerical audit of every saturation or sparse-event
 and this review does not establish optimality of the private clinical fits. Additional
 diagnostics, if needed, must remain distinct from performance-driven retuning of E003.
 
+## A001 interpretation and equal-clock algebra (2026-10-19)
+
+User feedback from the completed training-history audit does not support a distinct
+clock-pairing contrast on the retained artifact. Only the qualitative conclusion is
+recorded here; restricted counts, reports and mapping evidence remain outside Git.
+Coincidence at the audit tolerance is not a claim of bitwise-identical source times,
+nor does a training-only audit establish the same finding in other data partitions.
+
+For exactly equal clocks, the unshifted E003 dual representation for each event type is
+`[f_2, f_12, f_2, f_12]`. It has only two distinct basis functions per type, while the
+availability control uses the different scales `[1, 4, 12, 24]`. This cannot isolate
+the contribution of an independent occurrence clock. The time mask and retained-history
+selection are also shared. E003's frozen negative decision remains valid as the result
+of its implemented comparison; it is not a clean general test of two-clock information.
+
+Duplicated columns also change the effective regularization. If two standardized
+columns coincide and their coefficients sum to `b`, minimizing the ridge cost gives
+`beta_1 = beta_2 = b/2`. With the code's penalty `lambda/2 * ||beta||^2`, their joint
+cost is `lambda*b^2/4`: the unique-column model has equivalent ridge `lambda/2`.
+This is an algebraic diagnosis, not a prescription to refit or retune E003. A generated
+regression test verifies the coefficient and hazard equivalence using the existing
+optimizer; no clinical rows, rates, model weights or fits are used.
+
+When the occurrence and availability multisets coincide exactly, any permutation that
+keeps every availability lag no larger than its paired occurrence lag must preserve
+equality: the nonnegative differences sum to zero. Swapping distinct times would violate
+a time constraint. The arithmetic unpaired expectation therefore cannot be treated as
+a valid randomized timestamp reassignment in this case. Joint equal-clock features
+instead reduce to extra single-clock decay scales, as checked by S002's basis control.
+
+The extractor keeps mapped order times separate in code. For administration history,
+an explicitly reviewed occurrence-equality policy, when active, uses occurrence as
+availability after the required documentation-status exclusions. Audit output alone
+does not identify which mapping or policy caused the observed coincidence, nor prove
+that real-world documentation never arrives late. The reviewed mapping is not changed.
+Windowing, filtering and the retained-event cap bound the audit's interpretation.
+
 ## Generated clock-pair mechanism diagnostic
 
 `src/ies/models/paired_history.py` implements three experimental encoders for the local
@@ -103,6 +140,22 @@ artifacts, reports all fixed seeds and includes source hashes for the dirty work
 It adds no mode to `clinical-history-models`, changes no frozen E003 configuration and
 does not inspect clinical validation/test data. Detailed scenarios and limitations are
 in docs/11; completed runs are in docs/20.
+
+## Active W001 single-clock workflow controls
+
+W001 reuses the existing head and availability-valid retained histories, with counts
+and common recency scales 1/4/12/24 hours. The four information sets have 0/2/6/10
+features: no history, two event-type counts, those counts plus pooled decays, and counts
+plus type-specific decays. It introduces no new source fields, index-order attributes,
+pending-order state, patient physiology, delayed-clock perturbation or linkage claim.
+Parameter counts differ; improvement cannot be described as a capacity-matched effect.
+
+Normalization and fitting happen separately within each training-patient CV fold.
+The patient-level fold assignment is deterministic and independent of outcomes. Models
+never consume original validation/test labels or features. Aggregate fold and overall
+observed-data losses, paired conditional uncertainty and all fixed comparisons are
+reported. The exact protocol, support screen and limits of post-pivot development CV
+are in docs/11. No real W001 result is available at implementation time.
 
 ## Unimplemented original architecture
 

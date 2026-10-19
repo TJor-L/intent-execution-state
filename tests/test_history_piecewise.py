@@ -81,6 +81,56 @@ def test_equal_clocks_duplicate_dual_features_under_frozen_scales():
     np.testing.assert_allclose(encoded[:, :2], encoded[:, 2:])
 
 
+def test_equal_clock_duplication_halves_ridge_on_the_unique_basis():
+    # For a total coefficient b on two identical standardized columns, the minimum
+    # squared coefficient norm is b**2 / 2, attained by coefficients (b/2, b/2).
+    # Hence duplicated features with ridge L must match unique features with L/2.
+    # This verifies an algebraic equivalence, not a clinical refit or proposed tuning.
+    rng = np.random.default_rng(20261019)
+    cohort, duplicated, unique = [], {}, {}
+    for index in range(96):
+        order = f"generated-equal-clock-{index}"
+        history = []
+        for kind in (0, 1):
+            for lag in rng.uniform(0.5, 20.0, size=int(rng.integers(1, 4))):
+                history.append(
+                    {
+                        "event_kind": kind,
+                        "occurrence_lag_hours": float(lag),
+                        "availability_lag_hours": float(lag),
+                    }
+                )
+        duplicated[order] = encode_history(history, "dual_clock", [2, 12], [2, 12])
+        unique[order] = duplicated[order].reshape(2, 4)[:, :2].ravel()
+        cohort.append(
+            {
+                "order_id": order,
+                "patient_id": f"generated-person-{index}",
+                "split": "train",
+                "duration": float(rng.uniform(0.2, 24.0)),
+                "cause": index % 4,
+            }
+        )
+    models = [
+        fit_history_model(
+            cohort, features, [0, 4, 24], ridge, 100, 1e-12, mode, data_class="synthetic"
+        )
+        for features, ridge, mode in (
+            (duplicated, 4.0, "generated_duplicated_basis"),
+            (unique, 2.0, "generated_unique_basis"),
+        )
+    ]
+    coefficients = np.asarray(models[0]["coefficients"]).reshape(3, 2, 4)
+    np.testing.assert_allclose(coefficients[:, :, :2], coefficients[:, :, 2:], atol=1e-8)
+    effective = (coefficients[:, :, :2] + coefficients[:, :, 2:]).reshape(3, 4)
+    np.testing.assert_allclose(effective, models[1]["coefficients"], atol=1e-7)
+    np.testing.assert_allclose(
+        predict_hazards(models[0], np.stack(list(duplicated.values()))),
+        predict_hazards(models[1], np.stack(list(unique.values()))),
+        rtol=1e-7,
+    )
+
+
 def test_model_can_learn_generated_occurrence_signal_hidden_from_availability():
     rng = np.random.default_rng(20261016)
     cohort = []

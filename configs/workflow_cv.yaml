@@ -1,0 +1,13 @@
+schema_version: 1
+experiment: W001
+evaluation_scope: training_patient_cross_validation
+seed: 20261019
+folds: 5
+scales_hours: [1.0, 4.0, 12.0, 24.0]
+bin_edges_hours: [0.0, 1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
+ridge: 1.0
+max_iterations: 100
+tolerance: 1.0e-8
+bootstrap_replicates: 1000
+minimum_nll_improvement: 0.005
+minimum_improved_folds: 4
