@@ -82,20 +82,37 @@ metrics/horizons, clinical usefulness or new architecture contribution is establ
 Do not repeat the jobs, select a favorable horizon after seeing results, recalibrate,
 refit or reopen original held-out evaluation to rescue this study. Any future experiment
 needs a separate question, fixed target and evaluation design. The later R001 authorization
-and protocol below supply that separate design; this completion record itself does not. Generated checks do not supply clinical evidence.
+and protocol below supply that separate design; this completion record itself does not.
+Generated checks do not supply clinical evidence.
 
 The user next authorized autonomous direction selection, implementation and research
 preparation, with the user operating prepared server jobs. R001 is a separate fixed
 question: compare joint-NLL versus coherent upper execution-Brier-bound selection on the
 same eight-candidate PH/tree bank, using three seeded 5x3 nested patient CV runs within
 original training only. See docs/11 and configs/workflow_selection.yaml. Implementation
-and generated verification are local; R001 clinical execution is pending. Preserve all
+and generated verification were completed locally. The user reported R001 job 39335
+complete at `2176207`, with artifact verification and qualitative feedback. Preserve all
 prior negatives; this is exploratory development, not independent confirmation, a new
 score, or a claim of publishability. Keep every seed/horizon, no favorable-result search.
-One bounded existing-artifact CPU job is the next data-dependent step. No new semantics,
-raw scan, GPU, data transfer, original validation/test evaluation or server coding agent
-is needed. The user's earlier explicit push/run/feedback instruction authorizes the
+The fixed R001 comparison is complete; no additional server job is scheduled. No new
+semantics, raw scan, GPU, data transfer or original validation/test evaluation is authorized.
+The user's earlier explicit push/run/feedback instruction authorizes the
 verified milestone release and pinned job handoff; it does not authorize data publication.
+
+R001's qualitative primary comparison, upper_brier minus joint_nll, is unresolved
+(completion bounds include zero) at seed 20261020, adverse (bounds above zero) at
+20261021, and identical-policy predictions at 20261022. Order weighting gives the same
+qualitative pattern. Horizon directions reverse between the first two seeds; no horizon
+may be promoted to a new primary. Joint NLL is lower/higher/equal respectively. All
+selected candidates are PH pooled/typed timing; non-selection of the shallow tree does
+not prove nonlinear models ineffective. Seeds reuse patients, bounds are not confidence
+intervals, and no private effect magnitudes or bootstrap endpoint values were shared.
+Do not average qualitative signs or claim population significance/equivalence. Close this
+selection-policy question as a negative/mixed exploratory evaluation, retain the report,
+and do not retune, enlarge the bank, recalibrate or open held-out data to rescue it.
+The manuscript now records the qualitative findings; numerical tables and institutional
+details remain private and the draft is not submission ready. No method-superiority,
+clinical-usefulness or publication-readiness claim is established.
 
 ## Workflow
 

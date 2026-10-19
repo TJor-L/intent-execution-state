@@ -1361,3 +1361,72 @@ Ruff check/format passed for 145 Python files, repository boundary check passed;
 additional regression changed tests only. Production source and fixed config match the
 completed full generated benchmark. No new clinical run occurred. The release publisher
 will rerun required checks and generate a handoff pinned to the actual clean commit.
+
+
+## 2026-10-19 — R001 job 39335 completed; close the fixed selection-policy question
+
+The operator returned the transcript of the fixed checkout
+`21762073fe9aff38dfb37d9feddc54e9205fe1fa`: preflight passed, planning reported the unchanged
+three-seed, 5x3 nested patient-CV, eight-candidate, 480-fit design, and job `39335` was
+submitted and completed. The automated monitor returned `status: complete` with verified
+artifacts and qualitative selection feedback. This is operator-reported execution; the
+Mac did not connect to UCSF or inspect/download private outputs. Original W001 job
+`39332` and source `9fcdc32f3200931c780e0931130a3a07fc20ddaa` bound the existing population.
+Original validation/test evaluation and raw scans remained false, with no GPU use.
+Execution succeeded; R001 has no prespecified clinical advancement or publication gate,
+so do not mislabel this as a failed software job or invent a new pass/fail threshold.
+
+The fixed primary comparison is `upper_brier minus joint_nll`, equally weighting patients
+and horizons. Only the allowlisted qualitative findings below were received; private
+numerical effects, counts, predictions, models, logs and bootstrap endpoints stay at UCSF.
+
+| Seed | Patient-weighted primary completion range | Order-weighted sensitivity | Joint NLL direction |
+| --- | --- | --- | --- |
+| 20261020 | Includes zero | Includes zero | Lower |
+| 20261021 | Above zero | Above zero | Higher |
+| 20261022 | Includes zero; identical policy predictions | Identical policy predictions | Equal |
+
+At 20261020, upper-bound selection uses PH typed timing rather than PH pooled timing in
+the third outer fold; the other folds match NLL selection. Its horizon ranges are above
+zero at 1 hour, below zero at 4 hours, and include zero at 12/24 hours. At 20261021 the
+fourth fold instead changes PH typed timing to PH pooled timing; other folds match.
+Its horizon ranges are below zero at 1 hour and above zero at 4/12/24 hours. At 20261022
+all folds select PH pooled timing under both policies. Because both policy paths reuse
+the same fitted candidate predictions, this establishes identical predictions in that
+run, rather than merely failure to distinguish different predictions. All horizon
+ranges include zero and NLL is equal. No shallow-tree candidate was selected; this is
+specific to the fixed bank/criteria and does not establish that nonlinear models fail.
+
+Interpretation: no demonstrated primary advantage for upper-bound selection. The first
+seed leaves the sample contrast unresolved, the second is adverse throughout its reported
+completion range, and the third has no policy difference. Above-zero completion bounds
+are not a population confidence statement or significance test. Seeds reuse patients;
+do not treat them as independent replications or average signs to infer a pooled effect.
+Do not promote favorable individual horizons or the first seed's lower NLL to a positive
+primary finding. Magnitudes and private endpoint percentile summaries were not received,
+so no claim about their size, clinical relevance or population calibration is possible.
+
+Decision under the existing stopping rules: close this fixed selection-policy development
+question and preserve the negative/mixed report. No new model search, tuning, recalibration,
+source expansion, semantic request, repeated job or original held-out evaluation is
+scheduled. Existing E003/A001/W001/W002 findings are unchanged. Prior exploratory workflow
+signal is not proof of a publishable new method and is not invalidated by this comparison.
+The qualitative manuscript now has results, discussion and a conclusion; the private
+numerical tables are already available for authorized institutional assembly without
+another fit. It remains a draft with missing numerical/institutional presentation, not a
+submission-ready paper or an established publication opportunity. No automatic pivot
+is justified simply to keep searching for a favorable result on the same fixed data.
+
+Updated current status, experiment disposition, manuscript, operating guide, AGENTS and
+handoff template. The latter now explicitly has **no server task** and distinguishes the
+actual job source from later documentation commits, preventing accidental reruns. No
+model code, frozen configuration, tests or original private job checkout changed.
+Documentation-only verification and release checks are recorded below; no clinical or
+synthetic experiment was rerun to create new research evidence.
+
+Documentation verification: `tests/test_handoff.py` passed **15 tests**; `git diff --check`
+and the repository file-boundary check passed. Reviewed the qualitative tables against
+the supplied monitor output, checked current documents for stale R001 pending-run
+instructions, and preserved the original protocol/configuration and historical log entries.
+No new tests were needed for these text-only changes. The ordinary publisher will run
+its required full checks and generate a clean-commit completion handoff before pushing.

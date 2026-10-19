@@ -12,47 +12,41 @@ Git 只承载通用代码、合成测试、空白配置和审核后的操作摘�
 
 服务器已完成 coherent 准备／验证、有界 cohort、基础及年龄基线、完整来源扫描后的
 双时钟历史和固定特征 CPU 比较。E003 未通过收益与不确定性门槛，测试集保持封存；
-R001 现为独立的下一项 CPU 任务，真实执行待完成；没有神经模型或 GPU 排期。
+R001 job `39335` 已在 `2176207` 完成，主要比较为未确定／较差／相同，按协议收尾。
+当前没有待运行的服务器任务、神经模型或 GPU 排期。
 不需要重跑先前已完成的任务。最新状态见 docs/20，模型与实验局限见 docs/08、docs/11。
 
 
-## R001：当前唯一待运行的真实数据步骤
+## R001 已完成：结果与运行记录存档
 
-用户已授权自主完成研究判断、开发、测试和论文准备，并沿用 push／用户运行／反馈的
-协作方式。本轮用新的嵌套患者验证比较两种模型选择目标，不重跑 W001/W002、不修改
-其结论。已审核来源、标签、历史上限、原训练分区和环境全部复用，无须新的数据解释。
-完整协议和停止条件见 docs/11；R001 的真实性能、效果大小及论文价值目前都未建立。
+用户回传固定版本 `21762073fe9aff38dfb37d9feddc54e9205fe1fa` 的 job `39335` 已完成，
+监控器已验证产物；关联原 W001 job `39332` / `9fcdc32`。原训练患者内三种子嵌套 CV
+完成，原验证／测试保持封存，无源扫描／GPU。Mac 未访问 UCSF 或下载私有产物。
 
-本次交付的聊天命令及 `make handoff` 产物会给出完整 release SHA。在独立干净的
-`handoff/workflow-selection-<short SHA>` 检出该版本，然后执行：
+新选择规则减去整体损失选择规则的主要误差范围，在种子 20261020 包含零、20261021
+高于零、20261022 两种规则预测完全相同。按医嘱加权的方向一致。前两个种子的逐时点
+方向互换，不能挑其中有利者作为新主结果。完整定性结论见 docs/11、docs/20。
+
+固定研究已完成，没有新的服务器命令需要运行。不要重复提交、调参、扩充候选模型、
+重校准或开启原测试以寻找正结果。`private_review_required` 不表示作业失败或需要
+服务器 Codex 批准；`publication_readiness: not_established` 也不是失败状态。
+
+已有私有输出目录含 `selection_report.json`、`models.json`、`config.json`、
+`paper_tables.md` 和带校验和的 `manifest.json`。数值表、模型、患者集合 hash 和日志
+继续留在 UCSF；论文数值整理可复用这些产物，不需要再拟合。Mac 仅维护已获准的定性
+研究记录和论文草稿，不请求下载这些文件。
+
+以下命令是已完成作业的入口记录，不是当前操作指令；它曾在固定 `2176207` checkout
+中执行。今后源码里的入口保留用于复现，不构成重跑或追加实验授权。
 
 ```bash
+# Historical invocation only — job 39335 is complete; do not resubmit.
 bash scripts/run_selection.sh 39332 9fcdc32f3200931c780e0931130a3a07fc20ddaa
 ```
 
-脚本从 Git common-dir 找原仓库，读取其中现有 `configs/remote.local.yaml`，用
-`uv run --locked --no-sync` 找已有 Python；不会安装依赖或连接别的服务器。它自动执行
-preflight、plan、submit 和 wait，绑定原 W001 的 job/SHA 与 cohort/history manifest。
-不加载原 W001 拟合模型作为选择输入。计划应显示 mode 为
-`workflow_selection_objective_benchmark`、3 seeds、5 outer folds、3 inner folds、
-8 candidates、480 fits，原验证／测试均 false，2 CPU／4 GiB／1200 秒，无 GPU／原始源扫描。
-任何输入不一致都停止；不要跳过校验、重新提取或重复提交。
-
-完成时终端给出 job ID、状态、每折选择的固定候选名称，以及三种子下主要／逐时点
-completion bounds 的方向。只把这些自动生成的定性 JSON 反馈给 Mac 即可。
-`private_review_required` 表示私有数值尚需在 UCSF 审阅，不是等待服务器 Codex 批准。
-`publication_readiness: not_established` 是研究状态，不是运行失败。
-
-UCSF 的该 job 输出目录含 `selection_report.json`、`models.json`、`config.json`、
-`paper_tables.md` 和带校验和的 `manifest.json`；数值表、模型、患者集合 hash 都不离开
-授权存储。`paper_tables.md` 已包含全部候选／策略／种子／时点及主要配对结果，可在当地
-用于论文材料。不要把这些文件、私有日志或指标数值贴回聊天或 Git。
-
-如任务失败／达到限额，只回传 job ID 和固定状态／错误类别；不要自动重试。
-如监控超时，不代表任务取消或失败，更不能重新 submit。同一任务的只读监控可在该固定
-checkout 用现有 Python 调用 `wait_for_selection`；先从 `submission.json` 确认原 job 的
-唯一私有目录。Mac 会根据实际失败状态准备具体的只读恢复命令。不会用调参或扩大数据
-范围掩盖代码缺陷。研究结果若无区别或界限不明确，按协议保留，不追加寻找胜出的作业。
+脚本复用了原仓库配置和已有 Python，自动完成 preflight、plan、submit、wait，绑定
+原 W001 的 job/SHA 与 cohort/history manifest。原模型不是选择输入。固定预算为
+2 CPU／4 GiB／1200 秒，8 候选、480 拟合；详细协议保持在 docs/11。
 
 ## 本地循环
 
@@ -284,7 +278,7 @@ python scripts/server.py review workflow-cv --config /SERVER_ONLY/remote.local.y
 包含零、折间方向混合。无需重复只读审阅或重提 W001。主假设仍未获支持。
 
 用户已回传 W002 job `39333` 在 `1df3274` 上完成，并收到自动核验后的定性摘要。
-W001/W002 没有待提交任务；本次 R001 见文首。不重复旧作业、不打开原验证／测试或挑有利时点。
+W001/W002/R001 均没有待提交任务；最新完成状态见文首。不重复旧作业、不打开原验证／测试或挑有利时点。
 完整研究结论见 docs/11、docs/20。
 
 W002 只重放 job `39332` 已保存的模型。它先复现原五折损失，再直接补充合并

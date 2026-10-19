@@ -1,7 +1,8 @@
 # Experiment design
 
-Current status (2026-10-19): R001 is the new, separately specified development benchmark
-(design below); clinical execution is pending. W001/W002 remain complete with negative/mixed
+Current status (2026-10-19): R001 job 39335 completed at `2176207`; its fixed
+selection-policy comparison is closed with unresolved/adverse/identical-policy findings
+across seeds. No further server experiment is scheduled. W001/W002 retain their negative/mixed
 findings. E003 is complete with its advancement gate held; A001 does
 not support the proposed pairing contrast on the retained training artifact. Test
 remains sealed. The earlier E001 steps below record the progression, not work to repeat. The
@@ -510,7 +511,10 @@ experiments while the user operates UCSF. This protocol is fixed before R001 cli
 execution, after seeing W001/W002 qualitative results. It is **data-informed exploratory
 development**, not independent confirmation or a rescue of E003/W001. See docs/02 for
 close existing work; no new architecture, score, identification theorem or causal claim.
-Clinical run state: pending. The executable configuration is `configs/workflow_selection.yaml`.
+Clinical run state: operator-reported job 39335 complete at
+`21762073fe9aff38dfb37d9feddc54e9205fe1fa`, with automated artifact verification.
+The executable configuration is `configs/workflow_selection.yaml`; the protocol below
+is unchanged. Completed findings and disposition follow the original stopping rules.
 
 ### Question and scope
 
@@ -645,3 +649,48 @@ support a useful, limited empirical paper. If not, finish the reproducible negat
 and close this question; do not spend additional UCSF runs trying to manufacture a win.
 No original held-out evaluation is authorized by R001. Manuscript readiness remains
 unestablished; a positive direction alone does not justify a publication claim.
+
+
+### R001 completed findings and disposition (2026-10-19)
+
+The user returned the completed monitor summary for UCSF job 39335 at source
+`21762073fe9aff38dfb37d9feddc54e9205fe1fa`, bound to original W001 job 39332.
+Preflight and planning reported the frozen three-seed, 5x3 patient CV, eight-candidate,
+480-fit design within 2 CPU/4 GiB/1200 seconds. The monitor reported complete with verified
+artifacts and `private_review_required: true`. This is operator-reported execution and
+an automated summary; the Mac did not inspect private artifacts. Original validation/test
+remain unevaluated, no raw scan or GPU was used, and no numerical metrics were shared.
+
+All directions are for `upper_brier minus joint_nll` (negative favors upper_brier).
+
+| Fold seed | Primary patient-weighted completion bounds | Order-weighted sensitivity | 1h / 4h / 12h / 24h bounds | Joint NLL direction |
+| --- | --- | --- | --- | --- |
+| 20261020 | Includes zero | Includes zero | Above / below / includes / includes zero | Lower |
+| 20261021 | Above zero | Above zero | Below / above / above / above zero | Higher |
+| 20261022 | Includes zero; identical policy predictions | Same | Includes zero at every horizon; identical predictions | Equal |
+
+At seed 20261020 the policies differ only in the third outer fold: NLL selection chooses
+PH pooled timing and upper-bound selection chooses PH typed timing. At 20261021 they
+differ only in the fourth fold, with these choices reversed. At 20261022 both choose
+PH pooled timing in every outer fold; the shared candidate prediction path therefore
+gives identical policy predictions, rather than merely an unresolved comparison between
+different models. All selected candidates are PH pooled or typed timing. Non-selection
+of this fixed shallow tree does not establish that nonlinear models generally fail.
+
+The first seed does not resolve the primary finite-sample contrast. The second's entire
+reported completion range favors NLL selection in this sample. The third has no policy
+difference. There is no demonstrated primary advantage for upper-bound selection, and
+the first two seeds' horizon reversals cannot be turned into a new favorable endpoint.
+These are overlapping development splits, not three independent studies; bounds are
+not confidence intervals, and signs cannot be averaged to recover an unreported overall
+contrast. No population significance, statistical equivalence, effect size, calibration
+or clinical utility follows. Private bootstrap endpoint values were not returned.
+
+Disposition: the fixed comparison is complete. Preserve the negative/mixed report and
+close development of the upper-bound selection policy on these artifacts. Do not change
+weights/horizons, expand the model bank, recalibrate, choose a favorable seed, or open
+original held-out evaluation to obtain a win. W001's secondary workflow signal is not
+erased by this result, but it does not supply a new method contribution. The qualitative
+manuscript now states these results; authorized numerical manuscript assembly can use the
+already-produced private tables without another fit. Publication readiness remains
+unestablished. No additional server task, new data or semantic review is requested.
