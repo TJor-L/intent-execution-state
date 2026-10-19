@@ -1,6 +1,6 @@
 UV := $(shell command -v uv 2>/dev/null || echo .tools/bin/uv)
 
-.PHONY: setup check test lint format demo pairing-demo pairing-stress workflow-demo handoff publish
+.PHONY: setup check test lint format demo pairing-demo pairing-stress workflow-demo selection-demo handoff publish
 setup:
 	$(UV) sync --locked
 lint:
@@ -21,6 +21,8 @@ pairing-stress:
 	$(UV) run --locked ies pairing-diagnostic --config configs/synthetic_pairing.yaml --stress
 workflow-demo:
 	$(UV) run --locked ies workflow-demo --config configs/workflow_cv.yaml
+selection-demo:
+	$(UV) run --locked ies selection-demo --config configs/workflow_selection.yaml
 handoff:
 	$(UV) run --locked python scripts/handoff.py
 publish:

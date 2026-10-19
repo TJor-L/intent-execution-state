@@ -1258,3 +1258,106 @@ uses the existing authorized milestone workflow. `make check` passed Ruff lint/f
 (135 files), 414 tests and the repository file boundary check; two Linux-only resource
 tests remain skipped on macOS. `git diff --check` passed. No new full synthetic pipeline
 run was needed for this documentation-only change, and no new clinical job was submitted.
+
+
+## 2026-10-19 — R001 autonomous research pivot, implementation and generated evidence
+
+The user delegated research direction, implementation, verification and preparation,
+retaining responsibility only for running UCSF commands. Continued the earlier explicit
+push/run/feedback workflow; no request for a server coding agent or more data/semantics.
+Entry source: `34f602a87516d3ddb3b77f50a0db837e07409481`. No UCSF connection or clinical
+artifact download occurred. W001/W002 remain complete with all negative/mixed findings.
+
+Reviewed primary literature (docs/02), including SurvivalBoost, censoring-sensitive
+Brier evaluation, proper survival scoring and a very recent partial-identification
+preprint. General workflow signal, metric ranking disagreements and shared-outcome
+paired bounds are not new contributions. Chose a narrow empirical question rather than
+claiming a new scoring rule or architecture. R001's fixed protocol is in docs/11;
+`configs/workflow_selection.yaml` SHA256 is
+`437efcf7bbfb49f26b26a107b60d835f1c08ad875a78abd906898fc0e2909206`.
+It remains a data-informed exploratory study, with no clinical or publication gate.
+
+Implemented a shared eight-candidate PH/tree bank and two inner selection objectives,
+three fixed seeds of 5x3 patient-nested CV, training-only preprocessing/splits,
+equal-patient/equal-horizon primary comparison, coherent multi-horizon completion bounds,
+NLL cause decomposition, order-weighting sensitivity and conditional bootstrap endpoint
+percentiles. The independently implemented depth-two survival tree relaxes linear/PH
+assumptions but is not state-of-the-art or capacity matched. All candidate/seed/horizon
+results and negative directions are retained. No original validation/test feature or
+outcome evaluation, new source, raw scan, history enlargement or GPU is introduced.
+
+The completion implementation enumerates monotone first-execution trajectories, shared
+across compared models. Exhaustive small-case checks verify its bounds; paired bounds
+can be narrower than separately completed horizons. A deliberate outer-outcome mutation
+test verifies that inner selection cannot use outer-fold labels. Generated artifact tests
+keep deliberately invalid held-out labels/features unread, bind the original W001 job's
+population manifests, detect input mutation, preserve private permissions, reject scope
+changes, enforce worker limits and suppress private exception payloads. No actual records
+were used in tests. The upper-bound objective is explicitly not proper probability
+scoring: with all labels unknown it favors .5 irrespective of the latent event probability.
+
+New operational path: `scripts/run_selection.sh` -> preflight/plan/Slurm/wait, bound to
+original W001 job 39332 and its source. It reuses the existing Python environment and
+private config. Worker 2 CPU/4 GiB/1200 seconds, same artifact byte/row bounds. Private
+outputs include complete numerical report, models, exact config, checksummed manifest
+and `paper_tables.md`; no prediction rows or patient IDs. Terminal returns only fixed
+candidate names and qualitative comparisons. No automatic retry or source expansion.
+Prepared the related-work comparison, explicit stopping rules and manuscript methods/
+claims ledger. Clinical quantitative results and institutional manuscript details remain
+pending and must stay on authorized UCSF storage.
+
+Generated full benchmark completed at
+`artifacts/synthetic/20261019T194338Z-selection-74420522`: 30 cases, each with three
+nested-CV seeds (90 evaluations), five mechanisms, three data seeds, two censoring
+regimes, 240 patients and 1–3 orders/patient. All known complete-outcome errors were inside
+the recorded completion bounds. Manifest records exact source file hashes, dirty Git
+state, config/dependencies, timings and output digests; metrics SHA256
+`e003e5e0c9cecc6e8c11433f564a68138646f6cba76f5027b0827835fe40d4c8`.
+
+Generated primary oracle error differences below are `upper_brier minus joint_nll`,
+averaged over nine data/CV seed combinations per row. “Lower/higher/equal” counts concern
+known synthetic latent outcomes only. Seeds reuse data and these are not inference tests.
+
+| Generated mechanism | Censoring | Mean oracle difference | Lower / higher / equal | Completion range includes zero |
+| --- | --- | ---: | --- | ---: |
+| Execution signal | Administrative only | +0.000129 | 2 / 4 / 3 | 3/9 |
+| Execution signal | Feature dependent | -0.001841 | 6 / 3 / 0 | 9/9 |
+| Competing signal | Administrative only | +0.000460 | 4 / 5 / 0 | 0/9 |
+| Competing signal | Feature dependent | +0.002318 | 2 / 7 / 0 | 9/9 |
+| Nonlinear execution | Administrative only | +0.000014 | 4 / 5 / 0 | 0/9 |
+| Nonlinear execution | Feature dependent | +0.029062 | 0 / 9 / 0 | 9/9 |
+| Time-varying execution | Administrative only | 0 | 0 / 0 / 9 | 9/9 |
+| Time-varying execution | Feature dependent | +0.002344 | 2 / 6 / 1 | 9/9 |
+| Null | Administrative only | +0.000415 | 2 / 6 / 1 | 1/9 |
+| Null | Feature dependent | +0.000243 | 3 / 6 / 0 | 9/9 |
+
+These are material negative findings: conservative selection often worsens true error,
+and all feature-dependent-censoring comparisons leave the completion contrast unresolved.
+In the administrative-only time-varying cases both policies select the same candidates.
+Do not describe the new criterion as an improved method. The clinical job will characterize
+this comparison on the existing data, not validate a claimed simulation winner; the bank,
+weights and endpoints were not revised after observing these outcomes. If the clinical
+results add no useful distinction, close as a reproducible negative report rather than
+expand the search. Broad theoretical/publication novelty remains unestablished.
+
+Generated capacity profile (`scripts/profile_selection.py`): 19,999 orders, 479,976 history
+events, all 480 fits, 34.86 seconds and 609.73 MiB peak RSS on this Mac; serialized report
+197,586 bytes and models 155,964 bytes. This excludes production Parquet-read overhead and
+does not verify Linux resource limits or guarantee clinical convergence/runtime. Existing
+server limits remain hard. No clinical data or sampling inference comes from this profile.
+
+Verification before release: full `make check` initially passed 446 tests with two
+Linux-only skips; `make demo` passed at `artifacts/synthetic/20261019T194346Z-1e381999`;
+`make selection-demo` completed all 30 cases. Added the explicit all-unknown improper-score
+regression after reviewing the adverse generated results; final release checks are recorded
+below. Shell syntax and diff whitespace checks passed. No dependencies changed.
+
+Actual clinical R001 state: **not run**. The sole remaining external dependency is one
+fixed, clean-commit UCSF job using existing artifacts. No private numerical R001 finding,
+accepted manuscript, independent confirmation or deployment readiness is claimed.
+
+Final pre-commit verification: `make check` passed **447 tests, 2 Linux-only skips**,
+Ruff check/format passed for 145 Python files, repository boundary check passed; the
+additional regression changed tests only. Production source and fixed config match the
+completed full generated benchmark. No new clinical run occurred. The release publisher
+will rerun required checks and generate a handoff pinned to the actual clean commit.

@@ -1,6 +1,8 @@
 # Experiment design
 
-Current status (2026-10-19): E003 is complete with its advancement gate held; A001 does
+Current status (2026-10-19): R001 is the new, separately specified development benchmark
+(design below); clinical execution is pending. W001/W002 remain complete with negative/mixed
+findings. E003 is complete with its advancement gate held; A001 does
 not support the proposed pairing contrast on the retained training artifact. Test
 remains sealed. The earlier E001 steps below record the progression, not work to repeat. The
 Mac implementation review is documented in docs/08 and does not change the clinical
@@ -500,3 +502,146 @@ and department subgroups, synthetic delay shifts, representation transfer, and
 independent-head ablations. A shift experiment uses training-fitted parameters unchanged
 on a separately generated shifted test set; rerunning the full pipeline at another
 delay scale alone is not a robustness test. Multi-model/shift runners remain planned.
+
+## R001: nested model-selection objective benchmark (new fixed-data question)
+
+Authorized by the user's request to autonomously choose direction, implement, and prepare
+experiments while the user operates UCSF. This protocol is fixed before R001 clinical
+execution, after seeing W001/W002 qualitative results. It is **data-informed exploratory
+development**, not independent confirmation or a rescue of E003/W001. See docs/02 for
+close existing work; no new architecture, score, identification theorem or causal claim.
+Clinical run state: pending. The executable configuration is `configs/workflow_selection.yaml`.
+
+### Question and scope
+
+On the identical fixed candidate bank, how does choosing by joint observed-data NLL
+compare with choosing by a conservative upper bound on first-execution probability
+error? The target is a comparison of selection policies, not whether typed timing wins.
+
+Use exactly the existing reviewed cohort/history manifests bound to W001 job 39332,
+source `9fcdc32f3200931c780e0931130a3a07fc20ddaa`. Reuse only original training patients,
+existing three terminal causes/right censoring, source roles, exclusions, patient splits,
+24-hour lookback and 24-event cap. Do not scan raw sources, change dates/semantics, add
+patients, enlarge history, impute clinical delays or request new source explanations.
+Original validation was previously used by E003 and is not fresh evidence. Original
+validation/test outcomes and history features are not read by R001; test stays sealed.
+Patient/split identities are inspected solely to reject overlapping original partitions.
+Coverage remains the selected bounded cohort and retained histories, not all UCSF orders.
+
+### Candidate bank and fitting
+
+Eight candidates, in this deterministic tie order: `ph_intercept`, `tree_intercept`,
+`ph_counts`, `tree_counts`, `ph_pooled_timing`, `tree_pooled_timing`, `ph_typed_timing`,
+`tree_typed_timing`. Representations have 0/2/6/10 dimensions, preserving W001's count
+and exponential recency encoding at scales 1/4/12/24 hours. Event occurrence and availability
+are both respected; observed coincident clocks are not made artificially distinct.
+All models use bins 0/1/2/4/8/12/24 hours and all three terminal causes.
+
+PH: existing standardized log-linear piecewise exponential head; bin intercepts and
+cause-specific shared-over-time feature coefficients, ridge 1, maximum 100 Newton steps,
+relative objective tolerance 1e-8. Training means/scales use training rows only. Any
+nonconvergence fails the run; no silent model substitution.
+
+Tree: independent axis-aligned likelihood partition, depth at most 2, minimum 25 unique
+training patients per child, candidate cuts at training feature quantiles .25/.5/.75.
+Each leaf has separate cause/bin rates `(events + .5)/(exposure hours + 1)`; choose the
+split improving observed smoothed-leaf likelihood most, with fixed feature/cut tie order.
+This is a small nonlinear/non-PH reference, not a best-in-class survival forest. No tuning
+of depth, cuts, smoothing or ridge. Both families fit order-weighted likelihood; selection
+and primary evaluation are patient-weighted. The families/representations are not capacity
+matched, so their differences cannot isolate a type-specific architectural contribution.
+
+### Nesting and selection
+
+Three fixed fold seeds: 20261020, 20261021, 20261022. Patient assignments use an independent
+`R001:` hash namespace and balanced ranks. For each seed, five outer folds; each outer
+training subset has three inner patient folds. Each patient's orders remain together.
+The outer fold's outcomes/features never enter inner fitting, scaling, cut selection
+or model selection. Feature encoding itself uses only fixed transforms of each order's
+pre-cutoff history. Require at least 30 original training patients; this is a computational
+minimum, not a statistical power or sufficiency claim.
+
+Fit all eight candidates per inner fold. Assemble inner out-of-fold predictions and select:
+
+- `joint_nll`: smallest equal-patient average observed joint cause/time NLL.
+- `upper_brier`: smallest equal-patient average upper completion bound on squared
+  first-execution probability errors, equally weighted over 1/4/12/24 hours.
+
+Equal patient weight means average orders within each patient, then average patients.
+Ties within 1e-12 choose the first candidate in the fixed order. Refit all eight candidates
+on the whole outer training subset; each policy uses its selected candidate's outer
+predictions. This yields 480 fits total, including independent outer candidate reporting.
+Every seed, outer fold choice, candidate and horizon is retained; no best seed is selected.
+Repeated seeds overlap in patients and are not independent replications or a larger sample.
+
+### Coherent completion scoring and uncertainty
+
+Let `Y(h)` be first execution by horizon h. Observed first execution supplies a monotone
+zero-to-one trajectory; a competing first terminal cause supplies zeros at all horizons.
+Censoring supplies known zeros through its time and unknown values afterward. Enumerate
+only monotone binary trajectories matching these facts: H+1 patterns for H horizons,
+including all zeros. Use the **same** completion for both compared models. For each order,
+minimize/maximize the equal-horizon squared-error difference over admissible trajectories,
+then average with patient weights. With no cross-order restrictions, this is the exact
+finite-sample range for the recorded observations and frozen predictions. Exhaustive
+small examples and generated latent outcomes verify it. It is an elementary completion
+calculation, not a novel partial-identification method.
+
+Primary contrast: `upper_brier` minus `joint_nll`, equal patients and horizons. Negative
+favors `upper_brier`. Report both endpoints, even when they straddle zero. Also report
+order-weighted sensitivity, each horizon, each outer fold, joint NLL and its three
+cause-specific components. All eight standalone candidates receive the same descriptive
+metrics. Calibration bins remain order-weighted descriptions, not proof of calibration.
+
+Patient-bootstrap endpoint percentiles use 1,000 draws per seed, **conditional on the
+fitted, overlapping out-of-fold models**. They omit refitting, selection and the adaptive
+research-direction uncertainty. Do not call them full-pipeline population confidence
+intervals or infer statistical significance from completion bounds. Bounds themselves
+need no censoring-independence assumption; fitted likelihood models still retain their
+model and censoring assumptions. This does not solve identification of population risks
+under arbitrary dependent censoring or establish transportability/clinical usefulness.
+The worst-completion objective is not a proper probability score: if all labels are
+unknown, its squared-error optimum is .5 regardless of the latent event probability.
+It is a deliberately conservative selection policy under evaluation, not an endorsed
+probability-learning rule. Generated adverse examples must remain in the report.
+
+### Generated verification, resource budget and outputs
+
+`make selection-demo`: five fixed mechanisms (execution-only, competing-only, nonlinear
+execution, time-varying execution effects, null), three data seeds 20261023/24/25, two
+censoring regimes (administrative-only, feature-dependent), 240 generated patients per
+case, 1–3 orders each. All 30 cases use all three CV seeds. Complete latent outcomes are
+available only in this generator; replay verifies their errors are inside completion
+bounds. Compare both favorable and adverse oracle directions; do not choose a successful
+scenario after seeing results. `scripts/profile_selection.py` measures the default 480-fit
+pipeline near the row/history caps, using only generated inputs. Neither establishes
+clinical performance or verifies Linux resource enforcement on a Mac.
+
+Server entry: `workflow-selection`, `scripts/run_selection.sh`. Two CPU, 4 GiB, worker
+wall/CPU cap 1,200 seconds, Slurm 20:30; at most 20,000 cohort rows and 500,000 history rows,
+existing 256 MiB file and 512 MiB declared Parquet decode limits. Reuse the environment;
+no GPU, new dependency, new persistent source extract or automatic retry/resource increase.
+
+Private outputs: manifest, exact config, numerical `selection_report.json`, outer fold
+`models.json`, and `paper_tables.md` containing every candidate/policy/seed/horizon and
+paired primary results. No per-order prediction rows or patient IDs are persisted.
+Patient-set hashes remain private audit material. Original W001 models/metrics are not
+selection inputs; its manifest fixes population provenance. Terminal feedback is an
+allowlisted qualitative selection/direction summary, never metric magnitudes or counts.
+
+### Decision and stopping rules
+
+The run has no clinical advancement or paper-acceptance gate. Preserve all prior negatives.
+Identical choices mean no observed policy-selection effect for this candidate bank.
+Different choices with unresolved bounds mean the observed data do not resolve the
+contrast under this evaluation; do not declare equivalence or superiority. Favorable,
+adverse or mixed directions all remain in the report, without changing horizons,
+weights, candidate bank, thresholds, or initiating a larger search. Failed/limited jobs
+are incomplete evidence; fix implementation defects locally, not by silently relaxing
+resource/data bounds. No raw data change or server coding agent is required.
+
+After the one real run, assess whether its private effect magnitudes and complete pattern
+support a useful, limited empirical paper. If not, finish the reproducible negative report
+and close this question; do not spend additional UCSF runs trying to manufacture a win.
+No original held-out evaluation is authorized by R001. Manuscript readiness remains
+unestablished; a positive direction alone does not justify a publication claim.

@@ -14,11 +14,13 @@ import yaml
 
 from ies.clinical_baseline import load_baseline_config
 from ies.clinical_history_models import load_history_model_config
+from ies.clinical_selection import check_original
 from ies.clock_audit import plan_clock_audit
 from ies.clock_audit_ops import (
     ClockAuditOpsError,
     discover_clock_artifacts,
     wait_for_clock_audit,
+    wait_for_selection,
     wait_for_workflow_cv,
     wait_for_workflow_diagnostics,
 )
@@ -31,6 +33,8 @@ from ies.feasibility.access import load_access_snapshot
 from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.io import write_json
+from ies.selection_cv import MODE as SELECTION_MODE
+from ies.selection_cv import load_config as load_selection_config
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
 from ies.workflow_cv import MODE as WORKFLOW_MODE
 from ies.workflow_diagnostics import MODE as DIAGNOSTIC_MODE
@@ -114,6 +118,7 @@ def sbatch_command(
     workflow_config: Path | None = None,
     workflow_dir: Path | None = None,
     original_commit: str | None = None,
+    selection_config: Path | None = None,
 ) -> list[str]:
     slurm = config["slurm"]
     command = [
@@ -394,7 +399,7 @@ def sbatch_command(
                 str(run_dir / "dual-clock-history"),
             ]
         )
-    elif job in {"clock-audit", "workflow-cv", "workflow-diagnostics"}:
+    elif job in {"clock-audit", "workflow-cv", "workflow-diagnostics", "workflow-selection"}:
         if cohort_dir is None or history_dir is None:
             raise ValueError("Clock audit requires existing cohort and history")
         if any(
@@ -418,12 +423,13 @@ def sbatch_command(
         command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
         command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
         command[command.index(f"--time={slurm['time_limit']}")] = (
-            "--time=00:20:30" if job == "workflow-cv" else "--time=00:05:30"
+            "--time=00:20:30" if job in {"workflow-cv", "workflow-selection"} else "--time=00:05:30"
         )
-        if job == "workflow-diagnostics":
+        if job in {"workflow-diagnostics", "workflow-selection"}:
+            selected_config = selection_config if job == "workflow-selection" else workflow_config
             if (
                 workflow_dir is None
-                or workflow_config is None
+                or selected_config is None
                 or original_commit is None
                 or not re.fullmatch(r"[0-9a-f]{40}", original_commit)
             ):
@@ -438,27 +444,42 @@ def sbatch_command(
             original = json.loads(original_bytes)
             if not isinstance(original, dict):
                 raise ValueError("Invalid frozen workflow manifest")
-            _, digest = load_workflow_config(workflow_config)
+            loader = load_selection_config if job == "workflow-selection" else load_workflow_config
+            _, digest = loader(selected_config)
             if (
                 original.get("mode") != WORKFLOW_MODE
                 or original.get("status") != "complete"
                 or original.get("source_commit") != original_commit
                 or original.get("cohort_manifest_sha256") != digests[0]
                 or original.get("history_manifest_sha256") != digests[1]
-                or original.get("config_sha256") != digest
+                or (job == "workflow-diagnostics" and original.get("config_sha256") != digest)
             ):
                 raise ValueError("Frozen workflow does not match discovered inputs")
+            if job == "workflow-selection":
+                check_original(original, digests[0], digests[1], original_commit)
+            config_variable = (
+                "IES_SELECTION_CONFIG_SHA256"
+                if job == "workflow-selection"
+                else "IES_WORKFLOW_CONFIG_SHA256"
+            )
             export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
             command[export_index] += (
-                f",IES_WORKFLOW_CONFIG_SHA256={digest},IES_WORKFLOW_MANIFEST_SHA256={hashlib.sha256(original_bytes).hexdigest()},IES_ORIGINAL_WORKFLOW_COMMIT={original_commit}"
+                f",{config_variable}={digest},IES_WORKFLOW_MANIFEST_SHA256={hashlib.sha256(original_bytes).hexdigest()},IES_ORIGINAL_WORKFLOW_COMMIT={original_commit}"
             )
             command.extend(
                 [
-                    str(ROOT / "slurm/workflow_diagnostics.sbatch"),
+                    str(
+                        ROOT
+                        / (
+                            "slurm/workflow_selection.sbatch"
+                            if job == "workflow-selection"
+                            else "slurm/workflow_diagnostics.sbatch"
+                        )
+                    ),
                     python,
                     str(cohort),
                     str(history),
-                    str(workflow_config.resolve()),
+                    str(selected_config.resolve()),
                     str(workflow),
                     str(run_dir / job),
                 ]
@@ -550,11 +571,12 @@ def main() -> int:
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
+            "workflow-selection",
         ),
     )
     parser.add_argument("--config", type=Path, default=ROOT / "configs/remote.local.yaml")
-    parser.add_argument("--job-id", help="Review only: exact existing scheduler job ID")
-    parser.add_argument("--source-commit", help="Review only: original job's full source SHA")
+    parser.add_argument("--job-id", help="Exact existing W001 scheduler job ID")
+    parser.add_argument("--source-commit", help="Original W001 job's full source SHA")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
@@ -564,6 +586,9 @@ def main() -> int:
         "--history-config", type=Path, default=ROOT / "configs/dual_clock_history.yaml"
     )
     parser.add_argument("--history-dir", type=Path)
+    parser.add_argument(
+        "--selection-config", type=Path, default=ROOT / "configs/workflow_selection.yaml"
+    )
     parser.add_argument("--workflow-config", type=Path, default=ROOT / "configs/workflow_cv.yaml")
     parser.add_argument(
         "--auto-artifacts",
@@ -610,21 +635,23 @@ def main() -> int:
             result = review_workflow(Path(config["output_root"]), args.job_id, args.source_commit)
             print(json.dumps(dict(result, reviewer_commit=reviewer_commit), indent=2))
             return 0
-        if (
-            args.job_id is not None or args.source_commit is not None
-        ) and args.job != "workflow-diagnostics":
+        if (args.job_id is not None or args.source_commit is not None) and args.job not in {
+            "workflow-diagnostics",
+            "workflow-selection",
+        }:
             raise ValueError("Job binding options apply only to review")
         if (args.auto_artifacts or args.wait) and args.job not in {
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
+            "workflow-selection",
         }:
             raise ValueError("Artifact discovery/monitor options require a supported artifact job")
         if args.wait and args.action != "submit":
             raise ValueError("Wait applies only to submission")
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
         workflow_dir = None
-        if args.job == "workflow-diagnostics":
+        if args.job in {"workflow-diagnostics", "workflow-selection"}:
             if (
                 not args.job_id
                 or not args.source_commit
@@ -678,10 +705,40 @@ def main() -> int:
             args.workflow_config,
             workflow_dir,
             args.source_commit,
+            args.selection_config,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "workflow-diagnostics":
+            if args.job == "workflow-selection":
+                settings, _ = load_selection_config(args.selection_config)
+                print(
+                    json.dumps(
+                        dict(
+                            mode=SELECTION_MODE,
+                            submitted=False,
+                            original_job_id=args.job_id,
+                            evaluation_scope=settings["evaluation_scope"],
+                            seeds=settings["seeds"],
+                            outer_folds=5,
+                            inner_folds=3,
+                            candidates=8,
+                            fits=160 * len(settings["seeds"]),
+                            model_fitted=True,
+                            validation_split_evaluated=False,
+                            test_split_evaluated=False,
+                            raw_source_scan=False,
+                            cpus=2,
+                            memory_mb=4096,
+                            worker_seconds=1200,
+                            gpu_used=False,
+                            max_cohort_rows=20000,
+                            max_history_rows=500000,
+                            clinical_advancement_decision="not_applicable",
+                            publication_readiness="not_established",
+                        )
+                    )
+                )
+            elif args.job == "workflow-diagnostics":
                 print(
                     json.dumps(
                         dict(
@@ -844,6 +901,7 @@ def main() -> int:
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
+            "workflow-selection",
             "feasibility",
             "coherent-prepare",
             "cohort-vocabulary",
@@ -866,6 +924,7 @@ def main() -> int:
                 "clock-audit": wait_for_clock_audit,
                 "workflow-cv": wait_for_workflow_cv,
                 "workflow-diagnostics": wait_for_workflow_diagnostics,
+                "workflow-selection": wait_for_selection,
             }[args.job]
             print(json.dumps(monitor(job_id, run_dir, revision)))
         return 0

@@ -46,6 +46,9 @@ def parser() -> argparse.ArgumentParser:
     command = commands.add_parser("workflow-demo")
     command.add_argument("--config", type=Path, default=Path("configs/workflow_cv.yaml"))
     command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("selection-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/workflow_selection.yaml"))
+    command.add_argument("--run-dir", type=Path)
     command = commands.add_parser("validate")
     command.add_argument("--events", type=Path, required=True)
     command = commands.add_parser("evaluate")
@@ -125,10 +128,27 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("action", choices=("run",))
     for name in ("cohort-dir", "history-dir", "config", "workflow-dir", "output-dir"):
         command.add_argument("--" + name, type=Path, required=True)
+    command = commands.add_parser("workflow-selection")
+    command.add_argument("action", choices=("run",))
+    for name in ("cohort-dir", "history-dir", "config", "workflow-dir", "output-dir"):
+        command.add_argument("--" + name, type=Path, required=True)
     return root
 
 
 def dispatch(args):
+    if args.command == "workflow-selection":
+        from ies.selection_runner import run_selection
+
+        return run_selection(
+            args.cohort_dir, args.history_dir, args.config, args.workflow_dir, args.output_dir
+        )
+    if args.command == "selection-demo":
+        from ies.selection_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-selection-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
     if args.command == "workflow-diagnostics":
         from ies.workflow_diagnostics_runner import run_diagnostics
 
@@ -289,6 +309,7 @@ def main(argv=None) -> int:
     root = parser()
     args = root.parse_args(argv)
     if args.command in (
+        "workflow-selection",
         "workflow-diagnostics",
         "workflow-cv",
         "clock-audit",
@@ -306,6 +327,9 @@ def main(argv=None) -> int:
             result = dispatch(args)
         except Exception:
             messages = {
+                "workflow-selection": (
+                    "Workflow selection failed; inspect the private UCSF run directory.\n"
+                ),
                 "workflow-diagnostics": (
                     "Workflow diagnostics failed; inspect the private UCSF run directory.\n"
                 ),

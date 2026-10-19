@@ -28,6 +28,7 @@ CONFIGS = {
     "configs/clinical_history_models.yaml",
     "configs/synthetic_pairing.yaml",
     "configs/workflow_cv.yaml",
+    "configs/workflow_selection.yaml",
 }
 
 

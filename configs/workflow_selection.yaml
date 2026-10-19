@@ -1,0 +1,20 @@
+schema_version: 1
+experiment: R001
+evaluation_scope: original_training_nested_patient_cv
+seeds: [20261020, 20261021, 20261022]
+outer_folds: 5
+inner_folds: 3
+scales_hours: [1.0, 4.0, 12.0, 24.0]
+bin_edges_hours: [0.0, 1.0, 2.0, 4.0, 8.0, 12.0, 24.0]
+horizons_hours: [1.0, 4.0, 12.0, 24.0]
+horizon_weights: [0.25, 0.25, 0.25, 0.25]
+ridge: 1.0
+max_iterations: 100
+tolerance: 1.0e-8
+tree_max_depth: 2
+tree_min_leaf_patients: 25
+tree_quantiles: [0.25, 0.5, 0.75]
+tree_prior_events: 0.5
+tree_prior_hours: 1.0
+bootstrap_replicates: 1000
+selection_tie_tolerance: 1.0e-12

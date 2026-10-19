@@ -173,9 +173,10 @@ def _wait_for_result(
                     or manifest.get("status") != "complete"
                     or manifest.get("source_commit") != commit
                     or manifest.get("data_class") != data_class
+                    or not isinstance(manifest.get("artifacts_sha256"), dict)
                 ):
                     raise ClockAuditOpsError(f"{prefix}_result_invalid")
-                if job in {"workflow-cv", "workflow-diagnostics"} and (
+                if job in {"workflow-cv", "workflow-diagnostics", "workflow-selection"} and (
                     manifest.get("validation_split_evaluated") is not False
                     or manifest.get("test_split_evaluated") is not False
                 ):
@@ -232,3 +233,35 @@ def wait_for_workflow_diagnostics(
         return result
     except Exception:
         raise ClockAuditOpsError("workflow_diagnostics_summary_invalid") from None
+
+
+def wait_for_selection(job_id, run_dir, commit, *, timeout_seconds=3600, poll_seconds=15):
+    from ies.clinical_selection import ARTIFACTS
+    from ies.selection_cv import MODE as SELECTION_MODE
+    from ies.selection_cv import qualitative_summary
+    from ies.workflow_review import _read
+
+    result = _wait_for_result(
+        job_id,
+        run_dir,
+        commit,
+        job="workflow-selection",
+        mode=SELECTION_MODE,
+        data_class="restricted_clinical",
+        artifacts=ARTIFACTS,
+        timeout_seconds=timeout_seconds,
+        poll_seconds=poll_seconds,
+    )
+    try:
+        output = run_dir / "workflow-selection"
+        content = _read(output / "selection_report.json", ARTIFACTS["selection_report.json"])
+        manifest = json.loads(_read(output / "manifest.json"))
+        if (
+            hashlib.sha256(content).hexdigest()
+            != manifest["artifacts_sha256"]["selection_report.json"]
+        ):
+            raise ValueError
+        result["selection"] = qualitative_summary(json.loads(content))
+        return result
+    except Exception:
+        raise ClockAuditOpsError("workflow_selection_summary_invalid") from None

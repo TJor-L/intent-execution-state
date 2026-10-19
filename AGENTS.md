@@ -81,8 +81,21 @@ needed for those questions on unchanged inputs. No common winner across the repo
 metrics/horizons, clinical usefulness or new architecture contribution is established.
 Do not repeat the jobs, select a favorable horizon after seeing results, recalibrate,
 refit or reopen original held-out evaluation to rescue this study. Any future experiment
-needs a separate question, fixed target and evaluation design; it is not implemented or
-scheduled by this completion record. Generated checks do not supply clinical evidence.
+needs a separate question, fixed target and evaluation design. The later R001 authorization
+and protocol below supply that separate design; this completion record itself does not. Generated checks do not supply clinical evidence.
+
+The user next authorized autonomous direction selection, implementation and research
+preparation, with the user operating prepared server jobs. R001 is a separate fixed
+question: compare joint-NLL versus coherent upper execution-Brier-bound selection on the
+same eight-candidate PH/tree bank, using three seeded 5x3 nested patient CV runs within
+original training only. See docs/11 and configs/workflow_selection.yaml. Implementation
+and generated verification are local; R001 clinical execution is pending. Preserve all
+prior negatives; this is exploratory development, not independent confirmation, a new
+score, or a claim of publishability. Keep every seed/horizon, no favorable-result search.
+One bounded existing-artifact CPU job is the next data-dependent step. No new semantics,
+raw scan, GPU, data transfer, original validation/test evaluation or server coding agent
+is needed. The user's earlier explicit push/run/feedback instruction authorizes the
+verified milestone release and pinned job handoff; it does not authorize data publication.
 
 ## Workflow
 
