@@ -53,6 +53,8 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
     "recurrent_storage_inside_repository",
     "recurrent_legacy_input_not_ignored",
     "recurrent_legacy_input_tracked_or_unverifiable",
+    "recurrent_legacy_input_git_unavailable",
+    "recurrent_legacy_input_foreign_repository",
 }
 
 
@@ -85,31 +87,51 @@ def report_error(error):
     )
 
 
-def _legacy_input_allowed(path, repositories):
-    """Read only ignored, untracked artifacts in this checkout's original repository."""
+def _git_common_directory(checkout):
     try:
         common = subprocess.check_output(
             ["git", "rev-parse", "--git-common-dir"],
-            cwd=ROOT,
+            cwd=checkout,
             stderr=subprocess.DEVNULL,
             text=True,
             timeout=30,
         ).strip()
-        original = (ROOT / common).resolve().parent
+        if not common or len(common) > 16384:
+            raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
+        return (checkout / common).resolve()
     except (OSError, subprocess.SubprocessError):
-        raise RecurrentTaskError("recurrent_storage_inside_repository") from None
-    if repositories != [original] or not path.is_relative_to(original):
-        raise RecurrentTaskError("recurrent_storage_inside_repository")
-    relative = path.relative_to(original).as_posix() + "/"
-    kwargs = dict(
-        cwd=original, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30, check=False
-    )
-    ignored = subprocess.run(["git", "check-ignore", "-q", "--", relative], **kwargs)
-    if ignored.returncode != 0:
-        raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
-    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "--", relative], **kwargs)
-    if tracked.returncode != 1:
-        raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
+        raise RecurrentTaskError("recurrent_legacy_input_git_unavailable") from None
+
+
+def _legacy_input_allowed(path, repositories):
+    """Read ignored, untracked artifacts only within this project's Git worktree family."""
+    if not repositories:
+        raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
+    common = _git_common_directory(ROOT)
+    for repository in repositories:
+        if _git_common_directory(repository) != common or not path.is_relative_to(repository):
+            raise RecurrentTaskError("recurrent_legacy_input_foreign_repository")
+        relative = path.relative_to(repository).as_posix() + "/"
+        kwargs = dict(
+            cwd=repository,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+            check=False,
+        )
+        try:
+            ignored = subprocess.run(["git", "check-ignore", "-q", "--", relative], **kwargs)
+            if ignored.returncode == 1:
+                raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
+            if ignored.returncode != 0:
+                raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
+            tracked = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", "--", relative], **kwargs
+            )
+            if tracked.returncode != 1:
+                raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
+        except (OSError, subprocess.SubprocessError):
+            raise RecurrentTaskError("recurrent_legacy_input_git_unavailable") from None
 
 
 def _storage_path(path, *, legacy_input=False):
@@ -146,6 +168,10 @@ def _storage_path(path, *, legacy_input=False):
 def validate_paths(cohort, output, mapping):
     cohort = _storage_path(cohort, legacy_input=True)
     output = _storage_path(output)
+    _check_overlap(cohort, output, mapping)
+
+
+def _check_overlap(cohort, output, mapping):
     for source in (cohort, *(item.path for item in mapping.feasibility.sources)):
         source = source.resolve()
         if output.is_relative_to(source) or source.is_relative_to(output):
@@ -173,16 +199,33 @@ def review_storage(cohort, output, mapping):
         ),
         "cohort_has_symlink_ancestor": any(p.is_symlink() for p in (cohort, *cohort.parents)),
     }
-    code = None
-    try:
-        validate_paths(cohort, output, mapping)
-    except RecurrentTaskError as error:
-        code = str(error) if str(error) in PUBLIC_ERROR_CODES else "unclassified"
+    checks, resolved = {}, {}
+    for component, path, legacy_input in (
+        ("cohort_input", cohort, True),
+        ("new_output", output, False),
+    ):
+        try:
+            resolved[component] = _storage_path(path, legacy_input=legacy_input)
+            checks[component] = {"status": "passed", "error_code": None}
+        except RecurrentTaskError as error:
+            checks[component] = {
+                "status": "blocked",
+                "error_code": str(error) if str(error) in PUBLIC_ERROR_CODES else "unclassified",
+            }
+    checks["overlap"] = {"status": "not_checked", "error_code": None}
+    if len(resolved) == 2:
+        try:
+            _check_overlap(resolved["cohort_input"], resolved["new_output"], mapping)
+            checks["overlap"] = {"status": "passed", "error_code": None}
+        except RecurrentTaskError as error:
+            checks["overlap"] = {"status": "blocked", "error_code": str(error)}
+    code = next((item["error_code"] for item in checks.values() if item["error_code"]), None)
     return {
         "mode": "recurrent_storage_review",
         "status": "passed" if code is None else "blocked",
         "error_code": code,
         "legacy_rejection_checks": legacy,
+        "storage_checks": checks,
         "submitted": False,
         "raw_source_scan": False,
         "row_persistence": False,

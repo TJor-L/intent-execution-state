@@ -2465,3 +2465,44 @@ checks passed without changing the clinical protocol. All test repositories and 
 are generated fixtures. Publishing under the standing user authorization; the release
 script rechecks and pins the actual commit. The server command checks the explicit new
 root first and submits only if that check passes. No server outcome is claimed yet.
+
+### Legacy-input rejection after the external-output fix
+
+The user ran the `784d33b` storage review with the external write root. It still returned
+`recurrent_storage_inside_repository`, but all legacy flags were false, including the
+new output's Git-ancestor flag. In that version this localizes the remaining rejection
+to `_legacy_input_allowed`: either Git context lookup failed or the cohort's enclosing
+repository markers did not exactly equal the inferred original checkout. No job was
+submitted, no raw source was scanned and no recurrent-task evidence was produced.
+
+A generated regression reproduced a real defect in the old check: same-project
+`original/handoff/old-worktree/private/cohort` has both its own `.git` file and the main
+repository's `.git` ancestor, so the single-directory comparison rejects it. The first
+regression failed on the released implementation before the fix. This layout is
+consistent with the handoff convention, but it is not proof of the private cohort's
+actual location or the historical Git environment on UCSF.
+
+Replaced the directory-name heuristic with resolved Git common-directory identity.
+Every enclosing checkout must belong to the running checkout's Git family. Ignore and
+index checks run independently in every enclosing checkout; same-family worktrees do
+not exempt an outer tracked file or an unignored outer path. Foreign or independently
+nested repositories still fail. External new-write restrictions are unchanged.
+Distinct fixed categories now separate Git lookup/timeout failures, foreign repository
+identity, ignore failures and tracked/unverifiable index status. Storage review emits
+separate cohort-input, new-output and overlap checks, never private paths or exception
+payloads; overlap is not evaluated if either path check failed.
+
+Generated tests cover the real nested Git/worktree layout, unchanged input bytes,
+both inner and outer index tracking, independent inner/outer ignore rules, foreign
+repositories and sanitized Git failures/timeouts. Initial category assertions were
+updated for the new explicit errors; the outer-ignore regression uses Git's anchored
+common exclude to model different ignore outcomes in the enclosing checkouts.
+All 60 focused storage/runner checks passed. No server artifacts or config were changed.
+
+Final verification: `make check` **797 passed, 2 skips**, Ruff check/format (204 files)
+and repository boundary check passed. `make demo` completed at
+`artifacts/synthetic/20261021T162538Z-1f1fe9ed`; `git diff --check` passed. Publishing
+the verified fix under the standing authorization, with a clean-commit handoff. No real
+retry, source scan or claimed task-support result follows from the local tests. The
+prepared server sequence retains the external write root and stops before submission
+if any of the independent storage checks fail.

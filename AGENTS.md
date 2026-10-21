@@ -314,9 +314,14 @@ The subsequent `07638fb` storage review confirmed the configured output is insid
 Git repository, with the alias-related legacy flags false. The current fix separates
 old artifact discovery from an explicit external `--output-root`, without editing the
 existing config or moving artifacts. New writes must remain outside every repository.
-Read-only legacy cohort access is allowed only inside this project's original common
-repository when Git confirms the directory is ignored and no contents are tracked;
-foreign/nested repositories, redirects, input/output overlap and tracked inputs reject.
+Read-only legacy cohort access is allowed only within this project's Git worktree family.
+Every enclosing checkout must have the same resolved Git common directory and must
+independently confirm the cohort directory is ignored with no tracked contents.
+Independent foreign/nested repositories, redirects, overlap and tracked inputs reject.
+The user's `784d33b` review passed the new-output checks but still rejected the legacy
+input. A same-project nested-worktree false rejection was reproduced locally and fixed;
+the server's precise prior cause is not yet confirmed. Review now reports separate
+cohort/new-output/overlap categories and distinct Git-unavailable/foreign-repository errors.
 This exception adds no source role or row persistence. Test the storage check before
 submitting the unchanged bounded scan; do not treat path checks as research evidence.
 The user also reported GPU availability if useful; T001 remains a CPU

@@ -412,11 +412,18 @@ bash scripts/run_recurrent_audit.sh --submit \
 原 cohort/history 和 mapping，不改写配置、不复制或搬动任何旧产物。新目录也不能与
 原产物根或 data_root 重叠，包装脚本以 `umask 077` 创建新产物。
 
-如果旧 cohort 也在当前项目原仓库内，只读兼容入口会验证它属于此 worktree 的 Git
-common repository，整个目录被 Git 忽略且未跟踪任何文件，之后才可读取既有绑定产物。
+如果旧 cohort 也在当前项目仓库或历史 worktree 内，只读兼容入口会验证所有包含它的
+checkout 都与运行版本共享同一 Git common directory，并分别核验整个目录被 Git 忽略、
+未跟踪任何文件，之后才可读取既有绑定产物。同项目 `handoff/<worktree>` 嵌套布局可通过；
+不能仅凭出现两个 `.git` 标记就判断是独立仓库。
 这不是允许 Git 存储临床数据：不添加、修改、提交这些文件，也不允许向仓库内写新结果；
-其他仓库、嵌套仓库、符号链接跳转或跟踪状态不明确时停止。该检查不会删除历史 Git 数据，
+其他仓库、嵌套的独立仓库、符号链接跳转或跟踪状态不明确时停止。该检查不会删除历史 Git 数据，
 也不声称审计过 Git 历史。各输入内容摘要、原训练患者选择和完整扫描上限继续生效。
+
+`784d33b` 的服务器检查已确认新输出位置通过旧版全部拒绝条件，但旧输入仍被拦截。
+后续版本修复了同项目嵌套 worktree 的误拒绝，并在 `storage_checks` 中分别报告
+`cohort_input`、`new_output`、`overlap`。Git 查询失败、独立仓库、未忽略和已跟踪输入
+使用不同固定错误类别。该本地复现不证明服务器此前必然是同一种布局问题。
 
 它复用主仓库的 `configs/remote.local.yaml` 和既有 Python 环境，发现唯一已绑定的
 cohort/history 对，仅用 cohort 的身份及 split。然后在主仓库 `configs` 下按原 cohort
