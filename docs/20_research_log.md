@@ -2321,3 +2321,103 @@ the required publication script reruns checks and generates the handoff pinned t
 actual clean commit before ordinary push. No clinical records or generated result
 artifacts are included in the publication set. The release includes the previously
 verified generated research references as well as the independent T001 audit.
+
+## 2026-10-21 — T001 job 39768 failed; cause not yet established
+
+Release `34d6ee75affda8e93c2eaedc121c58dc045536d5` was pushed and the user
+reported successful server preflight/planning and submission of job 39768. The monitor
+then returned `recurrent_audit_job_failed_no_automatic_retry`. This reports a scheduler
+failure, not a negative research finding or verified source coverage. No successful
+task report, reason, elapsed time or resource evidence has yet been supplied.
+
+Local inspection confirms that the monitor emits the same message for different
+terminal scheduler states. The runner can persist a fixed status/limit in `failure.json`,
+but generic worker exceptions are intentionally suppressed and may leave only
+`failed` with a null limit. Prepare read-only inspection of scheduler accounting and
+the exact job/commit-bound failure record, emitting allowlisted categories only. Do not
+resubmit, enlarge resources, read clinical rows or request private logs to infer a cause.
+
+The prepared read-only snippet passed seven generated checks: absent record, recognized
+limit, generic failure, rejection of arbitrary payloads, symlink rejection, duplicate
+receipt rejection and commit mismatch rejection. `git diff --check` passed. These are
+diagnostic-tool checks only; no clinical job was rerun, no pipeline changed, and no new
+commit or push was made. Scheduler accounting and the existing failure record remain
+the next server-only evidence needed.
+
+### Follow-up: early exit without a failure record
+
+User-provided accounting shows job 39768 and its batch step FAILED with exit `2:0`
+after one second; no MaxRSS value was supplied. The receipt-bound read-only check
+reported `failure_record: absent`. This suggests startup/early initialization but
+does not establish memory exhaustion, a scan limit, successful scan coverage or any
+negative task-support finding. It also does not exclude storage failures preventing
+failure-record creation. The old runner suppresses pre-output exceptions to one generic
+stderr sentence, making their causes unrecoverable from that sentence alone.
+
+Added allowlisted error codes/categories to the runner's exception handler, including
+errors before output creation; no arbitrary exception payload/class name is emitted.
+Resource exit codes, storage restrictions, source access and research protocol are
+unchanged. No root-cause fix is claimed. Six new generated regressions check exact
+category output and rejection of private payloads. `make check` passed **754 tests,
+2 skips**, Ruff check/format and repository boundary check. `make demo` completed at
+`artifacts/synthetic/20261021T152352Z-bdb12c0c` (generated only).
+
+Prepared a read-only snippet for the existing server checkout: locate the exact prior
+receipt; classify bounded stderr without exporting log text; verify current clean
+revision; rediscover the exact prior mapping; and run existing output-boundary checks.
+This checks current startup metadata, not the historical compute-node environment or
+exported bindings, and never invokes a worker, creates output or reads clinical rows.
+Six generated cases passed, including private-payload suppression, receipt mismatch,
+symlink and dirty-revision rejection; input files were unchanged. Pending that server
+evidence, no retry, limit increase, commit or push was made.
+
+### Follow-up: output-boundary rejection reproduced
+
+The user's read-only response for job 39768 reported a present stderr file containing
+the runner's generic error, no detected Python import error, and failure at
+`path_validation` with code `recurrent_invalid_output`. Configuration, clean revision,
+artifact discovery and mapping loading passed in that inspection. This reproduces a
+current path rejection; the old combined condition does not identify its specific
+predicate or prove that all historical compute-node state was the same.
+
+Local inspection found a concrete compatibility defect: prior cohort validation used
+the resolved authorized storage root, while output validation required a literal
+`/scratch/tliu7` prefix and rejected even the fixed root's own symlink ancestors.
+Generated fixtures reproduce rejection of a legitimate aliased root and its canonical
+spelling. This is a possible cause, not yet established as job 39768's exact cause.
+The replacement accepts only the fixed authorized root and its canonical spelling;
+arbitrary aliases, symlinks below that root, escapes, Git repository storage (including
+worktree .git files), and source/cohort overlap remain rejected. Neither server paths
+nor configuration are changed automatically.
+
+Added the same metadata-only path checks to plan/submit before command submission or
+run-directory creation. Distinct fixed errors now report which boundary failed. Added
+`bash scripts/run_recurrent_audit.sh --check-storage` for a read-only, categorical review
+of current paths and all legacy rejection conditions. This avoids further long inline
+diagnostics after release. It does not submit, run a worker, open clinical rows, create
+an artifact directory, reconstruct historical scheduler state or change resource caps.
+The original protocol, negative findings and held-out evaluation remain unchanged.
+
+Verification: 39 focused runner/storage checks passed, including 22 new filesystem/CLI
+cases. `make check` passed **776 tests, 2 skips**, Ruff check/format (204 files), and the
+repository boundary check. `make demo` completed at
+`artifacts/synthetic/20261021T153117Z-a9569c10`. Shell syntax and `git diff --check` passed.
+All fixtures/results here are generated. These changes remain in the working tree on
+`34d6ee7`; no commit, push, server configuration change or clinical retry has occurred.
+The next release needs the explicit commit/push instruction required by AGENTS.md;
+after release, use the short storage review before considering a new full-source job.
+
+### Standing publication authorization and path-fix release
+
+The user explicitly removed the per-release commit/push approval requirement: server
+Codex is unavailable, and publishing Mac changes is necessary to update server code.
+Updated AGENTS.md to authorize ordinary commit/push of verified milestones and necessary
+server fixes without another approval. This supersedes the earlier approval requirement
+above; the data boundary, required checks and single-writer workflow remain in force.
+
+Preparing this path-fix release on the existing 776-pass / 2-skip check and completed
+synthetic demo. The publication script reruns checks and generates a handoff pinned to
+the actual clean commit before ordinary push. The initial server action for this release
+is the metadata-only `--check-storage` review, not automatic resubmission of job 39768.
+No claim is made yet about which legacy path predicate triggered the real failure or
+about real recurrent-task support.

@@ -299,8 +299,19 @@ patients, runs two order passes plus one administration and one observation pass
 and verifies complete content hashes before/after. Both charged file reads and decoded
 row groups have a 64 GiB total ceiling, with 2 CPU / 4 GiB / 1200-second worker bounds.
 The user requested runnable server commands on 2026-10-21 after the release proposal;
-proceed with this verified milestone's commit/push and pinned handoff. No real T001 run
-has occurred. The user also reported GPU availability if useful; T001 remains a CPU
+proceed with this verified milestone's commit/push and pinned handoff. The user reported
+T001 job 39768 submitted at release `34d6ee7`, followed by the monitor's generic failure
+message. Read-only feedback then showed FAILED / exit 2 after one second and no
+failure record. This narrows investigation to startup/early initialization without
+establishing the cause or scan completion; no task-support finding follows.
+Subsequent read-only inspection reproduced `path_validation / recurrent_invalid_output`;
+the specific path predicate remains unknown. The local fix accepts the fixed authorized
+root's canonical spelling, retains descendant-symlink/Git/overlap restrictions, and
+checks boundaries before submission. A new `--check-storage` wrapper emits only fixed
+categories without a job or row reads. It requires a release newer than `34d6ee7`
+and has not yet been verified on UCSF.
+Do not claim the observed failure was definitely a root alias or blindly retry it.
+The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults
 to plan only; `--submit` executes the explicitly described scan after a clean release.
@@ -386,9 +397,13 @@ access capabilities are genuine blockers; ordinary code defects are work to fix 
 
 ## Handoffs
 
-Do not create Git commits or push unless the user explicitly requests it. Continue
-implementation, testing and authorized UCSF jobs in the working tree; when a clean
-commit is required for a formal job, report that concrete need to the user.
+On 2026-10-21 the user removed the per-release commit/push approval requirement because
+the server Codex is unavailable and Git is how server code is updated. The Mac agent
+is authorized to commit and ordinarily push verified project milestones and necessary
+server fixes without asking again. Complete the required checks before publishing,
+then provide commands pinned to the actual released commit. This standing authorization
+supersedes older per-release approval requirements recorded in the research log.
+Keep the Mac as the active writer; the user operates the prepared UCSF commands.
 
 Commit source and docs only after checks pass. A handoff SHA identifies the initial
 entry version, not a permanent freeze: server changes and later jobs use their own

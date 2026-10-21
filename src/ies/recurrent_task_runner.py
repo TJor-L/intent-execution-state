@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ies.clinical_baseline import _verify_artifact_directory
+from ies.clinical_baseline import AUTHORIZED_ROOT
 from ies.cohort_readiness.eligibility import load_eligibility_mapping
 from ies.feasibility.contract import ROOT
 from ies.feasibility.runner import verify_execution_context
@@ -32,23 +32,121 @@ LIMIT_EXIT_CODES = {
     "eligibility_bytes_limit": 78,
 }
 
+# Never print arbitrary exception text or class names from restricted input handling.
+PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
+    "authorized_slurm_context_required",
+    "expected_commit_required",
+    "source_revision_changed",
+    "invalid_eligibility_mapping",
+    "recurrent_inputs_changed",
+    "recurrent_invalid_cohort_storage",
+    "recurrent_invalid_output",
+    "recurrent_overlapping_storage",
+    "recurrent_invalid_arguments",
+    "recurrent_mapping_changed",
+    "recurrent_invalid_report",
+    "recurrent_invalid_result",
+    "recurrent_storage_invalid_path",
+    "recurrent_storage_outside_authorized_root",
+    "recurrent_storage_unapproved_alias",
+    "recurrent_storage_symlink_below_root",
+    "recurrent_storage_inside_repository",
+}
+
+
+def report_error(error):
+    message = str(error)
+    category = "unclassified_error"
+    for kind, label in (
+        (MemoryError, "memory_error"),
+        (PermissionError, "permission_error"),
+        (FileExistsError, "output_already_exists"),
+        (FileNotFoundError, "file_not_found"),
+        (ImportError, "import_error"),
+        (OSError, "operating_system_error"),
+        (ValueError, "validation_error"),
+    ):
+        if isinstance(error, kind):
+            category = label
+            break
+    print(
+        json.dumps(
+            {
+                "mode": MODE,
+                "status": "failed",
+                "error_category": category,
+                "error_code": message if message in PUBLIC_ERROR_CODES else "unclassified",
+                "automatic_retry": False,
+            }
+        ),
+        file=sys.stderr,
+    )
+
+
+def _storage_path(path):
+    """Accept the fixed storage root or its canonical spelling, never arbitrary aliases."""
+    if not path.is_absolute() or ".." in path.parts:
+        raise RecurrentTaskError("recurrent_storage_invalid_path")
+    authorized = AUTHORIZED_ROOT.resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(authorized):
+        raise RecurrentTaskError("recurrent_storage_outside_authorized_root")
+    anchors = (AUTHORIZED_ROOT, authorized)
+    anchor = next((root for root in anchors if path.is_relative_to(root)), None)
+    if anchor is None:
+        raise RecurrentTaskError("recurrent_storage_unapproved_alias")
+    # The fixed cluster root may itself be an alias. Links below it remain forbidden,
+    # including links pointing back inside storage; do not silently follow redirects.
+    for part in (path, *path.parents):
+        if part == anchor:
+            break
+        if part.is_symlink():
+            raise RecurrentTaskError("recurrent_storage_symlink_below_root")
+    if resolved.is_relative_to(ROOT.resolve()) or any(
+        (part / ".git").exists() or (part / ".git").is_symlink()
+        for part in (resolved, *resolved.parents)
+    ):
+        raise RecurrentTaskError("recurrent_storage_inside_repository")
+    return resolved
+
 
 def validate_paths(cohort, output, mapping):
-    _verify_artifact_directory(cohort, "recurrent_invalid_cohort_storage")
-    if (
-        not output.is_absolute()
-        or ".." in output.parts
-        or not output.is_relative_to(Path("/scratch/tliu7"))
-        or output.is_relative_to(ROOT)
-        or any(p.is_symlink() for p in (output, *output.parents))
-        or any((p / ".git").exists() for p in (output, *output.parents))
-        or any(p.is_symlink() for p in (cohort, *cohort.parents))
-    ):
-        raise RecurrentTaskError("recurrent_invalid_output")
+    cohort = _storage_path(cohort)
+    output = _storage_path(output)
     for source in (cohort, *(item.path for item in mapping.feasibility.sources)):
         source = source.resolve()
         if output.is_relative_to(source) or source.is_relative_to(output):
             raise RecurrentTaskError("recurrent_overlapping_storage")
+
+
+def review_storage(cohort, output, mapping):
+    """Metadata-only diagnostic; categories only, with no worker or output creation."""
+    legacy = {
+        "output_not_absolute": not output.is_absolute(),
+        "output_parent_traversal": ".." in output.parts,
+        "output_not_literal_scratch_child": not output.is_relative_to(AUTHORIZED_ROOT),
+        "output_inside_checkout": output.is_relative_to(ROOT),
+        "output_has_symlink_ancestor": any(p.is_symlink() for p in (output, *output.parents)),
+        "output_inside_git_repository": any(
+            (p / ".git").exists() for p in (output, *output.parents)
+        ),
+        "cohort_has_symlink_ancestor": any(p.is_symlink() for p in (cohort, *cohort.parents)),
+    }
+    code = None
+    try:
+        validate_paths(cohort, output, mapping)
+    except RecurrentTaskError as error:
+        code = str(error) if str(error) in PUBLIC_ERROR_CODES else "unclassified"
+    return {
+        "mode": "recurrent_storage_review",
+        "status": "passed" if code is None else "blocked",
+        "error_code": code,
+        "legacy_rejection_checks": legacy,
+        "submitted": False,
+        "raw_source_scan": False,
+        "row_persistence": False,
+        "note": "Current metadata only; does not reconstruct the historical compute-node state.",
+    }
 
 
 def summarize_report(report):
@@ -275,21 +373,16 @@ def main():
         result = run_task(*map(Path, sys.argv[1:]))
         print(json.dumps(result))
         return 0 if result["status"] == "complete" else 2
-    except MemoryError:
+    except MemoryError as error:
+        report_error(error)
         return 72
     except ValueError as error:
         if "--worker" in sys.argv and str(error) in LIMIT_EXIT_CODES:
             return LIMIT_EXIT_CODES[str(error)]
-        print(
-            "Recurrent task audit stopped; inspect privately, without automatic retry.",
-            file=sys.stderr,
-        )
+        report_error(error)
         return 2
-    except Exception:
-        print(
-            "Recurrent task audit stopped; inspect privately, without automatic retry.",
-            file=sys.stderr,
-        )
+    except Exception as error:
+        report_error(error)
         return 2
 
 

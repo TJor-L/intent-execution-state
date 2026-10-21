@@ -81,7 +81,10 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
             "mapping_sha256": "b" * 64,
         },
     )
-    monkeypatch.setattr(server, "load_eligibility_mapping", lambda p: (None, "b" * 64))
+    mapping = SimpleNamespace(feasibility=SimpleNamespace(sources=[]))
+    monkeypatch.setattr(server, "load_eligibility_mapping", lambda p: (mapping, "b" * 64))
+    monkeypatch.setattr(runner, "AUTHORIZED_ROOT", tmp_path)
+    monkeypatch.setattr(runner, "ROOT", tmp_path / "checkout")
     config = {
         "slurm": {
             "cpus": 1,
@@ -107,6 +110,19 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
     assert sha256(cohort / "manifest.json") in export
     assert not (cohort / "cohort.parquet").exists()
     assert not (tmp_path / "job").exists()
+
+    # A real invalid output fails before creating a run directory or submitting.
+    (tmp_path / "job").mkdir()
+    (tmp_path / "job" / ".git").write_text("gitdir: synthetic\n")
+    with pytest.raises(RecurrentTaskError, match="inside_repository"):
+        server.sbatch_command(
+            config,
+            "recurrent-audit",
+            tmp_path / "job",
+            mapping_path=tmp_path / "existing.local.yaml",
+            cohort_dir=cohort,
+        )
+    assert not (tmp_path / "job" / "recurrent-audit").exists()
 
 
 @pytest.mark.parametrize(
@@ -151,6 +167,35 @@ def test_source_context_error_is_sanitized(monkeypatch, capsys):
     monkeypatch.setattr(runner, "verify_execution_context", reject)
     assert runner.main() == 2
     assert "toy_private_value" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "error,category,code",
+    [
+        (ValueError("source_revision_changed"), "validation_error", "source_revision_changed"),
+        (ValueError("private_path_or_record"), "validation_error", "unclassified"),
+        (PermissionError("private_path_or_record"), "permission_error", "unclassified"),
+        (FileExistsError("private_path_or_record"), "output_already_exists", "unclassified"),
+        (RuntimeError("private_path_or_record"), "unclassified_error", "unclassified"),
+        (MemoryError("private_path_or_record"), "memory_error", "unclassified"),
+    ],
+)
+def test_early_failures_emit_only_fixed_categories(monkeypatch, capsys, error, category, code):
+    def reject():
+        raise error
+
+    monkeypatch.setattr(runner, "verify_execution_context", reject)
+    assert runner.main() == (72 if isinstance(error, MemoryError) else 2)
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "private_path_or_record" not in captured.err
+    assert json.loads(captured.err) == {
+        "mode": MODE,
+        "status": "failed",
+        "error_category": category,
+        "error_code": code,
+        "automatic_retry": False,
+    }
 
 
 def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch):

@@ -345,8 +345,10 @@ manifest 必须绑定原 SHA、发现的 cohort/history 和未改动的 W001 配
 
 ## T001 重复事件任务可行性检查
 
-状态：本地已实现并通过合成数据专项测试；2026-10-21 按用户的运行命令请求准备固定版本交付，
-尚未在 UCSF 运行。实际发布 SHA 以交付命令和生成的 handoff 为准。
+状态：`34d6ee7` 已发布；UCSF job 39768 在 1 秒后以 exit 2 失败，未生成失败记录。
+后续只读检查复现 `path_validation / recurrent_invalid_output`，尚无真实任务支持报告。
+下述路径诊断及兼容性修复已通过本地检查，随本次修复版交付；实际 SHA 以交付命令为准。
+旧 `34d6ee7` 不含新入口，修复版尚待 UCSF 验证。
 它检查新任务所需的重复给药和共同观察窗口，不拟合模型，不打开旧测试，也不修改
 旧的一次性医嘱提取器。真实数据的适用性要由本次检查确认，不能由合成测试代替。
 
@@ -376,6 +378,22 @@ manifest 必须绑定原 SHA、发现的 cohort/history 和未改动的 W001 配
 ```bash
 bash scripts/run_recurrent_audit.sh
 ```
+
+修复版发布后，可先运行只读存储检查：
+
+```bash
+bash scripts/run_recurrent_audit.sh --check-storage
+```
+
+它仅检查原配置、绑定清单和路径元数据，输出固定类别及旧版拒绝条件的布尔值；
+不创建目录、不提交作业、不读取临床行。`passed` 只表示当前路径检查通过，不代表
+旧作业的计算节点环境已重建，亦不证明任务支持或扫描成功。`blocked` 时根据具体
+错误处理，不重试扫描。新 plan/submit 也会在 sbatch 前执行与 worker 相同的路径校验。
+
+路径校验接受固定授权根 `/scratch/tliu7` 及其 `resolve()` 后的实际路径，解决集群根
+路径别名与字面前缀不一致的问题；仍拒绝授权根以下的符号链接、任意额外别名、越界、
+Git 仓库内的存储和输入输出重叠。没有修改任何服务器路径、配置或已有产物。
+当前反馈没有说明旧版七个拒绝条件中哪一项触发，不能声称 job 39768 已确认由根别名导致。
 
 它复用主仓库的 `configs/remote.local.yaml` 和既有 Python 环境，发现唯一已绑定的
 cohort/history 对，仅用 cohort 的身份及 split。然后在主仓库 `configs` 下按原 cohort

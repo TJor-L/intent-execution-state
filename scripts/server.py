@@ -35,8 +35,9 @@ from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.format_probe_runner import validate_probe_paths, wait_for_format_probe
 from ies.io import write_json
+from ies.recurrent_task import RecurrentTaskError
 from ies.recurrent_task_access import plan_recurrent_task
-from ies.recurrent_task_runner import wait_for_recurrent_task
+from ies.recurrent_task_runner import report_error, validate_paths, wait_for_recurrent_task
 from ies.selection_cv import MODE as SELECTION_MODE
 from ies.selection_cv import load_config as load_selection_config
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
@@ -148,7 +149,9 @@ def sbatch_command(
             or any(value is not None for value in (access_manifest, protocol_path, feature_dir))
         ):
             raise ValueError("Recurrent task audit requires the existing mapping and cohort")
-        _, mapping_digest = load_eligibility_mapping(mapping_path)
+        mapping, mapping_digest = load_eligibility_mapping(mapping_path)
+        # Perform the same metadata-only boundary checks before sbatch can be called.
+        validate_paths(cohort_dir, run_dir / "recurrent-audit", mapping)
         cohort = cohort_dir.resolve()
         if not cohort.is_relative_to(Path(config["output_root"]).resolve()):
             raise ValueError("Recurrent cohort must remain in private output storage")
@@ -1037,6 +1040,9 @@ def main() -> int:
             print(json.dumps(monitor(job_id, run_dir, revision)))
         return 0
     except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as error:
+        if isinstance(error, RecurrentTaskError):
+            report_error(error)
+            return 2
         if isinstance(error, ClockAuditOpsError):
             parser.exit(
                 2,
