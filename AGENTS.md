@@ -327,6 +327,13 @@ Do not delete/reclone the original repository, change safe.directory/index/ignor
 move artifacts or modify the original config to work around these checks. Run storage
 review first, then the unchanged explicitly requested T001 CPU scan if it passes;
 submission and worker input checks remain mandatory. Path checks are not task evidence.
+At release `d548b64`, the user reported every storage component passing and job 39772
+submitted, followed by the generic job-failed monitor message. Storage review success
+is not compute-node completion; no source-scan or task-support result is established.
+Next inspect only job 39772's scheduler status, bound receipt, failure record and fixed
+runner error categories using `scripts/inspect_recurrent_job.sh`. Do not resubmit or
+infer resource exhaustion from the generic message. The old worker discarded stderr;
+if its failure is unclassified, this inspection cannot reconstruct that missing detail.
 The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults

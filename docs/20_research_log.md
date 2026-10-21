@@ -2573,3 +2573,33 @@ Publish under the standing authorization. Prepared server sequence first checks 
 then explicitly submits the unchanged 2-CPU/4-GiB T001 scan, stopping on any failed check.
 No real scan has been rerun by the Mac; support, coverage and publication feasibility
 remain unestablished. Input Git queries are no longer a blocker requiring diagnosis.
+
+### T001 storage passed; inspect the newly failed job without resubmitting
+
+The user ran release `d548b64`. Cohort input, new output and overlap reviews all
+passed with input Git queries disabled. The unchanged T001 plan was displayed and
+job 39772 submitted, followed by `recurrent_audit_job_failed_no_automatic_retry`.
+This establishes submission and login-node path validation, not compute-node startup,
+scan progress, task support or a cause of failure. No scheduler accounting or private
+failure record has yet been reported. Do not repeat the Git diagnosis or assume memory,
+time, source support or content problems from the generic monitor message.
+
+Added `scripts/inspect_recurrent_job.sh` and its Python reader. The wrapper reuses the
+existing Python environment and queries only the scheduler's job/state/exit/resource
+columns. The reader bounds receipt discovery, matches the exact job/source-commit
+receipt, rejects redirects/out-of-storage/repository output locations and reads only
+existing bounded operational files. It projects known failure categories and error
+codes from logs; arbitrary text, paths, extra JSON fields and exception payloads are
+not returned. It neither loads mapping/clinical inputs nor writes outputs/submits jobs.
+The existing worker redirects stderr to DEVNULL: unclassified child failure detail
+cannot be reconstructed by this tool. This diagnostic release does not alter or rerun
+the worker, and no root-cause correction is claimed yet.
+
+Eleven generated diagnostic checks passed, including immutable files, private-sentinel
+suppression, resource failure records, wrong/duplicate receipts, symlinks and oversize
+files. `bash -n` passed. `make check`: **807 passed, 2 skips**, Ruff check/format
+(206 files), repository boundary check passed. `make demo` completed at
+`artifacts/synthetic/20261021T165459Z-109f0f38`; `git diff --check` passed.
+Publish under standing authorization; the next server operation is read-only inspection
+of job 39772 using source SHA `d548b645a075337337f83bb611176ff789629943` and the existing
+external result root. No automatic retry, resource expansion or data transfer.

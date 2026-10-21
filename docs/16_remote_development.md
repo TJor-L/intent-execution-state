@@ -454,3 +454,23 @@ preflight → plan → submit → wait，并将干净源码 SHA、既有 mapping
 不能使用此前不含 T001 的旧 SHA 运行本入口。此次按用户的运行命令请求交付；发布前执行
 规定检查，运行时使用交付命令中的真实 SHA。用户提供的 GPU 可用性已记录，这次检查
 仍使用 CPU；后续模型实验需要 GPU 时再配置。
+
+
+### T001 job 39772：只读失败检查
+
+`d548b64` 的服务器存储检查全部通过，随后 job 39772 提交成功，但监控器返回通用
+失败消息。目前未知调度器状态、退出码和 worker 失败记录，不能判断是否开始或完成扫描。
+当前先用新的已发布固定 checkout 运行：
+
+```bash
+bash scripts/inspect_recurrent_job.sh \
+  39772 d548b645a075337337f83bb611176ff789629943 \
+  /scratch/tliu7/intent-execution-state-private
+```
+
+入口只查询 Slurm 的状态/资源列，以及外部输出根下现有的 submission、failure 和
+Slurm 日志。匹配唯一 job/commit receipt；拒绝越界、符号链接和过大文件。
+输出固定失败类别和已知错误码，任意原始日志行、路径、异常文本均不回传。
+它不加载 mapping、不读临床输入、不创建目录或提交作业。
+旧 runner 把 worker stderr 写入 DEVNULL，通用 worker 失败的详细原因可能已丢失；
+脚本不会以猜测填补。需要先看真实退出状态和现有记录，再决定代码修复或进一步操作。
