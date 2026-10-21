@@ -68,7 +68,10 @@ def test_existing_mapping_discovery_uses_exact_prior_bytes_and_fails_if_ambiguou
         runner.discover_existing_mapping(configs, cohort)
 
 
-def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path, monkeypatch):
+@pytest.mark.parametrize("profile", ["baseline64", "expanded160"])
+def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(
+    tmp_path, monkeypatch, profile
+):
     server = load_script("server")
     cohort = tmp_path / "cohort"
     cohort.mkdir()
@@ -96,16 +99,28 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
         "output_root": str(tmp_path),
         "python_executable": sys.executable,
     }
+    cost_checks = []
+
+    def cost_review(mapping, limits):
+        cost_checks.append(limits)
+        return {"current_limits_fit_metadata": True}
+
+    monkeypatch.setattr(server, "review_cost", cost_review)
     command = server.sbatch_command(
         config,
         "recurrent-audit",
         tmp_path / "job",
         mapping_path=tmp_path / "existing.local.yaml",
         cohort_dir=cohort,
+        recurrent_resource_profile=profile,
     )
+    assert bool(cost_checks) == (profile == "expanded160")
+    if cost_checks:
+        assert cost_checks == [runner.resource_limits(profile)]
     assert "--mem=4096M" in command and "--time=00:22:00" in command
     assert "--cpus-per-task=2" in command
     export = next(arg for arg in command if arg.startswith("--export="))
+    assert "IES_RECURRENT_RESOURCE_PROFILE=" + profile in export
     assert "IES_MAPPING_SHA256=" + "b" * 64 in export
     assert sha256(cohort / "manifest.json") in export
     assert "IES_COHORT_PATH_SHA256=" + runner.cohort_path_digest(cohort) in export
@@ -120,6 +135,18 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
             tmp_path / "job",
             mapping_path=tmp_path / "existing.local.yaml",
             cohort_dir=cohort,
+        )
+    assert not (tmp_path / "job").exists()
+
+    monkeypatch.setattr(server, "review_cost", lambda *a: {"current_limits_fit_metadata": False})
+    with pytest.raises(RecurrentTaskError, match="cost_does_not_fit"):
+        server.sbatch_command(
+            config,
+            "recurrent-audit",
+            tmp_path / "job",
+            mapping_path=tmp_path / "existing.local.yaml",
+            cohort_dir=cohort,
+            recurrent_resource_profile="expanded160",
         )
     assert not (tmp_path / "job").exists()
 
@@ -149,6 +176,7 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
 def test_worker_failure_has_no_private_exception_or_partial_success(
     tmp_path, monkeypatch, failure, expected
 ):
+    monkeypatch.setenv("IES_RECURRENT_RESOURCE_PROFILE", "expanded160")
     cohort, output = tmp_path / "cohort", tmp_path / "output"
     cohort.mkdir()
     write_json(cohort / "manifest.json", {})
@@ -171,6 +199,8 @@ def test_worker_failure_has_no_private_exception_or_partial_success(
     assert not (output / "manifest.json").exists()
     value = json.loads((output / "failure.json").read_text())
     assert value["automatic_retry"] is False and "counts" not in value
+    assert value["resource_profile"] == "expanded160"
+    assert value["access_limits"]["max_total_charged_file_bytes"] == 160 * 1024**3
 
 
 def test_source_context_error_is_sanitized(monkeypatch, capsys):
@@ -211,7 +241,8 @@ def test_early_failures_emit_only_fixed_categories(monkeypatch, capsys, error, c
     }
 
 
-def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch):
+@pytest.mark.parametrize("profile", ["baseline64", "expanded160"])
+def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch, profile):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from test_recurrent_task_access import cohort_artifact, write_case
@@ -251,7 +282,16 @@ def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch
     )
     monkeypatch.setattr(runner, "load_eligibility_mapping", lambda p: (private, sha256(config)))
     monkeypatch.setattr(runner, "validate_paths", lambda *args: None)
-    monkeypatch.setattr(worker, "apply_limits", lambda limits: None)
+    applied = []
+    monkeypatch.setattr(worker, "apply_limits", applied.append)
+    monkeypatch.setenv("IES_RECURRENT_RESOURCE_PROFILE", profile)
+    original_audit = runner.audit_sources
+
+    def audit(*args, **kwargs):
+        assert kwargs["limits"] == runner.resource_limits(profile)
+        return original_audit(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "audit_sources", audit)
     monkeypatch.setenv("IES_MAPPING_SHA256", sha256(config))
     monkeypatch.setenv("IES_COHORT_PATH_SHA256", runner.cohort_path_digest(cohort))
     monkeypatch.setenv("IES_COHORT_MANIFEST_SHA256", digest)
@@ -259,6 +299,8 @@ def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch
     output = tmp_path / "output"
     output.mkdir()
     assert runner._worker(config, cohort, output) == 0
+    assert applied == [runner.resource_limits(profile)]
+    assert json.loads((output / "manifest.json").read_text())["resource_profile"] == profile
     assert {path.name for path in output.iterdir()} == {"task_report.json", "manifest.json"}
     summary = runner.read_summary(output, "a" * 40)
     assert summary["coverage_verified"] is True
@@ -303,3 +345,84 @@ def test_changed_input_location_stops_before_mapping_read(tmp_path, monkeypatch,
     with pytest.raises(RecurrentTaskError, match="cohort_path_changed"):
         getattr(runner, entry)(tmp_path / "mapping", cohort, output)
     assert not output.exists()
+
+
+def test_resource_profiles_only_change_two_explicit_byte_ceilings():
+    from dataclasses import asdict
+
+    from ies.recurrent_task_access import plan_recurrent_task
+
+    baseline = asdict(runner.resource_limits())
+    expanded = asdict(runner.resource_limits("expanded160"))
+    assert {key for key in baseline if baseline[key] != expanded[key]} == {
+        "max_total_charged_file_bytes",
+        "max_total_decoded_bytes",
+    }
+    assert expanded["max_total_charged_file_bytes"] == 160 * 1024**3
+    assert expanded["max_total_decoded_bytes"] == 128 * 1024**3
+    assert plan_recurrent_task("expanded160")["limits"] == expanded
+    with pytest.raises(RecurrentTaskError, match="invalid_resource_profile"):
+        runner.resource_limits("unbounded")
+
+
+@pytest.mark.parametrize("entry", ["run_task", "_worker"])
+def test_invalid_resource_profile_rejected_before_reading(tmp_path, monkeypatch, entry):
+    monkeypatch.setenv("IES_RECURRENT_RESOURCE_PROFILE", "unknown")
+    monkeypatch.setattr(runner, "verify_execution_context", lambda: None)
+    monkeypatch.setattr(
+        runner, "load_eligibility_mapping", lambda *a: pytest.fail("No mapping reads")
+    )
+    with pytest.raises(RecurrentTaskError, match="invalid_resource_profile"):
+        getattr(runner, entry)(tmp_path / "mapping", tmp_path / "cohort", tmp_path / "output")
+    assert not (tmp_path / "output").exists()
+
+
+@pytest.mark.parametrize("problem", [None, "receipt", "symlink", "oversized", "private_limit"])
+def test_failed_monitor_emits_only_verified_failure_categories(
+    tmp_path, monkeypatch, capsys, problem
+):
+    from ies import clock_audit_ops
+
+    monkeypatch.setattr(runner, "AUTHORIZED_ROOT", tmp_path)
+    monkeypatch.setattr(runner, "ROOT", tmp_path / "source")
+    run = tmp_path / "results"
+    failure = run / "recurrent-audit" / "failure.json"
+    write_json(
+        run / "submission.json", {"job_id": "123", "job": "recurrent-audit", "commit": "a" * 40}
+    )
+    write_json(
+        failure,
+        {
+            "status": "limited",
+            "limit": "runtime",
+            "automatic_retry": False,
+            "private": "PRIVATE_SENTINEL",
+        },
+    )
+    if problem == "receipt":
+        write_json(run / "submission.json", {"job_id": "123"})
+    elif problem == "symlink":
+        failure.unlink()
+        failure.symlink_to(tmp_path / "missing")
+    elif problem == "oversized":
+        failure.write_bytes(b"x" * 16385)
+    elif problem == "private_limit":
+        write_json(
+            failure, {"status": "limited", "limit": "PRIVATE_SENTINEL", "automatic_retry": False}
+        )
+
+    def failed(*args, **kwargs):
+        raise clock_audit_ops.ClockAuditOpsError("recurrent_audit_job_failed_no_automatic_retry")
+
+    monkeypatch.setattr(clock_audit_ops, "_wait_for_result", failed)
+    with pytest.raises(clock_audit_ops.ClockAuditOpsError, match="no_automatic_retry"):
+        runner.wait_for_recurrent_task("123", run, "a" * 40)
+    output = capsys.readouterr().out
+    assert "PRIVATE_SENTINEL" not in output and str(tmp_path) not in output
+    value = json.loads(output)
+    assert value["automatic_retry"] is False
+    assert value["failure_record"] == ("verified" if problem is None else "unavailable")
+    if problem is None:
+        assert value["worker_limit"] == "runtime"
+    else:
+        assert "worker_limit" not in value

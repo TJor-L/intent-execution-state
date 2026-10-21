@@ -346,6 +346,21 @@ plus Parquet headers/trailers/footers, at most 8 MiB per footer, 32 MiB total an
 Return only operational byte budgets and limit-fit flags, never paths/schema/row counts.
 This makes resource planning concrete; runtime, memory, retention and content stability
 remain unverified, and no expansion or new full scan follows automatically.
+The user reported the `ff8b334` cost review complete: charged-file and decoded-byte
+limits fail, but row-group and row limits pass. Required budgets rounded upward are
+125 GiB charged files and 82 GiB decoded groups, versus 64/64 GiB. This is metadata
+planning evidence, not measured I/O or proof of runtime/memory/retention sufficiency.
+An opt-in `expanded160` resource profile is prepared: 160 GiB charged files and 128 GiB
+decoded groups. Only these two ceilings change. Default `baseline64`, per-source caps,
+patients, source passes, retention, 2 CPU/4 GiB/1200-second worker and 22-minute Slurm
+allocation remain unchanged. This is a separately declared resource expansion selected
+explicitly with `--resource-profile expanded160`, never automatic escalation or retry.
+Expanded plan/submission recheck bounded metadata cost before sbatch; worker and parent
+receive the selected fixed profile and private result/failure records retain its limits.
+No new full scan has run based on the cost result. A prepared pinned user-run command
+is the next step; it does not authorize automatic re-submission after any failure.
+The monitor now projects a verified failure record's fixed categories on terminal job
+failure, still exits unsuccessfully, and never prints arbitrary logs or private fields.
 The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults

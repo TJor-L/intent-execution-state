@@ -8,12 +8,21 @@ if [[ "${1:-}" == "--submit" || "${1:-}" == "--check-storage" || "${1:-}" == "--
   shift
 fi
 IES_TASK_OUTPUT=()
-if [[ "${1:-}" == "--output-root" && $# -ge 2 ]]; then
-  IES_TASK_OUTPUT=(--output-root "$2")
+IES_TASK_PROFILE=()
+while [[ "${1:-}" == "--output-root" || "${1:-}" == "--resource-profile" ]]; do
+  if [[ $# -lt 2 ]]; then
+    echo 'Each output root/resource profile option requires a value.' >&2
+    exit 2
+  fi
+  if [[ "$1" == "--output-root" ]]; then
+    IES_TASK_OUTPUT=(--output-root "$2")
+  else
+    IES_TASK_PROFILE=(--resource-profile "$2")
+  fi
   shift 2
-fi
+done
 if [[ $# -gt 1 ]]; then
-  echo 'Usage: bash scripts/run_recurrent_audit.sh [--submit|--check-storage|--check-cost] [--output-root PRIVATE_DIR] [EXISTING_ELIGIBILITY_MAPPING]' >&2
+  echo 'Usage: bash scripts/run_recurrent_audit.sh [--submit|--check-storage|--check-cost] [--output-root PRIVATE_DIR] [--resource-profile baseline64|expanded160] [EXISTING_ELIGIBILITY_MAPPING]' >&2
   exit 2
 fi
 IES_TASK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -32,9 +41,9 @@ export PYTHONPATH="$PWD/src"
 export PYTHONDONTWRITEBYTECODE=1
 "$IES_TASK_PYTHON" scripts/server.py preflight --config "$IES_TASK_CONFIG"
 if [[ "$IES_TASK_ACTION" == check-storage || "$IES_TASK_ACTION" == check-cost ]]; then
-  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py "$IES_TASK_ACTION" --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
+  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py "$IES_TASK_ACTION" --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}" "${IES_TASK_PROFILE[@]}"
 fi
-"$IES_TASK_PYTHON" scripts/recurrent_audit.py plan --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
+"$IES_TASK_PYTHON" scripts/recurrent_audit.py plan --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}" "${IES_TASK_PROFILE[@]}"
 if [[ "$IES_TASK_ACTION" == submit ]]; then
-  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py submit --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
+  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py submit --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}" "${IES_TASK_PROFILE[@]}"
 fi

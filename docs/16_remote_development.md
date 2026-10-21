@@ -503,3 +503,40 @@ bash scripts/run_recurrent_audit.sh --check-cost \
 `current_limits_fit_metadata: false`；不会提交或改变任何扫描上限。行数/行组仅返回
 是否越界，不输出精确数量。运行时长、峰值内存和保留量仍需后续独立验证。
 先依据这份成本反馈决定后续明确资源配置，不能盲目增加单个上限或重复失败扫描。
+
+
+### T001 明确选择扩大字节预算档（尚待服务器运行）
+
+`ff8b334` 成本反馈完成：累计文件计费需求向上取整为 125 GiB、累计解码为 82 GiB；
+当前 64/64 GiB 不适配，行数和行组上限通过。新增固定可选档 `expanded160`，
+将两项上限分别设为 160/128 GiB，给当前元数据需求留出余量。这是明确的资源扩张，
+不是测得的 I/O/峰值内存，也不是自动放宽所有保护。
+
+| 项目 | 默认 baseline64 | 显式 expanded160 |
+| --- | --- | --- |
+| 累计文件计费上限 | 64 GiB | 160 GiB |
+| 累计解码计费上限 | 64 GiB | 128 GiB |
+| 单来源文件大小上限 | 64 GiB | 64 GiB |
+| CPU / 内存 | 2 核 / 4 GiB | 2 核 / 4 GiB |
+| Worker wall / CPU 秒数 | 1200 / 1200 | 1200 / 1200 |
+| Slurm 时间分配 | 22 分钟 | 22 分钟 |
+
+患者选择、重复来源遍数、哈希检查、行组/行数/保留量、split 和观察语义不变。
+运行固定版本时显式选择：
+
+```bash
+bash scripts/run_recurrent_audit.sh --submit \
+  --output-root /scratch/tliu7/intent-execution-state-private \
+  --resource-profile expanded160
+```
+
+该入口先规划，再提交并等待。expanded160 的规划和提交各自先运行有独立页脚预算的
+成本核验，任一预测上限不满足即在 sbatch 前停止。无需额外手工运行一次 check-cost。
+直接 server.py 入口同样要求此核验，使用 `--recurrent-resource-profile expanded160`。
+默认命令仍用 baseline64；继承环境里的 profile 不会覆盖提交命令明确导出的档位。
+选定档位送至父进程和 worker，并写入私有成功 manifest 或失败记录。
+
+如果作业失败，等待入口先核对 job/commit receipt，再只打印固定失败类别，随后保持
+非零退出，不自动重新提交。记录缺失、越界或异常内容返回 unavailable，不猜测原因。
+元数据适配不能保证 20 分钟 worker、4 GiB 内存或保留上限足够，也不证明任务可行；
+这些仍需本次真实运行验证。此前 FAILED 作业没有被复用或覆写。

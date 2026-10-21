@@ -35,8 +35,9 @@ from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.format_probe_runner import validate_probe_paths, wait_for_format_probe
 from ies.io import write_json
+from ies.recurrent_cost import review_cost
 from ies.recurrent_task import RecurrentTaskError
-from ies.recurrent_task_access import plan_recurrent_task
+from ies.recurrent_task_access import RESOURCE_PROFILES, plan_recurrent_task, resource_limits
 from ies.recurrent_task_runner import (
     cohort_path_digest,
     report_error,
@@ -131,7 +132,10 @@ def sbatch_command(
     original_commit: str | None = None,
     selection_config: Path | None = None,
     probe_root: Path | None = None,
+    recurrent_resource_profile: str | None = None,
 ) -> list[str]:
+    if recurrent_resource_profile is not None and job != "recurrent-audit":
+        raise ValueError("Resource profile applies only to recurrent audit")
     slurm = config["slurm"]
     command = [
         "sbatch",
@@ -149,6 +153,8 @@ def sbatch_command(
         command.append(f"--account={slurm['account']}")
     python = config["python_executable"]
     if job == "recurrent-audit":
+        profile = recurrent_resource_profile or "baseline64"
+        limits = resource_limits(profile)
         if (
             mapping_path is None
             or cohort_dir is None
@@ -177,6 +183,10 @@ def sbatch_command(
             or manifest.get("mapping_sha256") != mapping_digest
         ):
             raise ValueError("Existing cohort and mapping binding required")
+        if profile != "baseline64":
+            cost = review_cost(mapping.feasibility, limits)
+            if cost["current_limits_fit_metadata"] is not True:
+                raise RecurrentTaskError("recurrent_cost_does_not_fit")
         command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
         command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
         command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:22:00"
@@ -185,6 +195,7 @@ def sbatch_command(
             f",IES_MAPPING_SHA256={mapping_digest}"
             f",IES_COHORT_MANIFEST_SHA256={hashlib.sha256(content).hexdigest()}"
             f",IES_COHORT_PATH_SHA256={cohort_path_digest(cohort)}"
+            f",IES_RECURRENT_RESOURCE_PROFILE={profile}"
         )
         command.extend(
             [
@@ -657,6 +668,7 @@ def main() -> int:
     parser.add_argument(
         "--probe-root", type=Path, help="Format probe only: authorized private root"
     )
+    parser.add_argument("--recurrent-resource-profile", choices=RESOURCE_PROFILES)
     parser.add_argument("--access-manifest", type=Path)
     parser.add_argument("--protocol", type=Path)
     parser.add_argument("--cohort-dir", type=Path)
@@ -689,6 +701,10 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if args.recurrent_resource_profile is not None and (
+            args.job != "recurrent-audit" or args.action not in {"plan", "submit"}
+        ):
+            raise ValueError("Resource profile applies only to recurrent audit plan/submission")
         if args.recurrent_output_root is not None and (
             args.job != "recurrent-audit" or args.action not in {"plan", "submit"}
         ):
@@ -820,11 +836,14 @@ def main() -> int:
             args.source_commit,
             args.selection_config,
             args.probe_root,
+            args.recurrent_resource_profile,
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
             if args.job == "recurrent-audit":
-                print(json.dumps(plan_recurrent_task()))
+                print(
+                    json.dumps(plan_recurrent_task(args.recurrent_resource_profile or "baseline64"))
+                )
             elif args.job == "format-probe":
                 print(
                     json.dumps(

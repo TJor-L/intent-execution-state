@@ -7,6 +7,7 @@ import re
 import signal
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 from ies.clinical_baseline import AUTHORIZED_ROOT
@@ -16,8 +17,8 @@ from ies.feasibility.runner import verify_execution_context
 from ies.io import sha256, write_json
 from ies.recurrent_task import MODE, RecurrentTaskError
 from ies.recurrent_task_access import (
-    LIMITS,
     audit_sources,
+    resource_limits,
     select_training_patients,
     verify_bindings,
 )
@@ -44,6 +45,8 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
     "recurrent_overlapping_storage",
     "recurrent_invalid_arguments",
     "recurrent_mapping_changed",
+    "recurrent_invalid_resource_profile",
+    "recurrent_cost_does_not_fit",
     "recurrent_cost_source_changed",
     "recurrent_cost_invalid_footer",
     "recurrent_cost_footer_limit",
@@ -304,7 +307,9 @@ def _verify_cohort_path(cohort):
 def _worker(mapping_path, cohort, output):
     from ies.feasibility.worker import apply_limits
 
-    apply_limits(LIMITS)
+    profile = os.environ.get("IES_RECURRENT_RESOURCE_PROFILE", "baseline64")
+    limits = resource_limits(profile)
+    apply_limits(limits)
     _verify_cohort_path(cohort)
     mapping, digest = load_eligibility_mapping(mapping_path)
     if digest != os.environ.get("IES_MAPPING_SHA256"):
@@ -315,7 +320,9 @@ def _worker(mapping_path, cohort, output):
     bindings.extend(
         ((mapping_path, digest), (mapping.feasibility_path, mapping.feasibility_sha256))
     )
-    report = audit_sources(mapping.feasibility, patients, data_class="restricted_clinical")
+    report = audit_sources(
+        mapping.feasibility, patients, data_class="restricted_clinical", limits=limits
+    )
     verify_bindings(bindings)
     summarize_report(report)
     write_json(output / "task_report.json", report)
@@ -329,6 +336,8 @@ def _worker(mapping_path, cohort, output):
             "source_commit": os.environ["IES_EXPECTED_COMMIT"],
             "mapping_sha256": digest,
             "cohort_manifest_sha256": cohort_digest,
+            "resource_profile": profile,
+            "access_limits": asdict(limits),
             "artifacts_sha256": {"task_report.json": sha256(output / "task_report.json")},
             "raw_source_scan": True,
             "row_persistence": False,
@@ -341,6 +350,8 @@ def _worker(mapping_path, cohort, output):
 
 def run_task(mapping_path, cohort, output):
     verify_execution_context()
+    profile = os.environ.get("IES_RECURRENT_RESOURCE_PROFILE", "baseline64")
+    limits = resource_limits(profile)
     _verify_cohort_path(cohort)
     mapping, digest = load_eligibility_mapping(mapping_path)
     if os.environ.get("IES_MAPPING_SHA256") != digest or os.environ.get(
@@ -363,7 +374,7 @@ def run_task(mapping_path, cohort, output):
                     str(cohort),
                     str(output),
                 ],
-                timeout=LIMITS.runtime_seconds,
+                timeout=limits.runtime_seconds,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 check=False,
@@ -383,7 +394,15 @@ def run_task(mapping_path, cohort, output):
         except subprocess.TimeoutExpired:
             failure = {"status": "limited", "limit": "runtime"}
         if failure:
-            write_json(output / "failure.json", dict(failure, automatic_retry=False))
+            write_json(
+                output / "failure.json",
+                dict(
+                    failure,
+                    automatic_retry=False,
+                    resource_profile=profile,
+                    access_limits=asdict(limits),
+                ),
+            )
             return dict(mode=MODE, **failure)
         read_summary(output, os.environ["IES_EXPECTED_COMMIT"])
         return {"mode": MODE, "status": "complete"}
@@ -391,20 +410,75 @@ def run_task(mapping_path, cohort, output):
         os.umask(old_umask)
 
 
-def wait_for_recurrent_task(job_id, run_dir, commit, *, timeout_seconds=3600, poll_seconds=15):
-    from ies.clock_audit_ops import _wait_for_result
+def failure_feedback(job_id, run_dir, commit):
+    """Project a bound existing failure record; never print arbitrary record fields."""
+    result = {
+        "mode": MODE,
+        "job_id": job_id,
+        "status": "failed",
+        "automatic_retry": False,
+        "failure_record": "unavailable",
+    }
+    try:
+        _storage_path(run_dir)
 
-    result = _wait_for_result(
-        job_id,
-        run_dir,
-        commit,
-        job="recurrent-audit",
-        mode=MODE,
-        data_class="restricted_aggregate",
-        artifacts={"task_report.json": 1024**2},
-        timeout_seconds=timeout_seconds,
-        poll_seconds=poll_seconds,
-    )
+        def read(name):
+            path = run_dir / name
+            _storage_path(path)
+            if not path.is_file():
+                raise ValueError
+            with path.open("rb") as stream:
+                data = stream.read(16385)
+            if len(data) > 16384:
+                raise ValueError
+            return json.loads(data)
+
+        if read("submission.json") != {
+            "job_id": job_id,
+            "job": "recurrent-audit",
+            "commit": commit,
+        }:
+            raise ValueError
+        failure = read("recurrent-audit/failure.json")
+        if (
+            not isinstance(failure, dict)
+            or failure.get("status") not in ("limited", "failed")
+            or failure.get("automatic_retry") is not False
+        ):
+            raise ValueError
+        limit = failure.get("limit")
+        if limit is not None and limit not in set(LIMIT_EXIT_CODES) | {"memory", "cpu", "runtime"}:
+            raise ValueError
+        result.update(
+            failure_record="verified", worker_status=failure["status"], worker_limit=limit
+        )
+    except Exception:
+        pass
+    return result
+
+
+def wait_for_recurrent_task(job_id, run_dir, commit, *, timeout_seconds=3600, poll_seconds=15):
+    from ies.clock_audit_ops import ClockAuditOpsError, _wait_for_result
+
+    try:
+        result = _wait_for_result(
+            job_id,
+            run_dir,
+            commit,
+            job="recurrent-audit",
+            mode=MODE,
+            data_class="restricted_aggregate",
+            artifacts={"task_report.json": 1024**2},
+            timeout_seconds=timeout_seconds,
+            poll_seconds=poll_seconds,
+        )
+    except ClockAuditOpsError as error:
+        if str(error) in {
+            "recurrent_audit_job_failed",
+            "recurrent_audit_job_failed_no_automatic_retry",
+        }:
+            print(json.dumps(failure_feedback(job_id, run_dir, commit)), flush=True)
+        raise
     result["task_support"] = read_summary(run_dir / "recurrent-audit", commit)
     return result
 

@@ -2,7 +2,7 @@
 
 import hashlib
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import pyarrow as pa
@@ -45,11 +45,28 @@ class AccessLimits:
 
 
 LIMITS = AccessLimits()
+RESOURCE_PROFILES = ("baseline64", "expanded160")
+
+
+def resource_limits(profile="baseline64"):
+    if profile == "baseline64":
+        return LIMITS
+    if profile == "expanded160":
+        return replace(
+            LIMITS,
+            max_total_charged_file_bytes=160 * 1024**3,
+            max_total_decoded_bytes=128 * 1024**3,
+        )
+    raise RecurrentTaskError("recurrent_invalid_resource_profile")
+
+
 SELECTION_SALT = "T001:20261020"
 
 
-def plan_recurrent_task():
+def plan_recurrent_task(profile="baseline64"):
+    limits = resource_limits(profile)
     return {
+        "resource_profile": profile,
         "mode": MODE,
         "submitted": False,
         "operation": "full_declared_source_scans_with_selected_patient_retention",
@@ -63,7 +80,7 @@ def plan_recurrent_task():
         "max_anchors_per_patient": MAX_ANCHORS,
         "lookback_hours": LOOKBACK_HOURS,
         "diagnostic_horizon_hours": HORIZON_HOURS,
-        "limits": asdict(LIMITS),
+        "limits": asdict(limits),
         "model_fitted": False,
         "validation_split_evaluated": False,
         "test_split_evaluated": False,

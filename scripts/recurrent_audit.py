@@ -9,6 +9,7 @@ from pathlib import Path
 from ies.clock_audit_ops import discover_clock_artifacts
 from ies.recurrent_cost import review_cost
 from ies.recurrent_task import RecurrentTaskError
+from ies.recurrent_task_access import RESOURCE_PROFILES, resource_limits
 from ies.recurrent_task_runner import (
     discover_existing_mapping,
     load_eligibility_mapping,
@@ -25,6 +26,7 @@ def main():
     parser.add_argument("action", choices=("plan", "submit", "check-storage", "check-cost"))
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--mapping", type=Path)
+    parser.add_argument("--resource-profile", choices=RESOURCE_PROFILES, default="baseline64")
     parser.add_argument("--output-root", type=Path)
     args = parser.parse_args()
     try:
@@ -45,7 +47,8 @@ def main():
                 parsed,
             )
             if args.action == "check-cost" and result["status"] == "passed":
-                result = review_cost(parsed.feasibility)
+                result = review_cost(parsed.feasibility, resource_limits(args.resource_profile))
+                result["resource_profile"] = args.resource_profile
                 print(json.dumps(result))
                 return 0
             print(json.dumps(result))
@@ -61,6 +64,7 @@ def main():
             "--cohort-dir",
             str(cohort),
         ]
+        sys.argv.extend(["--recurrent-resource-profile", args.resource_profile])
         if args.output_root is not None:
             sys.argv.extend(["--recurrent-output-root", str(args.output_root)])
         if args.action == "submit":

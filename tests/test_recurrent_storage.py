@@ -223,9 +223,10 @@ def test_separate_write_root_is_disjoint_and_never_created(storage, legacy, kind
             runner.validate_output_root(root, storage.source, legacy.original / "private")
 
 
+@pytest.mark.parametrize("profile", ["baseline64", "expanded160"])
 @pytest.mark.parametrize("action", ["check-storage", "check-cost", "plan", "submit"])
 def test_cli_keeps_legacy_discovery_separate_from_write_destination(
-    storage, legacy, monkeypatch, capsys, action
+    storage, legacy, monkeypatch, capsys, action, profile
 ):
     cli = load_script("recurrent_audit")
     artifact_root = legacy.original / "private"
@@ -257,9 +258,20 @@ def test_cli_keeps_legacy_discovery_separate_from_write_destination(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["recurrent_audit", action, "--config", "toy", "--output-root", str(destination)],
+        [
+            "recurrent_audit",
+            action,
+            "--config",
+            "toy",
+            "--output-root",
+            str(destination),
+            "--resource-profile",
+            profile,
+        ],
     )
-    monkeypatch.setattr(cli, "review_cost", lambda m: {"status": "complete", "submitted": False})
+    monkeypatch.setattr(
+        cli, "review_cost", lambda m, limits: {"status": "complete", "submitted": False}
+    )
     assert cli.main() == 0
     assert discovery == [artifact_root]
     assert config["output_root"] == str(artifact_root)
@@ -270,6 +282,7 @@ def test_cli_keeps_legacy_discovery_separate_from_write_destination(
             "complete" if action == "check-cost" else "passed"
         )
     else:
+        assert forwarded[forwarded.index("--recurrent-resource-profile") + 1] == profile
         assert forwarded[forwarded.index("--cohort-dir") + 1] == str(legacy.cohort)
         assert forwarded[forwarded.index("--recurrent-output-root") + 1] == str(destination)
         assert ("--wait" in forwarded) is (action == "submit")

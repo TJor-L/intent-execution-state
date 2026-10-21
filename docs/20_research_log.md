@@ -2642,3 +2642,45 @@ check/format (208 files), repository boundary check, and `git diff --check` pass
 `make demo` completed at `artifacts/synthetic/20261021T170008Z-c49bc985`. Publish the
 verified metadata-planning milestone under standing authorization. No new real source
 scan or local access to UCSF data occurred.
+
+### Prepare an explicit byte-budget expansion after the real cost review
+
+The user reported `ff8b334` cost review complete with stable inventory metadata. Both
+64 GiB byte ceilings fail: required charged files round upward to 125 GiB, decoded
+row groups to 82 GiB. Rows and row groups per pass fit the existing caps. These are
+operational metadata estimates, not observed I/O, runtime, peak memory, retained rows,
+content stability or clinical task support. No new full scan was reported.
+
+Prepared a separately selectable `expanded160` profile with 160 GiB cumulative charged
+file bytes and 128 GiB cumulative decoded bytes. Only these two fields change; the
+original `baseline64` remains the default. Keep per-source 64 GiB, 32 selected original
+training patients, the same full passes/hashes, retention, 2 CPU/4 GiB, 1200-second
+worker CPU/wall and 22-minute Slurm limits. There is no GPU use, source-role/semantic
+change, test opening or automatic retry/escalation. This is a concrete opt-in resource
+expansion, not a claim that a successful metadata review guarantees a successful run.
+
+The shell and Python CLI accept `--resource-profile expanded160`; direct server usage
+accepts `--recurrent-resource-profile expanded160`. Expanded planning and submission
+independently check bounded metadata costs before sbatch, refusing if any predicted
+limit does not fit. A fixed known profile is explicitly exported, overriding any
+inherited profile in the submit environment. Parent and worker validate the name and
+use the same limits; private manifest/failure records retain the selected profile and
+limits. Successful task outputs still require all original coverage/content checks.
+
+Also project an existing bound failure record's fixed status/limit into the wait
+command output on a terminal failed job, followed by the original nonzero exception.
+The projection checks the exact job/source receipt, storage, links and bounded files;
+private extras and unknown values are never emitted. Unverifiable/missing records give
+unavailable, not an invented cause. No worker rerun or raw-log collection is involved.
+
+Generated checks cover exact two-field profile differences, default and expanded plan
+exports, metadata refusal before creating output/submitting, both profiles in actual
+generated worker processing, parent failure persistence, invalid profiles before reads,
+CLI forwarding and verified/sanitized monitor feedback. Focused tests and shell syntax
+passed. `make check`: **829 passed, 2 skips**, Ruff check/format (208 files), repository
+boundary check and `git diff --check` passed. `make demo` completed at
+`artifacts/synthetic/20261021T211759Z-32417dfc`.
+
+Publish the verified opt-in milestone under standing authorization and provide a pinned
+user-run command explicitly selecting expanded160. The Mac has not submitted a job;
+actual runtime/memory/retention and task support remain server-only dependencies.
