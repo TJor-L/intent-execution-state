@@ -1,0 +1,18 @@
+schema_version: 1
+data_class: synthetic
+seeds: [20261019, 20261020, 20261021]
+scenarios: [renewal, switching, shared, "null"]
+orders_per_patient: [4, 12]
+budgets: [4, 12]
+decoder_patients: 128
+allocator_patients: 96
+evaluation_patients: 192
+history_steps: 48
+horizon_steps: 4
+max_depth: 6
+censor_probability: 0.3
+hidden_units: 16
+epochs: 100
+learning_rate: 0.02
+ridge: 0.01
+bootstrap_replicates: 200

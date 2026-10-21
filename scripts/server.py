@@ -35,6 +35,8 @@ from ies.feasibility.contract import load_mapping_snapshot
 from ies.feasibility.runner import plan_feasibility
 from ies.format_probe_runner import validate_probe_paths, wait_for_format_probe
 from ies.io import write_json
+from ies.recurrent_task_access import plan_recurrent_task
+from ies.recurrent_task_runner import wait_for_recurrent_task
 from ies.selection_cv import MODE as SELECTION_MODE
 from ies.selection_cv import load_config as load_selection_config
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
@@ -139,7 +141,51 @@ def sbatch_command(
     if slurm.get("account"):
         command.append(f"--account={slurm['account']}")
     python = config["python_executable"]
-    if job == "format-probe":
+    if job == "recurrent-audit":
+        if (
+            mapping_path is None
+            or cohort_dir is None
+            or any(value is not None for value in (access_manifest, protocol_path, feature_dir))
+        ):
+            raise ValueError("Recurrent task audit requires the existing mapping and cohort")
+        _, mapping_digest = load_eligibility_mapping(mapping_path)
+        cohort = cohort_dir.resolve()
+        if not cohort.is_relative_to(Path(config["output_root"]).resolve()):
+            raise ValueError("Recurrent cohort must remain in private output storage")
+        manifest_path = cohort / "manifest.json"
+        if (
+            manifest_path.is_symlink()
+            or not manifest_path.is_file()
+            or manifest_path.stat().st_size > 1024**2
+        ):
+            raise ValueError("Invalid recurrent cohort manifest")
+        content = manifest_path.read_bytes()
+        manifest = json.loads(content)
+        if (
+            manifest.get("status") != "complete"
+            or manifest.get("mode") != "bounded_phase0_cohort_extraction"
+            or manifest.get("data_class") != "restricted_clinical"
+            or manifest.get("mapping_sha256") != mapping_digest
+        ):
+            raise ValueError("Existing cohort and mapping binding required")
+        command[command.index(f"--cpus-per-task={slurm['cpus']}")] = "--cpus-per-task=2"
+        command[command.index(f"--mem={slurm['memory']}")] = "--mem=4096M"
+        command[command.index(f"--time={slurm['time_limit']}")] = "--time=00:22:00"
+        export_index = next(i for i, arg in enumerate(command) if arg.startswith("--export="))
+        command[export_index] += (
+            f",IES_MAPPING_SHA256={mapping_digest}"
+            f",IES_COHORT_MANIFEST_SHA256={hashlib.sha256(content).hexdigest()}"
+        )
+        command.extend(
+            [
+                str(ROOT / "slurm/recurrent_task.sbatch"),
+                python,
+                str(mapping_path.absolute()),
+                str(cohort),
+                str(run_dir / "recurrent-audit"),
+            ]
+        )
+    elif job == "format-probe":
         source, output = validate_probe_paths(
             probe_root if probe_root is not None else Path(config["data_root"]),
             run_dir / "format-probe",
@@ -571,6 +617,7 @@ def main() -> int:
         choices=(
             "schema-audit",
             "format-probe",
+            "recurrent-audit",
             "synthetic",
             "feasibility",
             "coherent-prepare",
@@ -678,6 +725,7 @@ def main() -> int:
             raise ValueError("Job binding options apply only to review")
         if (args.auto_artifacts or args.wait) and args.job not in {
             "format-probe",
+            "recurrent-audit",
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
@@ -752,7 +800,9 @@ def main() -> int:
         )
         if args.action == "plan":
             # No private paths echoed into a shareable terminal summary.
-            if args.job == "format-probe":
+            if args.job == "recurrent-audit":
+                print(json.dumps(plan_recurrent_task()))
+            elif args.job == "format-probe":
                 print(
                     json.dumps(
                         dict(
@@ -953,6 +1003,7 @@ def main() -> int:
         submission = {"job_id": job_id, "job": args.job, "commit": revision}
         if args.job not in (
             "format-probe",
+            "recurrent-audit",
             "clock-audit",
             "workflow-cv",
             "workflow-diagnostics",
@@ -977,6 +1028,7 @@ def main() -> int:
         if args.wait:
             monitor = {
                 "format-probe": wait_for_format_probe,
+                "recurrent-audit": wait_for_recurrent_task,
                 "clock-audit": wait_for_clock_audit,
                 "workflow-cv": wait_for_workflow_cv,
                 "workflow-diagnostics": wait_for_workflow_diagnostics,

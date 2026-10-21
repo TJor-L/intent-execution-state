@@ -21,10 +21,9 @@ The completed run used a fixed-seed uniform row-position domain, found linked
 administrations and observations, and finished with verified coverage and no reached
 limits. It is not evidence of population prevalence or model performance.
 
-Workflow update: the user has moved primary development/testing to UCSF. The server
-agent should review capabilities and implement/test a supported backend in the same
-work cycle, then perform bounded validation within established authorization and limits.
-There is no longer a review-only stop or a required return to the Mac for implementation.
+Current workflow: the Mac is the primary writer and owns implementation/generated
+testing; the user operates prepared UCSF Slurm jobs. The earlier server-primary workflow
+is historical and superseded by AGENTS.md. Do not start a competing server writer.
 This design is a starting specification; revise it using server evidence while preserving
 coverage, temporal, resource and data-boundary invariants. Prefer one working backend
 over implementing every possible backend before any validation.

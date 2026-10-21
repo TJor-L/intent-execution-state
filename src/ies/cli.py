@@ -49,6 +49,51 @@ def parser() -> argparse.ArgumentParser:
     command = commands.add_parser("selection-demo")
     command.add_argument("--config", type=Path, default=Path("configs/workflow_selection.yaml"))
     command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("competition-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_competition.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("hidden-learning-demo")
+    command.add_argument(
+        "--config", type=Path, default=Path("configs/synthetic_missing_learning.yaml")
+    )
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("hidden-history-audit")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("gdpp-containment-audit")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("factored-history-audit")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("factored-gradient-audit")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("roster-marginal-audit")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("history-roles-demo")
+    command.add_argument(
+        "--config", type=Path, default=Path("configs/synthetic_history_roles.yaml")
+    )
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("cardinality-limits-demo")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("cardinality-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_cardinality.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("joint-context-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_context.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("joint-information-demo")
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("joint-likelihood-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_likelihood.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("joint-shrinkage-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_shrinkage.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("joint-audit-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_joint.yaml"))
+    command.add_argument("--run-dir", type=Path)
+    command = commands.add_parser("memory-demo")
+    command.add_argument("--config", type=Path, default=Path("configs/synthetic_memory.yaml"))
+    command.add_argument("--run-dir", type=Path)
     command = commands.add_parser("validate")
     command.add_argument("--events", type=Path, required=True)
     command = commands.add_parser("evaluate")
@@ -136,6 +181,118 @@ def parser() -> argparse.ArgumentParser:
 
 
 def dispatch(args):
+    if args.command == "factored-gradient-audit":
+        from ies.factored_learning_audit import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-factored-gradient-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "factored-history-audit":
+        from ies.factored_history_audit import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-factored-history-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "gdpp-containment-audit":
+        from ies.gdpp_audit import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-gdpp-containment-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "hidden-learning-demo":
+        from ies.hidden_learning_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-hidden-learning-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "hidden-history-audit":
+        from ies.hidden_history_audit import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-hidden-history-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "competition-demo":
+        from ies.competition_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-competition-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "roster-marginal-audit":
+        from ies.roster_marginal import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-roster-marginal-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "history-roles-demo":
+        from ies.history_roles_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-history-roles-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "cardinality-limits-demo":
+        from ies.cardinality_limits import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-cardinality-limits-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "cardinality-demo":
+        from ies.cardinality_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-cardinality-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "joint-context-demo":
+        from ies.joint_context_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-context-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "joint-information-demo":
+        from ies.joint_information import run_audit
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-information-") + uuid4().hex[:8]
+        )
+        return run_audit(run_dir)
+    if args.command == "joint-likelihood-demo":
+        from ies.joint_likelihood_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-likelihood-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "joint-shrinkage-demo":
+        from ies.joint_shrinkage_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-shrinkage-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "joint-audit-demo":
+        from ies.joint_demo import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-joint-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
+    if args.command == "memory-demo":
+        from ies.memory_benchmark import run_demo
+
+        run_dir = args.run_dir or Path("artifacts/synthetic") / (
+            datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-memory-") + uuid4().hex[:8]
+        )
+        return run_demo(args.config, run_dir)
     if args.command == "workflow-selection":
         from ies.selection_runner import run_selection
 

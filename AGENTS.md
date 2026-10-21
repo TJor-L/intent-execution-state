@@ -130,6 +130,185 @@ explicit push/run/feedback authorization applies to this verified milestone. Pre
 all prior negative findings; P001/P002 are conditional candidates, not runnable studies
 or claims of publishability. Do not use another speculative model search to fill gaps.
 
+The user's subsequent instruction cancelled the new-format direction and asks for
+alternatives using the previous data only. F001/P001/P002 are no longer active tasks;
+do not submit the format probe or request a new resource location. Retain its code as
+inactive infrastructure. Assess alternatives against the already reviewed cohort/history
+and existing source semantics, without launching another experiment merely because it
+can run. The initial application candidates were an analysis-definition sensitivity
+study and bounded first-execution process description; the later ML-only requirement
+below supersedes them as the proposed main project.
+The extracted clinical cohort pools terminal-without-execution outcomes: do not infer
+separate cancellation/end reasons from the generic model's extra cause slots. Scheduled
+dose times, clinical urgency, medication errors and physiological outcomes are not
+established by these artifacts. No server task is currently scheduled by this assessment.
+
+The user clarified that the target must be a machine-learning methods paper and that
+new tasks may use the same original data, not only the old extracted cohort. Prioritize
+assessment of relation-preserving sequence learning for recurrent linked events;
+one-to-many self-supervision and history compression are alternatives, not established
+novel contributions. See docs/02 for the closest prior work and local go/no-go questions.
+Repeated administrations and direct links are recorded operational capabilities, but
+complete recurrent episodes and sufficient information for a new task are not verified.
+The one-time first-execution cohort and capped histories cannot answer that question.
+Do not relax their exclusions or silently reuse their test split as a new confirmation.
+A separate recurrent design, coverage contract and bounded extraction are required before
+clinical use. No new source semantics, clinical run, GPU work or data transfer is introduced
+by this research assessment. After the user's instruction to start, M001 is implemented
+as `make memory-demo`: a generated-only CPU mechanism benchmark with standard learned
+utility regression, exact context allocation and small NumPy neural decoders. It does
+not establish a novel method or implement a recurrent clinical extractor. The first full
+run has mixed small gains versus balanced context and extra allocation overhead; null
+histories lose to a history-free reference. See docs/11 and docs/20. Preserve these results;
+do not turn a gain over global truncation into a paper claim or a UCSF advancement gate.
+The event-context cap is not a total memory bound: scanning, metadata, model state and
+allocator workspace are additional. No server experiment follows this local prototype.
+
+The user then explicitly requested continuous autonomous research. M001 is not the main
+paper method; its mixed result does not stop local research. J001, `make joint-audit-demo`,
+is a generated finite-state laboratory for joint recurrent paths under common observation
+end. It uses established marginal/joint/latent-class EM references and an invalid
+zero-fill control; no new algorithm is claimed. The full 54-case run is complete. It
+exhibits a sample/observation-dependent tradeoff: joint dependence can help in correlated
+generators but overfits small or null settings. A constructive nonidentifiability witness
+prevents interpreting unsupported tails as learned facts. See docs/02, docs/11 and docs/20.
+Continue locally toward observation-adaptive dependence learning and compare with strong
+structured shrinkage/reference methods before a server handoff. This method is planned,
+not yet implemented or a publication claim. No clinical data, old-study retuning, format
+probe, test opening, new extraction or GPU job follows automatically from J001.
+
+J002 (`make joint-shrinkage-demo`) now implements a generated prefix-contrast interaction
+candidate plus stronger smoothing and model-averaging references. Its 150-case grid is
+complete: reveal-depth grouping sometimes improves on global shrinkage, but this candidate
+loses to the tree/blend comparator in 142/150 cases. Preserve the failure and oracle-versus-
+feasible distinction; do not schedule UCSF for this version. Predictable-history stopping
+and future-informative stopping are separate generated stresses; the latter can invalidate
+ordinary prefix-score comparisons. Continue toward joint likelihood estimation that learns
+marginals and interactions together and enforces probabilities during fitting. J003 now
+implements that estimator as `make joint-likelihood-demo`; all 150 fixed cases completed
+with certified convex optimization, but reveal-depth grouping loses to tree/blend in
+108 cases, ties 21 and wins 21. Preserve this negative strong-reference comparison;
+do not retune its penalty grid or schedule a clinical run. Next local work audits the
+information geometry of predictable stopping, including marginal/interaction coupling;
+`make joint-information-demo` now verifies this finite generated information audit:
+predictable stopping preserves reveal-depth blocks but couples marginal and interaction
+scores, while future-informative stopping can bias ordinary prefix scores. The audit
+uses known simulator kernels and cannot test an unknown clinical mechanism. Continue
+with sequential conditional structures and strong Markov/context references locally;
+no successor estimator is yet selected or claimed novel. Details and checks are in docs/11
+and docs/20; no actual data or new server task has been introduced.
+
+J004 (`make joint-context-demo`) now completes 150 fixed comparisons of ordinary
+sequential context/Markov references with absorbing transitions and two-fold patient CV.
+Context sharing helps some small-sample/adaptive-stopping settings, but persistent
+latent-class and tree references remain stronger in others. These are stronger known
+baselines, not a novel method or a server advancement gate. Preserve all regimes and
+the selection cost. Continue locally toward a scalable variable-roster/longer-path
+design supporting both persistent and short-memory dependence; that extension is planned,
+not implemented or publication-ready. Do not keep tuning the same finite grid.
+
+J005 (`make cardinality-demo`) implements a scalable exact count-interaction component
+and 72 complete-observed one-transition comparisons. Its projected bounded candidate
+has limited local benefit but large collective/subgroup failures; do not promote it or
+expand its fixed strength bound after inspection. `make cardinality-limits-demo` verifies
+same-bound population-oracle failures and a structural four-entity counterexample:
+equal marginals/total counts can hide different subgroup dependence that this model
+family cannot represent. This is a model restriction, not a data impossibility result.
+Continue toward history-conditioned subgroup/latent structures with known recursive-count
+and conditional-circuit methods as close references. The cardinality DP is a known
+primitive; no recurrent terminal adapter, censoring result, method novelty or clinical
+advancement is established by J005. No new UCSF action is scheduled.
+
+J006 (`make history-roles-demo`) now implements generated recurrent paths with history-only
+roles, terminal absorption and predictable prefix stopping, plus a three-start learned
+conditional HMM. The fixed screen completed 72 fits / 288 evaluations, training at
+rosters 4/8 and evaluating unchanged fits at 4/8/16/32. History roles are informative
+in matching generators and transfer, but the learned HMM beats the bank in 238/288
+cells. Preserve all null/misspecified controls; do not expand this bank to rescue it.
+No novel method or clinical recurrent extractor is established. Keep the HMM as a
+strong reference, and distinguish normalized variable-size laws from marginalization
+of missing entities. `make roster-marginal-audit` implements exact count-law deletion
+and verifies the known identical-history conditional-iid covariance limitation.
+J007 (`make competition-demo`) now combines latent Markov dynamics with normalized
+finite-roster count emissions. Its fixed 30 fits / 120 evaluations completed; combined
+dependence beats both isolated components in its represented mechanism, including
+unchanged-fit transfer to larger rosters. Simpler laws still favor simpler references;
+preserve null degradation and incomplete outer-EM convergence. The initial full run
+failed on a bounded-Newton active-set defect; the regression-tested solver correction
+did not change the scientific grid. Exact conditional future sampling is implemented
+for fully observed prefixes, including unknown future terminal events. These are known
+building blocks, not established method novelty; correlated-emission HMMs are also prior
+work. Missing recurrent entity histories remain unsupported by this learner. Continue
+local inference/design research; no server-data blocker or clinical advancement yet.
+
+J008 (`make hidden-history-audit`) now exactly marginalizes permanently unobserved
+recurrent entities with a known full initial roster. A histogram filter agrees with
+full labeled path probabilities and posteriors; all three fixed audits and 15 scaling
+cases passed. B=8 compresses 390625 labeled history states to 495, but still has 125970
+transition terms, so preserve the explicit resource limits. Deleting missing entities
+changes the population law when competition is present. Lifted filtering and multiset
+inference are established prior work; this is a reference implementation, not a new
+method claim. It does not learn parameters from missing histories, handle unknown
+initial rosters or identify an observation mechanism. Continue local learning/design
+research with strong references and a defensible task; no clinical task is scheduled.
+
+J009 (`make hidden-learning-demo`) now implements exact posterior sufficient statistics
+and MAP-EM for partially unobserved histories, with the all-positive count partition
+fixed in advance. All 30 fits / 180 evaluations completed; full-observation updates
+reduce to J007. Proper missing-history learning helps in the represented competition
+mechanisms but retains null/misspecified degradation and incompletely converged outer
+EM. Expected statistics/gradients match exhaustive and finite-difference references;
+inner convex gaps pass. This is a known-EM reference learner, not established novelty.
+Preserve its fixed protocol and results. Continue with stronger correlated-emission
+and set-process comparisons; no clinical job, original-test reopening or new source
+semantics are authorized by these generated results.
+
+J010 (`make gdpp-containment-audit`) verifies that J009's unsigned count emission is
+exactly a diagonal cardinality-weighted GDPP, already covered by Sharghi et al. (2018).
+All 21 static, two recurrent and four restricted-kernel covariance checks completed.
+Do not promote the count emission as a new family or compare only to ordinary DPPs
+to support novelty. Non-diagonal history-GDPP probabilities are implemented and verified;
+a full learned GDPP comparison is not implemented.
+
+J011 (`make factored-history-audit`) now replaces J008 compound-edge enumeration for
+the unsigned model with terminal thinning and grouped polynomial contractions.
+All 72 generated correctness/scaling cases completed, agreeing with sparse filtering
+through eight hidden entities and running factored-only through 24. Preserve small-case
+overhead, fixed four-history/unsigned restrictions and the known full initial roster
+assumption. Sparse costs above eight are combinatorial counts, not measured runtimes.
+The rearrangement uses known inference primitives; method novelty and clinical utility
+remain unestablished. J012 now verifies the exact backward/likelihood-gradient operator
+in 54 generated cases; no large-roster model fitting is implemented. No new server
+task or reopening of prior clinical studies follows.
+
+The user's subsequent steering is to keep a machine-learning methods target while
+grounding the contribution in the UCSF task, rather than prioritizing mathematical
+or computational sophistication. This supersedes the historical next-step instructions
+above: retain J001-J012 as generated reference tools; suspend the unimplemented J013
+particle comparison. Prioritize the task/coverage assessment in docs/11, section
+"2026-10-20 task-first research priority". Known initial rosters, permanently hidden
+entities and capacity competition are simulator assumptions, not established clinical
+facts. Do not expand their benchmarks before a concrete real-data task justifies them.
+The candidate is joint prediction of documented execution events for a cutoff-defined
+set of linked orders, subject to verified observation coverage. T001 now implements the
+separate aggregate-only task contract and `recurrent-audit` Slurm entry; focused generated
+tests pass. It retains repeated events without modifying the original first-execution
+extractor. It is not a model-ready recurrent extract or a clinical modeling protocol.
+Its separately declared full-source operation selects at most 32 original training
+patients, runs two order passes plus one administration and one observation pass,
+and verifies complete content hashes before/after. Both charged file reads and decoded
+row groups have a 64 GiB total ceiling, with 2 CPU / 4 GiB / 1200-second worker bounds.
+The user requested runnable server commands on 2026-10-21 after the release proposal;
+proceed with this verified milestone's commit/push and pinned handoff. No real T001 run
+has occurred. The user also reported GPU availability if useful; T001 remains a CPU
+source/coverage audit, with GPU use considered only for a justified later modeling task.
+`run_recurrent_audit.sh` defaults
+to plan only; `--submit` executes the explicitly described scan after a clean release.
+Do not substitute old coherent order samples or increase caps silently.
+Existing capped first-execution artifacts
+cannot establish full recurrent coverage. Preserve the methods-paper requirement, prior
+negative findings, sealed old tests and the existing data boundary.
+
 ## Workflow
 
 As requested on 2026-10-16, the Mac is again the primary implementation environment.

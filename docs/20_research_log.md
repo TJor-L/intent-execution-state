@@ -1492,3 +1492,832 @@ does not invent it or search other projects. Only fixed categorical feedback may
 private reports remain on UCSF. Continue with evidence from that result before choosing
 a clinical protocol. Publish this verified code milestone under the user's continuing
 push/run/feedback instruction, without modifying an existing private job checkout.
+
+## 2026-10-19 — User stops the format lead; assess alternatives on original data
+
+The user explicitly abandoned the new-format direction and asked what could be studied
+with the previous data alone. F001/P001/P002 are inactive; no format probe should now be
+submitted and no new source location is requested. No F001 execution feedback was received.
+Updated the current status and handoff instructions locally; no new job or model was run.
+
+Re-read the actual extraction and artifact contracts. The clinical extractor writes
+execution, pooled terminal-without-execution, or right censoring. It does not preserve
+separate cancellation/other-terminal reasons just because the generic model accepts more
+cause codes. Existing retained histories contain two event kinds and at most 24 events.
+The bounded candidate domain is not a representative population census. Scheduled dose
+time, urgency, illness severity, institution-wide workload and clinical harm are not
+established features. Order-to-execution time cannot be labeled an avoidable delay/error.
+
+Two candidate applications remain more grounded than another predictor search:
+(1) sensitivity of a fixed execution-rate/waiting-time question to outcome coding and
+analysis definitions; (2) descriptive execution/termination/censoring trajectories in the
+bounded reviewed cohort. These are proposals, not new frozen experiments or claims that
+a paper is feasible. Different patient/order weighting targets are different estimands,
+not automatically bias. Aalen-Johansen is not assumption-free ground truth under arbitrary
+dependent censoring. Preserve unknown outcomes and sample-completion bounds, and report
+the censoring assumptions needed for population claims. No old held-out evaluation opens.
+
+Primary-source checks: [Kaplan-Meier methods yielded misleading results in competing risk scenarios](https://pubmed.ncbi.nlm.nih.gov/16980152/)
+already compares alternative first-event analyses; generic competing-risk correction is
+not novelty. [Medication Administration Discrepancies Persist Despite Electronic Ordering](https://pmc.ncbi.nlm.nih.gov/articles/PMC2213483/)
+uses scheduled administration times and chart review, which our current artifacts do
+not supply. [Lillelund et al., UAI 2026](https://proceedings.mlr.press/v337/lillelund26a.html)
+studies dependent-censoring evaluation, so another censoring-sensitive score is not an
+unoccupied methodological direction. This targeted review supports assessing an applied
+measurement question first, with a realistic possibility of only a technical report.
+
+No executable code/config changes were made in this turn. These are local documentation
+updates; no new commit/push or server instruction is required to answer the direction
+question. Documentation whitespace and repository-boundary checks are recorded with the
+working-tree verification, without rerunning clinical or synthetic experiments.
+
+## 2026-10-19 — User requires a machine-learning methods paper; broaden beyond old artifacts
+
+The user clarified that new tasks/models may use the same original data and explicitly
+requires a machine-learning methods paper. The preceding applied-analysis candidates no
+longer serve as the main project. Corrected the earlier overly narrow framing: the old
+one-time first-execution cohort and capped histories are not the entire original dataset.
+Re-read the approved operational handoff and eligibility implementation. Direct linkage
+and repeated administrations support assessing recurrent linked-event tasks; they do not
+verify complete courses or new clinical labels. No private field names or counts recorded.
+
+Reviewed primary papers on survival pretraining, temporal relational learning, object-centric
+process prediction and tokenization efficiency. The sources, reading depth and limitations
+are in docs/02. Ordinary contrastive learning, a graph plus Transformer, and next-event
+prediction are not unoccupied contributions. Prioritize a local assessment of relation-
+preserving recurrent-event learning, potentially with learned memory allocation; retain
+one-to-many self-supervision and relation-preserving compression as conditional alternatives.
+No new algorithm, recurrent extractor or generated benchmark is implemented in this step.
+No novelty, performance gain or publishability is established by this proposal.
+
+Updated current-status documentation and the working agreement. Preserve the old negatives,
+sealed held-out data and cancelled format route. No server command, raw scan, clinical
+training, data transfer, dependency change, commit or push occurred. This is documentation
+and literature work only. `git diff --check` and the repository file-boundary check passed;
+model tests were not rerun. New clinical work first needs a distinct design and bounded access
+plan; a recurrent task cannot silently relax the existing first-event runner's exclusions.
+
+## 2026-10-19 — M001 local implementation, full generated comparison and mixed findings
+
+The user said to start. Implemented a generated-only relation-context allocation prototype:
+`memory_data.py`, `memory_models.py`, `memory_benchmark.py`, explicit synthetic config,
+CLI `ies memory-demo`, and Make target `memory-demo`. Reused the existing NumPy environment;
+no dependency installation, Torch/GPU use or clinical runner changes. The new exact-name
+synthetic config is included in the repository allowlist; local configs and model/data
+artifacts remain excluded. No commit or push occurred; working base remains `bbbb662`.
+
+The simulator provides recurrent linked histories with renewal, switching, shared-burst
+and memoryless-null mechanisms, independent observation end and post-cutoff terminal events.
+The target is next recurrence/termination for known orders, not the entire future sequence.
+The small MLP handles censored categorical outcomes through allowed-probability mass.
+Decoder training, utility learning and evaluation use disjoint generated patients. Full
+latent outcomes are used for synthetic scoring only. All event visibility respects both
+clocks. IDs cannot act as learned identity features; equal observable histories receive
+symmetric allocations, potentially underfilling the budget.
+
+The candidate learns depth-specific expected loss improvements via ridge regression and
+uses exact multiple-choice knapsack for an additive utility. Neither component is claimed
+as new. Compared with recent, balanced, static-utility, all-recent-depth, whole-history
+summary, descriptor-direct and history-free controls. The descriptor-direct control checks
+whether auxiliary prefix information already does the predictive work. Resource accounting
+separates event slots from descriptors, roster/counters, parameters, scan cost and arrays;
+this is offline context selection, not a bounded-RAM streaming implementation. TGN/SALoM
+primary-source checks added to docs/02; these strong methods are not yet reproduced here.
+
+Initial focused testing exposed an unquoted YAML `null` scenario interpreted as a null
+value; quoted it and retained strict config validation. Analytic likelihood gradients
+matched numerical derivatives. The first full `make check` passed 498 tests and 2 skips
+but the file-boundary step correctly rejected the newly added config until its exact
+generated filename was added to the allowlist. No broad whitelist exception was made.
+
+Full generated run `artifacts/synthetic/20261019T204214Z-memory-d6eb4bda` completed 24
+fitted cases / 48 budget comparisons (three seeds, four mechanisms, two order counts,
+two budgets). No favorable-case selection or hyperparameter changes followed the results.
+Mean observed-NLL improvements versus balanced context were small and inconsistent:
+renewal -0.00513 (9/12 cases lower), switching -0.00164 (7/12), shared -0.00212 (8/12),
+null -0.00056 (6/12). The history-free reference beat learned allocation in every null
+case. The simple summary removed the renewal advantage on average. Prediction-assignment
+permutation worsened the deliberately relational renewal case much more than the null;
+this is a simulator check, not evidence of clinical signal. Full numerical interpretation
+and limits are in docs/11; conditional bootstrap intervals omit fitting/selection uncertainty.
+
+Initial aggregate selection-plus-decoder time was 4.360 seconds for learned allocation
+versus 0.488 seconds for balanced allocation. This excludes common encoding and training
+and is hardware/implementation specific. The regressor adds 315 parameters and 44 prefix
+descriptor numbers per order; retained-event limits cannot be called total-memory savings.
+No stable method superiority, efficiency benefit or publication readiness is established.
+Keep this implementation as a mechanism benchmark; do not schedule a UCSF run to rescue
+this prototype. A distinct local algorithmic contribution and stronger comparisons remain
+necessary before a new clinical study. The original data's broader usefulness is unresolved.
+
+Final accounting distinguishes per-patient array maxima from the total materialized
+evaluation arrays and rejects combined simulation/DP work expansion. Reran the complete
+grid at `artifacts/synthetic/20261019T204448Z-memory-c1ffc4d9`; metrics, fitted parameters
+and config reproduced byte-for-byte. Verified every artifact hash and current source hash.
+No clinical data, private schema, trained clinical weights or external dataset was read.
+
+Final verification: **30 new memory tests**; focused memory/handoff checks passed 45 tests.
+`make check` passed **501 tests, 2 Linux-only skips**, Ruff check/format for 153 Python files,
+and the repository file-boundary check. `make demo` passed at
+`artifacts/synthetic/20261019T204417Z-67bbf708`. Tests cover censored mass/gradients,
+repeated-event retention, mismatched links, both clocks, row/ID/time-shift invariance,
+exact allocation versus brute force, identical-history ties, zero budget, patient splits,
+oracle isolation, strict combined resource bounds, source tampering, deterministic outputs,
+failure status and no-data handoffs. No new server task is pending.
+
+## 2026-10-19 — autonomous continuation and J001 exact joint-observation laboratory
+
+The user explicitly requested continuous automatic research rather than another pause
+after an unsuccessful prototype. Started an active autonomous research goal; M001 remains
+closed as the main-method candidate. No new permission/direction question was asked.
+Reviewed additional primary sources for future-teacher contrastive learning, partial-label
+conformal prediction, censored joint scoring, point-process diffusion, ambient diffusion
+and missing-data latent-class estimation. Reading depths and concrete overlaps are in
+docs/02. Generic future supervision, joint censored energy scoring and diffusion are not
+claimed as inventions. No literature absence claim is used as evidence of novelty.
+
+Implemented `joint_observation.py`, `joint_demo.py`, `configs/synthetic_joint.yaml`, CLI
+`joint-audit-demo`, Make target, and exact-name synthetic config allowlist. Reused NumPy;
+no dependency change, GPU, external data or clinical artifact. The laboratory enumerates
+225 valid two-entity recurrent/absorbing-terminal paths. Three mechanisms have equal
+marginal path laws but different joint dependence. Observation is a common independent
+prefix window; latent and observation RNGs are separate. Fitters accept prefix sufficient
+statistics only. Exact population evaluation uses the simulator law, not latent training
+labels. All four estimators are known references or an explicitly invalid zero-fill control.
+
+The first 54-case grid completed at
+`artifacts/synthetic/20261019T205703Z-joint-2d4b13f4`. At 1024 patients under short observation,
+latent-class joint KL is 0.12189 versus 0.19513 for independent paths in the synchronized
+mechanism, and 0.10240 versus 0.17634 in the opposed mechanism. It is worse under the null:
+0.16107 versus 0.06872. At 256 patients with short observation it is also worse in both
+correlated mechanisms. These are three-seed means of exact synthetic conditional risks,
+not evidence of an ML contribution or clinical benefit. No settings were retuned.
+Saturated joint estimation substantially overfits; its weak fixed prior and unequal
+effective complexity make it insufficient as the only comparator. The latent-class family
+matches the generated dependency, requiring future misspecification controls.
+
+The observation operator has rank 49 without final-bin observation and 225 with positive
+full-window support. Constructed two laws with identical observed prefixes and final-bin
+marginals, but joint final recurrence probabilities 0.5 and 0.0. This verifies the local
+nonidentifiability statement directly; a learned extrapolation does not cure lost support.
+The exact marginal differences across mechanisms are below 6e-17. Source and all artifact
+hashes were verified. Aggregate reference fitting was about 1.91 seconds, not a scaling result.
+
+Verification: **20 new focused tests passed**. `make check` passed **521 tests, 2 Linux-only
+skips**, Ruff check/format for 156 Python files, and repository file-boundary checking.
+`make demo` passed at `artifacts/synthetic/20261019T205723Z-8a19ad56`. Tests cover absorbing
+termination, repeated events, equivalent observed prefixes, exact nonidentifiability,
+normalization, the full-observation EM closed form, independent censor RNGs, exclusion of
+latent outcomes from fitting, information contraction, deterministic generated artifacts,
+config/input/resource rejection, no overwrite and sanitized failure manifests.
+
+Research remains active. Next local work: observation-adaptive dependence learning,
+nearest hierarchical shrinkage/model-averaging comparisons, misspecified dependence and
+dependent-observation stress tests. Those methods/stresses are planned, not implemented.
+No genuine server-data dependency has been reached; no server job is requested. No commit
+or push occurred; base SHA remains `bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`, with changes
+in the working tree. Old negative findings, test sealing and the cancelled format task
+remain unchanged. Do not mistake completion of this reference audit for completion of
+the autonomous methods-research goal.
+
+## 2026-10-19 — J002 prefix-adapted interaction candidate and adverse strong-baseline result
+
+Continued the active goal automatically. Revalidated the worktree and J001 artifacts;
+the previous goal turn was substantive progress, not a wait/blocker. Searched primary
+literature on adaptive copula smoothing, censored wavelet estimation and context-tree
+weighting. Closest precedents and reading depths are in docs/02. Corrected the CTW
+reference's author attribution after opening the primary PDF: Vellambi and Hutter.
+Generic adaptive shrinkage and censored wavelets are not claimed as new contributions.
+
+Implemented `joint_shrinkage.py`, `joint_stress.py`, `joint_shrinkage_demo.py`, explicit
+synthetic config, CLI/Make target and exact config allowlist. The candidate constructs
+weighted prefix-tree contrasts and groups cross-entity interactions by the later reveal
+depth. Verified the common-window information matrix: diagonal entries use observation
+probability at the maximum depth, not the product of per-entity probabilities. This is
+a finite direct calculation, not a claimed novel theorem or a borrowed asymptotic result.
+
+The estimator uses independent pilot marginal estimates, centered covariance from the
+remaining observed prefixes, plug-in variance shrinkage, and a single positivity
+contraction. It preserves pilot marginals and leaves unsupported interaction coefficients
+zero. Added global/unshrunk ablations, a standard Dirichlet-tree/global-blend reference
+selected by fixed two-fold observed-likelihood CV, all-patient independent/latent-class
+references, and an explicitly infeasible oracle-marginal diagnostic. The oracle is not
+included as evidence of deployable performance.
+
+Added two dependence mechanisms outside the original two-class generator, plus predictable
+history-dependent and future-informative stopping. Exact evaluation distinguishes full-law
+KL, observation-channel KL, and ordinary-prefix score excess. A constructed counterexample
+shows the latter can reward a wrong latent forecast when stopping depends on unseen
+outcomes; no score is mislabeled as a KL in that case. No observation kernel or true path
+law enters the feasible fitting/selection APIs.
+
+The first fixed 150-case run completed at
+`artifacts/synthetic/20261019T210442Z-shrinkage-667c0c5e`. At 1024 patients with independent
+short windows, depth grouping improved mean KL over global grouping (0.2317 vs 0.2475;
+13/15 cases lower), but was worse than the tree/blend comparator in all 15 cases (its
+mean 0.1845). All-patient independent/latent-class references were 0.1619/0.1542. The
+candidate loses to tree/blend in 142/150 grid cases; mean excess KL is 0.04275. At 256
+patients with short windows it also worsens the pilot baseline on average. Preserve all
+cases, including null, small-sample and unsupported-tail results; no settings were retuned.
+
+Marginal error remained below 4.45e-16 and unsupported nonzero coefficients were zero.
+Positivity contraction was active in 75 cases; mean factor 0.64465, minimum 0.00209.
+The infeasible oracle-marginal diagnostic was much better, suggesting pilot estimation
+and its locked marginals are material limitations, though this ablation changes multiple
+quantities. These findings motivate a joint likelihood estimator with constraints enforced
+during fitting, rather than post-fit contraction. That estimator is planned in docs/11,
+not implemented. The present candidate will not be sent to UCSF on these results.
+
+Focused joint tests: **36 passed**, including **16 new J002 cases**. `make check` passed
+**537 tests, 2 Linux-only skips**, Ruff check/format for 160 Python files and repository
+boundary checking. `make demo` passed at `artifacts/synthetic/20261019T210504Z-4ade4a8f`.
+Verified current source and all run artifact hashes. No repeated full run, dependency
+change, clinical data access, test opening, server job, commit or push. Work remains on
+base `bbbb662` with the Mac as sole writer. Research stays active; the next action is
+local estimator/solver work, not a permission request or a server-data blocker.
+
+## 2026-10-19 — J003 certified joint likelihood, exact information audit, J004 strong contexts
+
+Continued the active autonomous research goal without another approval request. Implemented
+`joint_likelihood.py` and its generated runner/config/CLI/Make entry. The strictly convex
+simplex objective jointly adjusts marginals and interactions, uses grouped linear-contrast
+penalties, and avoids J002's fixed-pilot marginals and post-fit positivity contraction.
+The damped Newton solver reports a simplex dual gap; failure to certify the fixed tolerance
+stops fitting. Two-fold observed-prefix CV fits all reference nuisances inside each fit
+fold. Upgraded the tree/blend comparator to all-patient fitting with the same fold isolation.
+
+Recorded the fixed protocol before full-grid inspection. Run
+`artifacts/synthetic/20261019T211257Z-likelihood-cbefb2e1` completed 150 cells. All 1800
+CV solver calls and selected final fits met gap <=1e-7. Reveal grouping has mean KL
+0.15177 at 1024 patients under independent short windows, versus global 0.16230,
+independent 0.15737 and tree/blend 0.11498. Across the stress grid it loses to tree in
+108 cells, ties 21 and wins 21; mean excess KL 0.03065. At 256 patients/short windows
+it also loses to independent on average. This is an adverse strong-baseline result,
+not a numerical failure. No grid broadening, clinical advancement or novelty claim.
+An initial ad hoc summary script incorrectly assumed JSON key order and failed after
+printing valid comparison summaries; fixed the read-only analysis, without rerunning
+or changing the experiment. Source/config/output hashes verified before later source work.
+
+Reviewed primary sources on multinomial log-linear group lasso, constrained penalized
+copula density estimation and censored multistate spline likelihood. Their known ideas
+are not claimed as our contributions. References/reading depth are in docs/02.
+
+Implemented `joint_information.py` and `make joint-information-demo` for an exact
+simulator-kernel audit, including 28 marginal and 196 interaction score directions.
+Run `artifacts/synthetic/20261019T211628Z-information-ebb50612` completed all five policies.
+Under predictable stopping, different reveal depths remain orthogonal but marginal and
+interaction scores within a depth couple (largest entry 0.22705); nuisance projection
+reduces interaction information trace by 1.59007. Under future-informative stopping,
+ordinary prefix scores have nonzero mean (max 0.06148), whereas correct known-channel
+scores remain centered. No-tail full score rank is 48, interaction rank 36. None of
+this supplies a test of an unknown clinical stopping mechanism. Standard MAR likelihood
+and stopping-time precedents are attributed; no new general theorem claimed.
+
+Rather than another penalty sweep, implemented stronger sequential context references
+in `joint_context.py` with normalized absorbing transitions, independent/joint entity
+structures, zero/one/full history and symmetric Dirichlet smoothing. The shared two-fold
+CV selects independent, joint and combined lists without latent-label or kernel access.
+Fixed J004's 150-cell protocol before inspecting the full run. Run
+`artifacts/synthetic/20261019T211915Z-context-2e036c9d` completed and hashes verified.
+At 256 patients under independent short observation, all-context mean KL is 0.24061
+versus tree/blend 0.29553; under adaptive-past stopping 0.23392 versus 0.34605. At 1024
+patients/short observation it is worse (0.12288 versus 0.09943). Persistent latent-class
+mechanisms remain adverse, while short-memory mechanisms benefit in some cells. Across
+all stresses it beats tree in 73 cells and loses 77; do not pool these into a significance
+claim. All-context selection picks independent models in 97 cells and joint in 53.
+Standard context models are retained as stronger baselines, not marketed as a new method.
+
+Verification after all implementation: **577 tests passed, 2 Linux-only skips**; Ruff
+check/format passed for 168 Python files; repository boundary check passed. The 40 new
+focused tests include convex derivatives/solutions/gaps, fold isolation, correct observed
+score derivatives and information contraction, nuisance coupling, unknown-tail exclusion,
+context/tree equality, absorbing support, exchangeability and reproducible generated
+artifacts. `make demo` passed at `artifacts/synthetic/20261019T211955Z-9a20eea2`.
+Earlier J003 and information-only check counts were 553 and 565 respectively. No clinical
+inputs, dependencies, GPU, old-study reopening, new server job, commit or push occurred.
+Base remains `bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`; worktree changes remain uncommitted.
+
+Research remains active. The next design must support varying numbers of linked entities
+and longer paths, capturing both persistent latent and short-memory dependence while
+preserving coherent prefix probabilities. Review closest scalable methods and specify
+a bounded generated experiment before implementing it. Do not keep tuning the same
+finite grid or call local benchmark completion a viable methods paper. No genuine
+server-data dependency has yet prevented the next local research step.
+
+## 2026-10-19 — J005 exact scalable interaction engine and a structural rejection
+
+Revalidated the current worktree and active goal. The preceding J003/J004 turn was
+progress: implemented models, completed fixed comparisons, and changed the next action.
+No stale process or server wait was assumed. Reviewed primary work on set-valued point
+processes, Markov-modulated events, dynamic latent graphs, structured missingness,
+exchangeable circuits, exact cardinality inference and centered autologistic models.
+Also checked, but did not adopt, generic doubly robust censoring losses. Nearest
+overlaps and reading depths are recorded in docs/02; known components are not claimed
+as inventions or independently novel contributions.
+
+Implemented `cardinality.py`, a log-space polynomial DP with reverse derivatives for
+all entity marginals and exact backward set sampling. It handles 0–128 eligible entities
+without enumerating 2^K sets. Added a bounded count contrast after removing constant and
+single-entity projections under a fixed product reference, an unprojected bounded control,
+and a centered quadratic control. The projected score is locally orthogonal to marginal
+scores; nonzero tilts do not exactly preserve marginals or establish calibration.
+The scalar bounded likelihood optimizer certifies a convex gap and labels boundary fits.
+This is a one-transition component; no long-path or terminal/censoring adapter was added.
+
+The fixed first comparison (`make cardinality-demo`) uses 72 cases across three seeds,
+sizes 4/16/64, training subjects 128/512 and independent/shared-shift/opposed-shift/
+capacity mechanisms. Each size is fitted independently; this is not learned transfer
+to new roster sizes. Feasible methods use the same subjects; an oracle-marginal variant
+is explicitly infeasible. Added strong empirical count smoothing and a two-product
+mixture, keeping fixed restarts/iterations. A fresh common generated evaluation sample
+gives joint KL estimates with Monte Carlo errors; count-model cross-entropy differences
+are also computed exactly from true marginals/count probabilities. No true model or
+evaluation sample enters feasible fitting.
+
+Run `artifacts/synthetic/20261019T212816Z-cardinality-bf0a7894` completed all 72 cases;
+source/config/output hashes verified before diagnostic-source additions. The candidate
+helps some small shared-shift/capacity settings, but fails the strong-reference comparison
+at larger sizes. At 64 entities, mean estimated joint KL is 2.25379 on shared shifts
+versus empirical count 0.41522 and mixture 0.30541; on opposed shifts it is 4.82777 versus
+mixture 0.29118. Projection versus its unprojected control has mean exact cross-entropy
+difference only -0.00104. Empirical count wins fewer individual cells than the candidate,
+yet has better average exact risk because of large adverse cases (candidate excess
+0.19231). Preserve this heterogeneity; a win count alone would be misleading. The
+candidate reaches a strength boundary in 18/72 cells; no bound or setting was expanded.
+All scalar convex gaps are below 3e-10. Full generated distributions and diagnostics
+remain in local ignored artifacts.
+
+Implemented `cardinality_limits.py` and `make cardinality-limits-demo` to distinguish
+finite-sample fitting from family limitations. Run
+`artifacts/synthetic/20261019T213103Z-cardinality-limits-d88d5d1f` completed 12 exact
+population-oracle cases at the unchanged strength bound, and its source/output hashes
+were verified. With true marginals and no estimation noise/ridge, shared-shift count KL
+is still 1.92560 at 64 entities and 6.94979 at 128; count KL lower-bounds full joint KL.
+The bounded density-ratio argument and exact feature extrema are tested.
+
+Constructed a stronger four-entity witness: uniform mass on 1100/0011 versus 1010/0101.
+Both have marginals 1/2 and count two, but their first-pair event probabilities differ
+by 1/2. Any linear-entity-plus-total-count energy has equal cross-entropy under both
+laws and irreducible KL at least log(3), attained by the limiting uniform count-two law.
+This is a model expressiveness restriction, not lack of information in fully observed
+sets. It justifies replacing the single-global-count structure rather than more tuning.
+The exact engine remains useful as a component for future subgroup/recursive models.
+
+Verification: **21 focused tests**, including enumeration, normalizer derivatives,
+orthogonality, failure of exact marginal preservation, both association signs, exact
+sampling, permutation equivariance, 128-entity workspace, convex scalar optima, oracle
+labels, EM monotonicity, tiny-tail log stability, representation witness, deterministic
+artifacts, input/resource rejection and sanitized failures. `make check` passed
+**598 tests, 2 Linux-only skips**, Ruff check/format for 172 Python files and repository
+boundary checking. `make demo` passed at
+`artifacts/synthetic/20261019T213103Z-b3ae6d54`. No dependencies, GPU, clinical artifacts,
+old study changes, server jobs, commits or pushes. Base SHA remains
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`; all new work is uncommitted.
+
+Research remains active. Next work must represent which history-defined subsets interact,
+not just how many events occur. Investigate conditional subgroup/latent structures with
+explicit permutation symmetry and coherent sequential probabilities, accounting for the
+close recursive-cardinality and conditional-circuit precedents before a new claim.
+Those successor structures and a full recurrent adapter are planned, not implemented.
+No genuine server-data dependency has yet blocked this next local research step.
+
+## 2026-10-19 — J006 recurrent roles, actual roster transfer, and a population/observation distinction
+
+The preceding J005 turn was substantive progress, not a server blocker: its fixed
+comparison and exact representation witness changed the next design. Continued the
+active autonomous goal without a permission request. Read conditional-SPN definitions,
+gating and autoregressive construction; variable-size set circuits; neural energy-process
+consistency; and primary finite-exchangeability references. Reading depths and overlaps
+are in docs/02. Standard HMMs, finite mixtures, exact marginalization and elementary
+covariance restrictions are not presented as new methods.
+
+Recorded J006's fixed protocol in docs/11 before the full run. Implemented
+`history_roles.py` with generated eight-step recurrent paths, terminal absorption and
+observed-prefix censoring, four history contexts, a 33-component role bank, a five-component
+shared-role control and a learned two-state conditional Bernoulli HMM. Each entity's role
+uses its own last two observed event bits; no identities, hidden simulation roles or future
+outcomes enter routing. Terminal and event-set factorization is a joint probability model,
+not a claim about clinical ordering. Prefix tails are marginalized, not zero-filled.
+The bank is a population mixture of complete path laws, with whole-subject likelihood
+weight fitting. HMM MAP-EM uses three fixed starts; neither global optimality nor a
+Bayesian parameter posterior is claimed. Both models are reference learners.
+
+`make history-roles-demo` completed at
+`artifacts/synthetic/20261019T213741Z-history-roles-59277c83`: 72 fits and 288 evaluation
+cells across three fixed seeds, two training sizes, two stopping policies and six
+mechanisms. Training rosters are 4/8; the same parameters are evaluated at 4/8/16/32,
+so 16/32 are genuine unseen-size tests here. Outcomes and stopping RNGs are separate
+per generated subject, allowing matched complete/adaptive prefixes. Source/config/output
+hashes were verified before the subsequent roster-audit source additions.
+
+The largest-weight component recovers the specified parity partition and fresh versus
+persistent dynamics in all 12 settings for each of the two history-role mechanisms.
+At size 32, full-role minus shared-role NLL averages -5.95562 (fresh) and -8.21444
+(persistent) per generated subject. This supplies a positive information-value result
+and cross-size transfer in those deliberately matching generators. It is not general
+role recovery, clinical evidence or a novel-method result. The learned HMM is stronger:
+it wins 238/288 cells; mean bank excess NLL is 0.13843. At size 32, bank minus HMM is
++0.66003/+0.79144 in the two history mechanisms. Independent, hidden-role and capacity
+controls remain in the report; the bank does not solve them. Preserve the fixed grid
+and these results rather than adding amplitudes to rescue it. Total fitting seconds:
+2.768 full bank, 0.663 shared bank, 17.329 three-start HMM, excluding simulation/evaluation.
+All EM objective traces are nondecreasing to numerical rounding.
+
+Implemented a separate `roster_marginal.py` diagnostic and `make roster-marginal-audit`.
+For a known full count law with entity fields, summing omitted variables changes the
+count potential by a log convolution with their elementary-symmetric coefficients.
+This standard exact operation works for unequal fields, arbitrary kept ordering and
+successive deletion; it is not the same as rerunning a size-dependent model on a smaller
+actual population. No unknown omitted clinical histories are assumed available.
+Run `artifacts/synthetic/20261019T214017Z-roster-marginal-5f014301` completed six exact
+population sizes and verified source/output hashes. Marginalizing to two entities versus
+actually changing population to two yields TV differences 0.06804–0.13754 in these
+fixed generated capacity laws.
+
+The accompanying restriction is precise: identical-history conditional-iid emissions
+under a shared latent variable have nonnegative pair covariance. Opposite history roles
+can be negatively correlated; the restriction is not about all pairs or all HMMs.
+A same-history capacity law has negative covariance and cannot keep that correlation
+while extending to arbitrary population size: count variance requires n <= 1-1/rho.
+This is an elementary necessary condition, not a new theorem or sufficient extension
+test. Infinite projectivity is not imposed on genuinely interacting finite populations.
+Tests also verify full recurrent-path marginalization after removing an entire entity.
+
+Verification: 25 new focused tests (19 recurrent-role, six roster-marginal), including
+exhaustive latent-state posteriors, normalized transitions and coherent prefixes,
+terminal support, no future routing, missing-tail handling, entity permutation, coupled
+stopping, weight bounds, EM monotonicity, unchanged-fit roster transfer, population
+marginals and sanitized artifact failures. `make check`: **623 passed, 2 Linux-only
+skips**, Ruff check/format for 177 Python files and repository boundary check passed.
+`make demo`: `artifacts/synthetic/20261019T214112Z-d796b50f`; `git diff --check` passed.
+Earlier check before the separate marginal audit was 617 passed / 2 skipped. No new
+dependencies, GPU, clinical artifacts, UCSF jobs, commits or pushes. Base SHA remains
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`; all new work is uncommitted.
+
+Research remains active, with no repeated blocker or need for server input. The next
+local question is a learned joint finite-roster transition supporting both common shocks
+and local competition, with an explicit distinction between actual roster changes and
+unobserved entities. Keep the learned HMM and exact cardinality/conditional-circuit
+models as strong references, check closest latent count/DPP/maximum-entropy precedents,
+and require a separate contribution before advancing to a clinical experiment. The
+successor learner and any real recurrent-data adapter remain planned, not implemented.
+
+## 2026-10-19 — J007 combined dependence, explicit solver failure, and conditional forecasting
+
+Continued the active autonomous research goal locally. Recorded the fixed J007 protocol
+before running its 30 fits / 120 evaluations. Read primary population-coupling,
+partially-observed set, Markov DPP, collective-graphical-model and finite-state-projection
+references; subsequently inspected Prentice et al.'s HMM with learned Chow-Liu emissions.
+These precedents rule out claiming generic correlated-emission HMMs, cardinality
+normalization, negative dependence, population aggregation or discarded-mass bounds as
+new contributions. Reading depths and links are recorded in docs/02.
+
+Implemented `competition.py` and `make competition-demo`: two-state history-conditioned
+count emissions, exact group-count multiplicities for small-roster fitting, bounded
+convex emission M-steps, fixed 20-update HMM EM and unchanged-parameter large-roster DP.
+Three references isolate independent, latent-only and count-only mechanisms. Generated
+termination and stopping remain distinct; no clinical data adapter was added.
+
+Initial full run `artifacts/synthetic/20261019T214813Z-competition-b41f1107` explicitly
+failed when a cross-coupled Newton step at theta=0 pointed outside its box and produced
+repeated zero-length steps. Added an active-set correction and a generated regression
+for the exact failing configuration, then reran the entire unchanged protocol. No
+scientific hyperparameter or selection rule changed. The failed artifact is retained.
+
+Completed run `artifacts/synthetic/20261019T215056Z-competition-e3237311` verified all
+source/config/output hashes before the subsequent forecasting addition. Combined-law
+cases beat both isolated components in all 24 settings, including unseen roster 32;
+mean combined-minus-HMM NLL there is -1.576402 per generated subject. The signed-capacity
+law favors the simpler count-only model in 23/24 cells; null/pure-shock controls retain
+added-complexity degradation. All inner mean-Q convex gaps are <=2e-7, while some outer
+EM traces remain improving at the fixed budget. Detailed results and actual timings
+(including the HMM warm-start cost) are in docs/11. This is a positive represented-
+mechanism check, not proof of novelty, clinical effectiveness or publication readiness.
+
+Added `competition.forecast`: conditional Monte Carlo future paths given a fully
+observed prefix, integrating unknown future terminal events and preserving absorption.
+Refactored generic log-space two-state forward/backward inference and retained existing
+reference-model behavior. Sixteen focused tests cover exact normalizers, gradients,
+Hessians, certified box updates, EM monotonicity, exhaustive transition normalization,
+HMM reduction, unchanged-fit roster transfer, filtering/forecasting, bounds and sanitized
+failures. `make check`: **639 passed, 2 Linux-only skips**, Ruff check/format 180 files,
+repository boundary check passed. `make demo` completed at
+`artifacts/synthetic/20261019T215600Z-f5ca2b82`. No dependencies, GPU, clinical artifacts,
+UCSF jobs, commits or pushes; base SHA remains
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`. Research remains active, not blocked.
+
+## 2026-10-19 — J008 exact hidden-history filtering with explicit population assumptions
+
+After J007, continued local work rather than asking the user to pick another direction.
+Fixed J008's correctness/resource protocol in docs/11 before implementation. Added
+`hidden_history.py`, `hidden_history_audit.py`, CLI and `make hidden-history-audit`.
+For a known original roster and known initial histories, up to eight permanently
+unobserved entities are represented by counts in four history states plus absorption.
+Each transition sums all possible hidden no-event, recurrence and termination counts,
+with multinomial multiplicities and the full-survivor population normalizer. It does
+not use hidden simulated event truth, fill events with zero, or change population size.
+The common latent posterior is filtered jointly with the hidden-history histogram.
+
+Read the primary finite-exchangeability inference introduction and IJCAI 2018 lifted
+filtering representation/prediction construction. Exact multiset filtering, state
+aggregation and handling symmetry are existing ideas; our implementation is a concrete
+reference, not an established new algorithm. Prior correlated-emission HMMs also remain
+strong references. Do not turn a known-model correctness advantage into a novelty claim.
+
+Final audit `artifacts/synthetic/20261019T220351Z-hidden-history-e07e31ab` completed all
+three fixed distribution checks and 15 scaling cases. Source/output hashes verified.
+Maximum absolute difference from full labeled recurrent-path summation is 2.23e-16.
+Tests additionally compare the entire hidden-histogram/common-state posterior, including
+terminal outcomes. Incorrect population deletion differs by TV 0.0550154 for signed
+competition and 0.0135058 for combined dependence, while the independent control agrees.
+All are generated known-model calculations, not fitted performance or clinical evidence.
+
+For eight missing entities, 495 histogram states replace 390625 labeled histories,
+with two common latent states in either representation. However, 125970 transition
+terms remain: the count is choose(B+12,12), versus choose(B+4,4) history states.
+Cached arrays use about 5.04 MB (not peak working memory). Cold construction took
+0.910 s; eight-step filters at observed sizes 1/4/16 took 0.719–0.737 s. Keep the bounded
+implementation and high-degree cost explicit. The first provisional audit
+`20261019T220254Z-hidden-history-e9893262` had an already-cached B=2 timing; instrumentation
+was corrected to cold construction, then rerun with a source-stability check. Probability
+results stayed unchanged. Intermediate run `20261019T220327Z-hidden-history-0ef67188`
+preceded the final source-stability guard.
+
+Ten new focused tests cover exhaustive path sums/posteriors, normalized next observations,
+full-observation and no-competition reductions, prefix consistency, permutations,
+absorption, exact state/term counts, bounds, generated-only tags, artifact hashes,
+no overwrite, source drift and sanitized failures. The first full check correctly
+failed its pre-existing source-stability guard because timing instrumentation was edited
+while that check was running (647 passed, one failed, two skipped). After stopping source
+edits and finishing the audit instrumentation, reran the checks on unchanged source:
+**649 passed, 2 Linux-only skips**, Ruff check/format 183 files and repository boundary
+check passed. `make demo` completed at
+`artifacts/synthetic/20261019T220419Z-546d1d2e`; `git diff --check` passed before this log
+update and is repeated for the documentation finish.
+
+All changes remain uncommitted on base
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`. No new dependencies, clinical access, held-out
+clinical evaluation, GPU, server jobs, commits or pushes. Autonomous research remains
+active with substantive progress and no blocker streak. Exact inference is now available
+as a reference for the next local question: learning and computational control under
+partial observation, against correlated-emission and lifted/particle alternatives.
+Unknown initial roster/history, reappearing identities, observation-mechanism learning
+and a clinical recurrent extractor remain unimplemented. A distinct method contribution
+and a justified real-data task are still required before a UCSF experiment.
+
+## 2026-10-19 — J009 learning with unobserved recurrent histories
+
+The previous J008 goal turn was progress, not a wait or blocker. Revalidated the current
+worktree and active goal, then continued into learning without another user request.
+Read primary coupled-HMM, aggregate-HMM and particle-EM sources; reading depths are in
+docs/02. Generic EM, smoothing, Fisher identities and lifted inference are known methods.
+Fixed J009's simulation and comparison protocol in docs/11 before implementation/results.
+
+Refactored the small-roster count normalizer into `CountDesign` with sufficient-statistic
+objectives, preserving `GroupDesign` behavior. Added `hidden_learning.py`: generated
+missing-subject inputs, bounded reusable sparse transitions, exact forward-backward
+posteriors, expected emission/context/terminal/latent-transition statistics, and MAP-EM
+with certified convex emission updates. Fully observed training reproduces the existing
+count-HMM updates. Hidden future event truth never enters the design. The missing count
+and original initial histories are supplied; these are not inferred from absent data.
+Training is bounded to 512 subjects, actual roster eight, hidden count four and 500000
+transition terms. No unknown-roster or informative-observation model is implemented.
+
+Added the fixed configuration, CLI and `make hidden-learning-demo`. Run
+`artifacts/synthetic/20261019T220942Z-hidden-learning-182f31f0` completed all 30 fitting
+settings / 180 evaluation cells; source/config/output hashes verified. At unseen roster
+16 with two hidden training and two hidden evaluation entities, combined-minus-reference
+NLL is -1.135480 versus product HMM, -0.853635 versus correct count-only, and -0.230105
+versus naive deletion, averaged over the three fixed seeds in the combined generator.
+These represented-mechanism gains are accompanied by null and misspecified losses;
+complete tables and all cases are retained. Correct versus naive complete-training
+fits agree in all 90 evaluations to maximum mean-loss difference 2.67e-15.
+
+With missing training, correct combined learning beats naive in 18/18 global-capacity
+and 16/18 combined cases, but loses in 18/18 independent and 16/18 hidden-role cases.
+Count-only is stronger in 15/18 pure-capacity cases. Product HMM is generally better
+in independent/fresh-shock/hidden-role controls. Inner gaps pass <=2e-7; outer EM is
+fixed-budget and sometimes still improving (largest final combined increment 0.0742538).
+Do not increase iterations or alter priors to rescue inspected cases. Total time measured
+inside fits is 3.805 s product HMM, 2.169 s design, 16.967 s additional combined EM,
+15.265 s additional count-only EM and 1.814 s additional naive combined fitting. These
+exclude simulation/evaluation and share reference initialization; no end-to-end speed
+or global-optimum claim. No publication or clinical claim follows from this benchmark.
+
+Ten new focused tests verify exact smoothing statistics against all labeled histories,
+Fisher gradients against observed-likelihood finite differences, variable/empty prefixes,
+EM ascent and certificates, original no-missing update equivalence, permutation invariance,
+masking without hidden-outcome leakage, class/support/bounds, CLI/artifact hashes and
+sanitized failures. Combined focused suite: 36 tests passed. `make check`: **659 passed,
+2 Linux-only skips**, Ruff check/format 186 files and repository boundary check passed.
+`make demo` completed at `artifacts/synthetic/20261019T221843Z-0f84f515`; `git diff --check`
+passed. No source edits occurred while the full benchmark/checks were active.
+
+All code remains uncommitted on base `bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`.
+No dependency changes, GPU, clinical access, original test evaluation, UCSF jobs,
+commits or pushes. Research remains active; there is no current external blocker.
+The next local comparison must include stronger correlated-output/set-process models,
+not merely the product-emission HMM or an invalid deletion control. Re-inspected the
+AISTATS 2024 dynamic Bernoulli/DPP formulation and evaluation discussion: it explicitly
+models within-set inhibition beyond shared hidden-state conditioning. A concrete DPP
+reference, its fitting and comparability to the discrete fixed-roster task remain
+planned. The clinical recurrent extractor and a distinct methods contribution remain
+unimplemented/unestablished, respectively.
+
+## 2026-10-20 — J010 containment completed; J011 exact filtering factorization
+
+The user asked to continue after the status checkpoint. Read the working agreement
+and existing source/tests; reused the unchanged environment. No server connection,
+Git pull, commit or push was performed. The goal tool still reported its stored
+paused state; the explicit user continuation authorized this working-tree research.
+No attempt was made to claim the open research objective complete or to set a
+different goal status through an unsupported resume operation.
+
+Completed J010's already specified GDPP reference and containment audit. Read Sharghi
+et al.'s 2018 primary definitions and sequential extension: J009's unsigned count law
+is a diagonal cardinality-weighted GDPP. Added the dense positive-definite reference,
+history-shared non-diagonal determinant/spectrum reductions, derivatives of selected
+minors, recurrent scoring and a normalized-emission adapter for the existing hidden
+filter. Callback shape/range checks are not a proof of normalization; probability
+normalization is independently checked. No broader GDPP fitting algorithm was added.
+
+`make gdpp-containment-audit` completed at
+`artifacts/synthetic/20261020T162051Z-gdpp-containment-26de8e7f`, with 21 static,
+two recurrent and four covariance cases. Diagonal log-probability error <=2.85e-14;
+non-diagonal reduction error <=8.53e-14; exact two-hidden-entity marginal error
+<=4.17e-17. Source/output hashes verified before the subsequent source additions.
+The covariance restriction is explicitly for permutation-invariant real ordinary-DPP
+marginal kernels; a fixed-cardinality GDPP counterexample prevents overgeneralizing it.
+Sixteen tests cover independent dense/enumerated references, count-law identity,
+minor gradients, full-path sums, hidden posteriors, terminal events, prefixes, bounds,
+generated-only inputs, artifact hashes, source drift and sanitized failures. The first
+focused run had one erroneous test expectation: a correctly shaped zero-log-probability
+callback was expected to fail a shape check. Corrected the invalid-shape fixture;
+probability algorithms and scientific protocol were unchanged.
+
+After confirming the prior-family overlap, specified J011 in docs/11 before coding:
+retain the same unsigned law, replace compound transition enumeration with independent
+terminal thinning, survivor-normalizer division, grouped binomial-polynomial matrix
+contractions and final event-count weighting. Added `factored_history.py`, the fixed
+audit, CLI and Make target. The prepared filter supports 0..24 hidden entities and up
+to 128 total entities, with exactly four two-bit history types and known initial roster.
+Layered normalizer coefficients and contractions avoid the sparse compound-edge table.
+No observation-mechanism inference, unknown population, signed-law/general-GDPP
+extension, backward operator or new learner is implemented.
+
+`make factored-history-audit` completed all 72 fixed cases at
+`artifacts/synthetic/20261020T162510Z-factored-history-a60c0ea3`; source/output hashes
+verified. All 45 comparisons within the sparse limit agree: maximum log-likelihood
+error 3.56e-15, per-step posterior error 3.89e-16. At eight hidden entities, the median
+eight-step filtering time across nine mechanism/seed cells is 0.009332 s versus
+0.722802 s sparse, with preparation separately 0.001159 s versus 0.887681 s. At 24,
+factored filtering takes median 0.201548 s plus 0.013957 s preparation. The corresponding
+1,251,677,700 sparse compound terms were not allocated; no sparse timing at that size
+was measured. At zero hidden entities, factored filtering is slightly slower. Full
+timings, all cells and limitations are retained in docs/11 and the generated artifact.
+Logical array bytes are not peak-memory measurements.
+
+Seventeen factored-filter tests cover sparse agreement at all supported reference sizes,
+layered normalizers against the earlier count DP, prefix/absorption/permutation,
+complete-observation and independent-deletion limits, 24-hidden-entity behavior,
+extreme allowed parameters, resource/input boundaries, provenance and failure paths.
+Combined focused suite: 53 passed. `make check`: **692 passed, 2 Linux-only skips**;
+Ruff check/format 192 files and repository boundary check passed. `make demo` completed
+at `artifacts/synthetic/20261020T162541Z-505ac2ca`. No source files were edited during
+either audit or the full checks. Documentation updates followed completed checks.
+
+All changes remain uncommitted on base
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`. No new dependencies, GPU, clinical inputs,
+original held-out evaluation, UCSF jobs, commits or pushes. This continuation made
+substantive progress and has no external blocker streak. It establishes a reproducible
+computational improvement over our sparse reference, not a new distribution or a
+publication-ready contribution. Re-read lifted-filtering compound-action construction
+and recursive-cardinality prior work; generic lifting and polynomial inference are
+known. Next local work concerns the transpose/backward operator, learning efficiency
+and comparisons against stronger computational references. A defensible real-data
+roster/coverage design remains necessary before a UCSF experiment.
+
+## 2026-10-20 — J012 verification and return to a data-driven task
+
+J012 implements the transpose/backward operator and exact observed-likelihood
+derivatives for J011's unchanged unsigned law. Its fixed 54-case generated audit
+completed at `artifacts/synthetic/20261020T163839Z-factored-gradient-71b6137e`.
+Source/output bindings were verified at completion. Maximum directional derivative
+error was 3.92e-10; the 27 supported sparse comparisons agreed to 1.46e-14 for
+emission gradients. Full results and separate preparation/forward/gradient timings
+are in docs/11. No large-roster optimizer or fitted prediction comparison was added.
+Twelve new tests cover sparse smoothing/gradient agreement, transpose identities,
+finite differences, empty/absorbed/permuted inputs, limits and artifact failure paths;
+the earlier focused combined suite passed 39 tests.
+
+After the user's pause/explanation and subsequent continuation, the latest steering
+asks for less emphasis on mathematical/algorithmic sophistication and greater grounding
+in the actual UCSF task. The machine-learning methods-paper objective remains. Updated
+AGENTS, README, overview and docs/11 to make this the active priority. J013 remains
+specified but unimplemented and is now suspended. The J001-J012 reference tools and
+their failures stay available; their speed/correctness results do not establish that
+UCSF requires permanently hidden-entity inference or has a capacity-competition mechanism.
+
+Re-read approved access/semantic findings and inspected the logical cohort/history
+schemas and label-free clock-audit reader. Direct links and repeated administrations
+motivate assessing recurrent joint prediction, but the selected first-execution
+cohort and capped histories cannot certify complete recurrent observation windows or
+patient-wide rosters. Recorded a provisional cutoff-defined, linked-order prediction
+question and evidence/requirement table in docs/11. A new clinical protocol, recurrent
+extractor and bounded training-only feasibility job are still unimplemented; no server
+task was issued. The next implementation must address that task/coverage contract
+before extending inference benchmarks.
+
+Closed the pending integration verification using the unchanged environment:
+`make check` passed **704 tests, 2 Linux-only skips**, Ruff check/format 195 files
+and repository boundary check. `make demo` completed at
+`artifacts/synthetic/20261020T171117Z-0a5abba2`; `git diff --check` passed.
+No source was edited during these checks. This turn changed research/status documents,
+not model behavior. All work remains uncommitted on base
+`bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`; no UCSF access, original-test evaluation,
+new source semantics, dependency changes, commits or pushes.
+
+## 2026-10-20 — T001 recurrent task contract and server audit prepared
+
+The user instructed us to start the data-driven direction. Specified T001 in docs/11
+before implementation. It assesses whether the existing reviewed order/administration/
+observation sources support recurrent histories and common follow-up for a cutoff-defined
+set of recent known orders. There is no model fitting, new architecture, performance
+claim or revival of closed clinical comparisons. The four-hour horizon is a fixed support
+diagnostic, not a selected future prediction-paper endpoint.
+
+Added `recurrent_task.py` with independent repeated-event handling, cutoff-only roster/
+history construction, explicit terminal versus observation endpoints and unknown censored
+count tails. Invalid members invalidate their joint windows rather than being removed
+to improve apparent coverage. Future retrospective/unknown documentation records preserve
+whole-path quality exclusions. Late-available target events cannot silently become zero.
+The old first-execution validator still rejects repeated administrations, as independently
+checked in the new tests.
+
+Added a full-source access adapter, clean-Slurm runner, `recurrent-audit` server job and
+`scripts/run_recurrent_audit.sh`. The fixed patient selector projects only identities/splits
+from the existing bound cohort, verifies patient separation, and selects at most 32 old
+training patients. Full-source scans select orders by patient, confirm all selected order
+keys in a second pass, and retain all directly linked administration/observation rows
+before semantic filtering. Full content hashes and source inventories are compared
+before/after. Missing order identities, wrong-patient duplicate orders, cross-file links,
+physical-read limits and decoded-byte limits remain explicit. Key checks are within the
+selected domain, not a global source-identity uniqueness proof.
+
+This is explicitly a new full-source operation, not bounded prefix probing or reuse of
+the old capped histories. Both charged file reads and decoded row-group bytes have a
+64 GiB total ceiling; worker resources are 2 CPUs / 4096 MiB / 1200 seconds with a
+22-minute Slurm allocation. Retention caps are 20,000 order rows, 200,000 administration
+rows and 20,000 observation rows. No cap expands automatically. File-hash work is included
+in the declared budget. These are ceilings, not measured UCSF source sizes or runtime.
+An oversized source may stop before useful support evidence is obtained.
+
+The wrapper reuses the original server environment/config and discovers only the exact
+previous eligibility-mapping bytes bound to the cohort; it does not guess columns or
+ask for new source semantics. Default action is plan-only; explicit `--submit` runs the
+described operation and monitors it. Reports contain private aggregates only; shareable
+feedback is an allowlisted categorical summary, with no support-to-model advancement
+rule. No patient records, histories, predictions or models are persisted by this audit.
+
+All 44 new generated tests passed, including real toy Parquet scans, restricted-output
+worker lifecycle, metadata-only planning, patient-split/label-projection checks,
+censoring, late availability, known versus future terminals, malformed linkage,
+truncated scans, content mutation with restored size/mtime, source inventory changes,
+dictionary identities, mixed integer widths, mapping bindings and sanitized failures.
+After a first full pass, code review identified a possible dictionary-encoded identity
+compatibility issue; added bounded dictionary decoding and exact integer-range handling
+with a regression test, then repeated required integration checks.
+
+Final `make check`: **748 passed, 2 Linux-only skips**, Ruff check/format 203 files and
+repository boundary check passed. `make demo` completed at
+`artifacts/synthetic/20261020T204138Z-ac7eab94`. `make recurrent-task-demo` completed
+five deterministic generated scenarios, saved with source/output hashes at
+`artifacts/synthetic/20261020T204138Z-recurrent-task-8da11cba`. They distinguish complete,
+partially observed, terminal, late-available and wrong-patient cases; these are contract
+checks, not clinical results. Shell syntax and `git diff --check` passed. Source was
+unchanged during the final checks and generated audit.
+
+All work remains uncommitted on base `bbbb66250dcbf30cd7d38cc8096bc64bdc65951d`.
+No UCSF connection, data transfer, real job, held-out evaluation, dependencies, GPU,
+commit or push. A concrete external dependency is now reached: run the prepared T001
+audit on UCSF to establish actual task support. A clean release is needed first;
+AGENTS.md requires an explicit user instruction before committing/pushing. Do not fill
+this evidence gap with more synthetic algorithm comparisons.
+
+## 2026-10-21 — T001 release and runnable server handoff preparation
+
+Following the concrete release proposal, the user requested runnable server commands
+and reported that a GPU can be used if needed. Proceeding with the verified local
+milestone release is necessary to provide a clean, fetchable T001 entry. T001 remains
+a CPU source/coverage audit; no GPU computation, modeling or old-test opening is added.
+The reportable real-data task support remains unknown until the user runs the job.
+
+Fetched origin/main and confirmed no divergence from base `bbbb662`. Verified that all
+source hashes still match the completed generated T001 artifact
+`artifacts/synthetic/20261020T204138Z-recurrent-task-8da11cba`, with its output hashes intact.
+The unchanged implementation retains the completed 748-pass / 2-skip full check and
+successful `make demo`. Only handoff/status documentation changed for this release;
+the required publication script reruns checks and generates the handoff pinned to the
+actual clean commit before ordinary push. No clinical records or generated result
+artifacts are included in the publication set. The release includes the previously
+verified generated research references as well as the independent T001 audit.

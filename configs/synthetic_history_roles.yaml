@@ -1,0 +1,5 @@
+schema_version: 1
+data_class: synthetic
+seeds: [20261104, 20261105, 20261106]
+patients: [128, 512]
+evaluation_patients: 512

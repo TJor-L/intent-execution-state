@@ -1,0 +1,5 @@
+schema_version: 1
+data_class: synthetic
+seeds: [20261026, 20261027, 20261028]
+patients: [256, 1024]
+em_steps: 300
