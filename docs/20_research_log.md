@@ -2603,3 +2603,42 @@ files. `bash -n` passed. `make check`: **807 passed, 2 skips**, Ruff check/forma
 Publish under standing authorization; the next server operation is read-only inspection
 of job 39772 using source SHA `d548b645a075337337f83bb611176ff789629943` and the existing
 external result root. No automatic retry, resource expansion or data transfer.
+
+### T001 39772 hit the conservative file-byte budget; assess metadata cost first
+
+The user's read-only inspection verified the job/source receipt and reported FAILED,
+exit 2, elapsed two seconds. The existing failure record is present with worker status
+`limited` and `recurrent_file_byte_limit`; there are no parent runner error categories.
+This identifies the application file-byte ceiling, not Slurm OOM, unavailable GPU,
+Git failure or lack of research support. The old record does not persist a precise
+failure stage. The current reader preflights 4*orders bytes + 3*administrations bytes +
+3*observations bytes against the 64 GiB total, before source hashing. Cumulative file
+charging uses the same error code. Elapsed time is not measured I/O volume.
+
+Added `--check-cost` to the existing wrapper/CLI. It reuses the reviewed mapping and
+storage checks, inventories only declared sources under the existing enumeration and
+per-source byte caps, and reads only unbuffered Parquet header/trailer/footer bytes.
+Each footer is capped at 8 MiB and all footers at 32 MiB, with a checked 120-second
+metadata budget. Arrow receives a footer-only in-memory container; there is no access
+to source data pages, row projection, full content hashing, schema/statistics output,
+new row persistence or submission. Inventory size/mtime/list comparisons do not prove
+content immutability. Output consists of upward-rounded operational GiB budgets and
+four current-limit fit flags; exact rows/groups/paths/column names are not returned.
+The decoded estimate follows the existing whole-row-group accounting and cannot
+predict peak memory. Runtime, retention and memory remain unverified.
+
+The production reader and planner share the unchanged file-cost arithmetic. Tests
+exercise exact byte boundaries, all four predicted limit checks, guarded source-read
+offsets (header/footer only), incomplete footer budgets, inventory change, metadata
+time expiry and the original reader rejecting its file budget before any hashing.
+CLI tests confirm cost inspection never forwards to submission. No caps were increased;
+no prefix substitution, test evaluation or model fit was introduced. The next server
+operation is only cost review, so a later full-source resource expansion can be concrete
+rather than guessing which limit to increase. A completed review with fit=false is not
+permission to submit and does not establish task support.
+
+Focused tests and shell syntax passed. `make check`: **815 passed, 2 skips**; Ruff
+check/format (208 files), repository boundary check, and `git diff --check` passed.
+`make demo` completed at `artifacts/synthetic/20261021T170008Z-c49bc985`. Publish the
+verified metadata-planning milestone under standing authorization. No new real source
+scan or local access to UCSF data occurred.

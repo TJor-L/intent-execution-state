@@ -3,7 +3,7 @@
 set -euo pipefail
 umask 077
 IES_TASK_ACTION=plan
-if [[ "${1:-}" == "--submit" || "${1:-}" == "--check-storage" ]]; then
+if [[ "${1:-}" == "--submit" || "${1:-}" == "--check-storage" || "${1:-}" == "--check-cost" ]]; then
   IES_TASK_ACTION="${1#--}"
   shift
 fi
@@ -13,7 +13,7 @@ if [[ "${1:-}" == "--output-root" && $# -ge 2 ]]; then
   shift 2
 fi
 if [[ $# -gt 1 ]]; then
-  echo 'Usage: bash scripts/run_recurrent_audit.sh [--submit|--check-storage] [--output-root PRIVATE_DIR] [EXISTING_ELIGIBILITY_MAPPING]' >&2
+  echo 'Usage: bash scripts/run_recurrent_audit.sh [--submit|--check-storage|--check-cost] [--output-root PRIVATE_DIR] [EXISTING_ELIGIBILITY_MAPPING]' >&2
   exit 2
 fi
 IES_TASK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
@@ -31,8 +31,8 @@ export IES_EXECUTION_CONTEXT=ucsf
 export PYTHONPATH="$PWD/src"
 export PYTHONDONTWRITEBYTECODE=1
 "$IES_TASK_PYTHON" scripts/server.py preflight --config "$IES_TASK_CONFIG"
-if [[ "$IES_TASK_ACTION" == check-storage ]]; then
-  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py check-storage --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
+if [[ "$IES_TASK_ACTION" == check-storage || "$IES_TASK_ACTION" == check-cost ]]; then
+  exec "$IES_TASK_PYTHON" scripts/recurrent_audit.py "$IES_TASK_ACTION" --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
 fi
 "$IES_TASK_PYTHON" scripts/recurrent_audit.py plan --config "$IES_TASK_CONFIG" "${IES_TASK_MAPPING[@]}" "${IES_TASK_OUTPUT[@]}"
 if [[ "$IES_TASK_ACTION" == submit ]]; then

@@ -334,6 +334,18 @@ Next inspect only job 39772's scheduler status, bound receipt, failure record an
 runner error categories using `scripts/inspect_recurrent_job.sh`. Do not resubmit or
 infer resource exhaustion from the generic message. The old worker discarded stderr;
 if its failure is unclassified, this inspection cannot reconstruct that missing detail.
+The user then reported job 39772 FAILED/exit 2 after two seconds with a verified
+failure record: limited / recurrent_file_byte_limit. This is the conservative file-byte
+budget, not evidence of OOM, GPU need or research infeasibility. Current code preflights
+4*order-file bytes + 3*administration-file bytes + 3*observation-file bytes against
+64 GiB before hashing/scanning sources. The code also uses that error for cumulative
+charging; the record alone does not persist the precise failing stage. Do not silently
+raise limits or retry. Next run `--check-cost` only: bounded current mapping inventories
+plus Parquet headers/trailers/footers, at most 8 MiB per footer, 32 MiB total and checked
+120-second metadata budget. No source data pages, content hashes or rows are read.
+Return only operational byte budgets and limit-fit flags, never paths/schema/row counts.
+This makes resource planning concrete; runtime, memory, retention and content stability
+remain unverified, and no expansion or new full scan follows automatically.
 The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults

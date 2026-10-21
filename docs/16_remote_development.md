@@ -474,3 +474,32 @@ Slurm 日志。匹配唯一 job/commit receipt；拒绝越界、符号链接和�
 它不加载 mapping、不读临床输入、不创建目录或提交作业。
 旧 runner 把 worker stderr 写入 DEVNULL，通用 worker 失败的详细原因可能已丢失；
 脚本不会以猜测填补。需要先看真实退出状态和现有记录，再决定代码修复或进一步操作。
+
+
+### T001 job 39772：文件字节预算超限，先评估成本
+
+已收到核验结果：FAILED/exit 2，Elapsed 2 秒，failure.json 为
+`limited / recurrent_file_byte_limit`。这是应用层文件计费上限，不能解读成 Slurm OOM。
+算法在来源内容读取前用文件大小计算 `4 × orders + 3 × administrations + 3 × observations`：
+两遍前后哈希加医嘱两遍、其他来源各一遍。64 GiB 是累计计费上限，不是可支持
+64 GiB 原始文件，也不是实测 I/O。报错也用于累计计费保护；记录未保存确切阶段。
+
+下一步不重跑 full scan，仅在新固定版本运行：
+
+```bash
+bash scripts/run_recurrent_audit.sh --check-cost \
+  --output-root /scratch/tliu7/intent-execution-state-private
+```
+
+复用已核验 mapping 和来源目录范围。按现有文件数、目录项和每来源大小上限枚举；
+只读取 Parquet header/trailer/footer，单 footer 最多 8 MiB、总计最多 32 MiB，逐项
+检查 120 秒预算。用不含数据页的内存容器交给 Arrow，禁止数据页预取；不提取列名、
+统计值或任意 metadata，不哈希完整源文件。前后检查文件清单/大小/mtime 一致，
+这不是来源内容不可变性的证明。
+
+输出 `required_charged_file_gib_rounded_up`、`required_decoded_gib_rounded_up` 供资源
+规划，以及四项当前上限适配标志。解码预算复用现有整 row-group 的 total_byte_size
+计费规则，不能当作峰值内存预测。`status: complete` 仅说明成本检查完成，即使
+`current_limits_fit_metadata: false`；不会提交或改变任何扫描上限。行数/行组仅返回
+是否越界，不输出精确数量。运行时长、峰值内存和保留量仍需后续独立验证。
+先依据这份成本反馈决定后续明确资源配置，不能盲目增加单个上限或重复失败扫描。

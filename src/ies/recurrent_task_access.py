@@ -111,6 +111,15 @@ def select_training_patients(cohort_dir: Path, digest: str, mapping_digest: str)
     ]
 
 
+def charged_inventory_bytes(inventory):
+    """Conservative whole-file charges, including both content hash passes."""
+    return sum(
+        (4 if role == "orders" else 3) * item.size
+        for role, files in inventory.items()
+        for item in files
+    )
+
+
 class FullSourceReader:
     """All read attempts are charged; a failed/limited pass never certifies coverage."""
 
@@ -131,11 +140,7 @@ class FullSourceReader:
         }
         self.before = {role: _inventory(source, limits) for role, source in self.sources.items()}
         # Preflight the conservative file-byte cost before opening any source contents.
-        needed = sum(
-            (4 if role == "orders" else 3) * item.size
-            for role, files in self.before.items()
-            for item in files
-        )
+        needed = charged_inventory_bytes(self.before)
         if needed > limits.max_total_charged_file_bytes:
             raise RecurrentTaskError("recurrent_file_byte_limit")
         self.hashes = self._hash_sources()

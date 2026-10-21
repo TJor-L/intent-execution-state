@@ -23,10 +23,13 @@ common-directory/index/ignore 查询的依赖。先通过目录检查，再用�
 复核路径，worker 继续核验原 Parquet 和 mapping 摘要。代码仍必须为干净固定版本。
 旧配置和产物保持只读，不删除重克隆，不搬动，不因目录通过就声称任务可行。
 Mac 已获持续发布已验证修复的授权，无需逐次批准。
-最新反馈：`d548b64` 的存储检查全部通过，job 39772 已提交但监控器报告失败。
-当前下一步仅运行 `scripts/inspect_recurrent_job.sh` 读取已有作业记录与 Slurm 状态，
-不重提、不重新扫描。诊断不读取配置/映射/临床行，不输出原始日志；已被旧 worker
-丢弃的 stderr 无法恢复。尚无真实任务支持结论。
+最新反馈：job 39772 在两秒后 FAILED/exit 2，已核验失败记录为
+`limited / recurrent_file_byte_limit`。这是文件字节预算，不是 OOM 或任务不可行结论。
+当前只执行新版本的 `--check-cost --output-root /scratch/tliu7/intent-execution-state-private`，
+核对既有映射来源的文件大小及受限 Parquet 页脚。最多单页脚 8 MiB、合计 32 MiB，
+逐项检查 120 秒预算，不读取数据页、不哈希完整来源、不提交作业或增加资源。
+返回预算与上限适配标志；不回传路径、schema 或临床内容。旧记录不保存确切失败阶段，
+不得把元数据计划说成实际扫描完成或精确耗时预测。
 不要启动服务器独立开发、
 扩大资源、改变映射、下载私有报告或重开既往实验。
 
