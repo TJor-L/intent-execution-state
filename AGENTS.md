@@ -310,7 +310,15 @@ root's canonical spelling, retains descendant-symlink/Git/overlap restrictions, 
 checks boundaries before submission. A new `--check-storage` wrapper emits only fixed
 categories without a job or row reads. It requires a release newer than `34d6ee7`
 and has not yet been verified on UCSF.
-Do not claim the observed failure was definitely a root alias or blindly retry it.
+The subsequent `07638fb` storage review confirmed the configured output is inside a
+Git repository, with the alias-related legacy flags false. The current fix separates
+old artifact discovery from an explicit external `--output-root`, without editing the
+existing config or moving artifacts. New writes must remain outside every repository.
+Read-only legacy cohort access is allowed only inside this project's original common
+repository when Git confirms the directory is ignored and no contents are tracked;
+foreign/nested repositories, redirects, input/output overlap and tracked inputs reject.
+This exception adds no source role or row persistence. Test the storage check before
+submitting the unchanged bounded scan; do not treat path checks as research evidence.
 The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults

@@ -37,7 +37,12 @@ from ies.format_probe_runner import validate_probe_paths, wait_for_format_probe
 from ies.io import write_json
 from ies.recurrent_task import RecurrentTaskError
 from ies.recurrent_task_access import plan_recurrent_task
-from ies.recurrent_task_runner import report_error, validate_paths, wait_for_recurrent_task
+from ies.recurrent_task_runner import (
+    report_error,
+    validate_output_root,
+    validate_paths,
+    wait_for_recurrent_task,
+)
 from ies.selection_cv import MODE as SELECTION_MODE
 from ies.selection_cv import load_config as load_selection_config
 from ies.workflow_cv import DIMENSIONS, load_workflow_config
@@ -643,6 +648,11 @@ def main() -> int:
     parser.add_argument("--source-commit", help="Original W001 job's full source SHA")
     parser.add_argument("--mapping", type=Path)
     parser.add_argument(
+        "--recurrent-output-root",
+        type=Path,
+        help="Recurrent audit only: new private write root; old artifact root is unchanged",
+    )
+    parser.add_argument(
         "--probe-root", type=Path, help="Format probe only: authorized private root"
     )
     parser.add_argument("--access-manifest", type=Path)
@@ -677,6 +687,10 @@ def main() -> int:
     )
     args = parser.parse_args()
     try:
+        if args.recurrent_output_root is not None and (
+            args.job != "recurrent-audit" or args.action not in {"plan", "submit"}
+        ):
+            raise ValueError("Separate write root applies only to recurrent audit")
         if args.probe_root is not None and (
             args.job != "format-probe" or args.action not in {"plan", "submit"}
         ):
@@ -738,6 +752,10 @@ def main() -> int:
         if args.wait and args.action != "submit":
             raise ValueError("Wait applies only to submission")
         config = load_server_config(args.config, inspect_storage=args.action != "plan")
+        if args.recurrent_output_root is not None:
+            validate_output_root(
+                args.recurrent_output_root, Path(config["data_root"]), Path(config["output_root"])
+            )
         workflow_dir = None
         if args.job in {"workflow-diagnostics", "workflow-selection"}:
             if (
@@ -773,7 +791,7 @@ def main() -> int:
         if args.job is None:
             raise ValueError("Specify a supported CPU job")
         run_dir = (
-            Path(config["output_root"])
+            (args.recurrent_output_root or Path(config["output_root"]))
             / "jobs"
             / (datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ-") + uuid4().hex[:8])
         )

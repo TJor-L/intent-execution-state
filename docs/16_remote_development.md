@@ -349,6 +349,9 @@ manifest 必须绑定原 SHA、发现的 cohort/history 和未改动的 W001 配
 后续只读检查复现 `path_validation / recurrent_invalid_output`，尚无真实任务支持报告。
 下述路径诊断及兼容性修复已通过本地检查，随本次修复版交付；实际 SHA 以交付命令为准。
 旧 `34d6ee7` 不含新入口，修复版尚待 UCSF 验证。
+随后 `07638fb` 的服务器检查确认 `output_inside_git_repository: true`，其余旧版路径
+拒绝条件为 false。问题是配置的旧输出位置在 Git 仓库内，不是根路径别名。
+本次后续修复新增独立写入根；须使用包含 `--output-root` 的更新版本。
 它检查新任务所需的重复给药和共同观察窗口，不拟合模型，不打开旧测试，也不修改
 旧的一次性医嘱提取器。真实数据的适用性要由本次检查确认，不能由合成测试代替。
 
@@ -392,8 +395,28 @@ bash scripts/run_recurrent_audit.sh --check-storage
 
 路径校验接受固定授权根 `/scratch/tliu7` 及其 `resolve()` 后的实际路径，解决集群根
 路径别名与字面前缀不一致的问题；仍拒绝授权根以下的符号链接、任意额外别名、越界、
-Git 仓库内的存储和输入输出重叠。没有修改任何服务器路径、配置或已有产物。
-当前反馈没有说明旧版七个拒绝条件中哪一项触发，不能声称 job 39768 已确认由根别名导致。
+Git 仓库内的新写入和输入输出重叠。旧输入的只读例外见下文。
+没有修改任何服务器路径、配置或已有产物；根别名不是本次服务器反馈确认的原因。
+
+后续反馈已经定位到旧输出根在 Git 仓库内。为保持旧产物只读，使用独立的外部写入根：
+
+```bash
+bash scripts/run_recurrent_audit.sh --check-storage \
+  --output-root /scratch/tliu7/intent-execution-state-private
+bash scripts/run_recurrent_audit.sh --submit \
+  --output-root /scratch/tliu7/intent-execution-state-private
+```
+
+在 `set -e` 的同一 shell 中顺序运行，第一步失败则不会提交第二步。显式传入的目录
+只用于新作业目录、日志、receipt 和审计报告；旧配置中的 `output_root` 继续用于发现
+原 cohort/history 和 mapping，不改写配置、不复制或搬动任何旧产物。新目录也不能与
+原产物根或 data_root 重叠，包装脚本以 `umask 077` 创建新产物。
+
+如果旧 cohort 也在当前项目原仓库内，只读兼容入口会验证它属于此 worktree 的 Git
+common repository，整个目录被 Git 忽略且未跟踪任何文件，之后才可读取既有绑定产物。
+这不是允许 Git 存储临床数据：不添加、修改、提交这些文件，也不允许向仓库内写新结果；
+其他仓库、嵌套仓库、符号链接跳转或跟踪状态不明确时停止。该检查不会删除历史 Git 数据，
+也不声称审计过 Git 历史。各输入内容摘要、原训练患者选择和完整扫描上限继续生效。
 
 它复用主仓库的 `configs/remote.local.yaml` 和既有 Python 环境，发现唯一已绑定的
 cohort/history 对，仅用 cohort 的身份及 split。然后在主仓库 `configs` 下按原 cohort

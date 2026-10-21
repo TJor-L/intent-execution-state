@@ -51,6 +51,8 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
     "recurrent_storage_unapproved_alias",
     "recurrent_storage_symlink_below_root",
     "recurrent_storage_inside_repository",
+    "recurrent_legacy_input_not_ignored",
+    "recurrent_legacy_input_tracked_or_unverifiable",
 }
 
 
@@ -83,7 +85,34 @@ def report_error(error):
     )
 
 
-def _storage_path(path):
+def _legacy_input_allowed(path, repositories):
+    """Read only ignored, untracked artifacts in this checkout's original repository."""
+    try:
+        common = subprocess.check_output(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=ROOT,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=30,
+        ).strip()
+        original = (ROOT / common).resolve().parent
+    except (OSError, subprocess.SubprocessError):
+        raise RecurrentTaskError("recurrent_storage_inside_repository") from None
+    if repositories != [original] or not path.is_relative_to(original):
+        raise RecurrentTaskError("recurrent_storage_inside_repository")
+    relative = path.relative_to(original).as_posix() + "/"
+    kwargs = dict(
+        cwd=original, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30, check=False
+    )
+    ignored = subprocess.run(["git", "check-ignore", "-q", "--", relative], **kwargs)
+    if ignored.returncode != 0:
+        raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
+    tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "--", relative], **kwargs)
+    if tracked.returncode != 1:
+        raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
+
+
+def _storage_path(path, *, legacy_input=False):
     """Accept the fixed storage root or its canonical spelling, never arbitrary aliases."""
     if not path.is_absolute() or ".." in path.parts:
         raise RecurrentTaskError("recurrent_storage_invalid_path")
@@ -102,20 +131,32 @@ def _storage_path(path):
             break
         if part.is_symlink():
             raise RecurrentTaskError("recurrent_storage_symlink_below_root")
-    if resolved.is_relative_to(ROOT.resolve()) or any(
-        (part / ".git").exists() or (part / ".git").is_symlink()
+    repositories = [
+        part
         for part in (resolved, *resolved.parents)
-    ):
-        raise RecurrentTaskError("recurrent_storage_inside_repository")
+        if (part / ".git").exists() or (part / ".git").is_symlink()
+    ]
+    if resolved.is_relative_to(ROOT.resolve()) or repositories:
+        if not legacy_input:
+            raise RecurrentTaskError("recurrent_storage_inside_repository")
+        _legacy_input_allowed(resolved, repositories)
     return resolved
 
 
 def validate_paths(cohort, output, mapping):
-    cohort = _storage_path(cohort)
+    cohort = _storage_path(cohort, legacy_input=True)
     output = _storage_path(output)
     for source in (cohort, *(item.path for item in mapping.feasibility.sources)):
         source = source.resolve()
         if output.is_relative_to(source) or source.is_relative_to(output):
+            raise RecurrentTaskError("recurrent_overlapping_storage")
+
+
+def validate_output_root(root, data_root, artifact_root):
+    """A separate write destination cannot overlap source data or the old artifacts."""
+    root = _storage_path(root)
+    for existing in (data_root.resolve(), artifact_root.resolve()):
+        if root.is_relative_to(existing) or existing.is_relative_to(root):
             raise RecurrentTaskError("recurrent_overlapping_storage")
 
 

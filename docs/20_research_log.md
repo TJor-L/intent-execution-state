@@ -2421,3 +2421,47 @@ the actual clean commit before ordinary push. The initial server action for this
 is the metadata-only `--check-storage` review, not automatic resubmission of job 39768.
 No claim is made yet about which legacy path predicate triggered the real failure or
 about real recurrent-task support.
+
+### Confirmed repository-contained output; separate read and write roots
+
+The user ran the `07638fb` metadata-only storage review. It returned `blocked` with
+`recurrent_storage_inside_repository`; `output_inside_git_repository` was true and
+every other legacy rejection flag was false. This establishes a current output-root
+repository-boundary problem, not an alias failure or a scientific negative. No job was
+submitted and no raw source was scanned by that review. Whether the old cohort itself
+is also repository-contained was not disclosed by those flags.
+
+Added an explicit `--output-root` to the recurrent wrapper, passed to the server as
+`--recurrent-output-root` for this job only. Original configured storage remains the
+read/discovery root; only new job directories/logs/receipts/results use the new root.
+Both plan and submit validate the new destination outside all Git repositories and
+disjoint from configured raw storage, old artifacts and mapped input sources. The
+wrapper sets umask 077. No server config mutation, relocation, copying or deletion is
+performed. The prepared destination is `/scratch/tliu7/intent-execution-state-private`;
+its existence/layout and validation remain server-side facts, not assumed successes.
+
+For compatibility with already-created artifacts, a narrow read-only input exception
+checks the current checkout's actual Git common repository. Only ignored directories
+with no indexed descendants may supply the existing cohort; foreign/nested repositories,
+tracked or unignored inputs, and redirects fail. This inspects current Git metadata,
+not historical Git objects, and does not authorize or claim publication of any data.
+New writes inside a repository remain forbidden, including ignored directories.
+The prior mapping/cohort hashes, patient selection, scan/retention/resource limits,
+sealed old evaluation and output data restrictions are unchanged.
+
+Generated tests use actual temporary Git repositories and detached worktrees to check
+legacy inputs without modifying their bytes; they reject tracked/unignored/foreign/
+nested inputs and verify external destination disjointness. CLI tests retain old-root
+artifact discovery while forwarding the separate write root. A simulated scheduler
+test exercises the real server submission path, verifying that only the new root gets
+a receipt and that invalid destinations fail before submission. No real UCSF action
+was performed by the Mac.
+
+Validation completed: **53 focused checks**, then `make check` **790 passed, 2 skips**,
+Ruff check/format (204 files) and repository boundary check. `make demo` completed at
+`artifacts/synthetic/20261021T161957Z-9748a470`. Shell syntax and `git diff --check` passed.
+Initial new tests needed a test-block placement correction; all final focused and full
+checks passed without changing the clinical protocol. All test repositories and bytes
+are generated fixtures. Publishing under the standing user authorization; the release
+script rechecks and pins the actual commit. The server command checks the explicit new
+root first and submits only if that check passes. No server outcome is claimed yet.
