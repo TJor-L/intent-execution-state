@@ -322,6 +322,12 @@ The user's `784d33b` review passed the new-output checks but still rejected the 
 input. A same-project nested-worktree false rejection was reproduced locally and fixed;
 the server's precise prior cause is not yet confirmed. Review now reports separate
 cohort/new-output/overlap categories and distinct Git-unavailable/foreign-repository errors.
+The subsequent `8ff2c72` review specifically reported Git unavailable for the cohort,
+with the new output passing. Do not infer ownership, a gitlink, missing executables or
+a corrupt repository without evidence. The next release adds categorical operation,
+checkout role, reason and exit-code diagnostics for Git failures without raw stderr;
+run only the metadata review until that cause is known. No safe.directory changes,
+index edits, ignore-rule changes, data moves or new scan are authorized by this failure.
 This exception adds no source role or row persistence. Test the storage check before
 submitting the unchanged bounded scan; do not treat path checks as research evidence.
 The user also reported GPU availability if useful; T001 remains a CPU

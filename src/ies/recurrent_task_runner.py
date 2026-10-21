@@ -58,6 +58,19 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
 }
 
 
+class RecurrentGitError(RecurrentTaskError):
+    """Fixed diagnostic categories only; never attach Git stderr or private paths."""
+
+    def __init__(self, operation, location, reason, exit_code=None):
+        super().__init__("recurrent_legacy_input_git_unavailable")
+        self.git_failure = {
+            "operation": operation,
+            "location": location,
+            "reason": reason,
+            "exit_code": exit_code,
+        }
+
+
 def report_error(error):
     message = str(error)
     category = "unclassified_error"
@@ -73,65 +86,113 @@ def report_error(error):
         if isinstance(error, kind):
             category = label
             break
-    print(
-        json.dumps(
-            {
-                "mode": MODE,
-                "status": "failed",
-                "error_category": category,
-                "error_code": message if message in PUBLIC_ERROR_CODES else "unclassified",
-                "automatic_retry": False,
-            }
-        ),
-        file=sys.stderr,
-    )
+    result = {
+        "mode": MODE,
+        "status": "failed",
+        "error_category": category,
+        "error_code": message if message in PUBLIC_ERROR_CODES else "unclassified",
+        "automatic_retry": False,
+    }
+    if isinstance(error, RecurrentGitError):
+        result["git_failure"] = error.git_failure
+    print(json.dumps(result), file=sys.stderr)
 
 
-def _git_common_directory(checkout):
+def _git_failure_reason(stderr):
+    # Inspect a small prefix in memory and emit the matching constant, never the text.
+    message = stderr[:8192].lower()
+    for needle, category in (
+        ("dubious ownership", "dubious_ownership"),
+        ("unsafe repository", "dubious_ownership"),
+        ("is in submodule", "submodule_path"),
+        ("beyond a symbolic link", "symlink_path"),
+        ("not a git repository", "not_a_repository"),
+        ("permission denied", "permission_denied"),
+        ("unknown option", "unsupported_option"),
+        ("unknown switch", "unsupported_option"),
+        ("not a git command", "unsupported_command"),
+        ("no such file or directory", "missing_path"),
+        ("not a directory", "not_a_directory"),
+        ("index file corrupt", "invalid_index"),
+        ("index file smaller", "invalid_index"),
+    ):
+        if needle in message:
+            return category
+    return "unclassified_git_error"
+
+
+def _legacy_git(command, checkout, operation, location, *, capture=False, allowed=(0,)):
     try:
-        common = subprocess.check_output(
-            ["git", "rev-parse", "--git-common-dir"],
+        result = subprocess.run(
+            ["git", *command],
             cwd=checkout,
-            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
             text=True,
+            errors="replace",
             timeout=30,
-        ).strip()
-        if not common or len(common) > 16384:
-            raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
-        return (checkout / common).resolve()
-    except (OSError, subprocess.SubprocessError):
-        raise RecurrentTaskError("recurrent_legacy_input_git_unavailable") from None
+            check=False,
+            env=dict(os.environ, LC_ALL="C", GIT_OPTIONAL_LOCKS="0"),
+        )
+    except subprocess.TimeoutExpired:
+        raise RecurrentGitError(operation, location, "timeout") from None
+    except FileNotFoundError:
+        raise RecurrentGitError(operation, location, "executable_or_cwd_missing") from None
+    except PermissionError:
+        raise RecurrentGitError(operation, location, "permission_denied") from None
+    except OSError:
+        raise RecurrentGitError(operation, location, "operating_system_error") from None
+    if result.returncode not in allowed:
+        raise RecurrentGitError(
+            operation, location, _git_failure_reason(result.stderr), result.returncode
+        )
+    return result
+
+
+def _git_common_directory(checkout, location):
+    result = _legacy_git(
+        ["rev-parse", "--git-common-dir"],
+        checkout,
+        "common_directory",
+        location,
+        capture=True,
+    )
+    common = result.stdout.strip()
+    if not common or len(common) > 16384:
+        raise RecurrentGitError("common_directory", location, "invalid_response", 0)
+    return (checkout / common).resolve()
 
 
 def _legacy_input_allowed(path, repositories):
     """Read ignored, untracked artifacts only within this project's Git worktree family."""
     if not repositories:
-        raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
-    common = _git_common_directory(ROOT)
-    for repository in repositories:
-        if _git_common_directory(repository) != common or not path.is_relative_to(repository):
+        raise RecurrentGitError("repository_discovery", "cohort_input", "no_repository_markers")
+    common = _git_common_directory(ROOT, "active_checkout")
+    for index, repository in enumerate(repositories):
+        location = "input_owner" if index == 0 else "input_ancestor"
+        if _git_common_directory(repository, location) != common or not path.is_relative_to(
+            repository
+        ):
             raise RecurrentTaskError("recurrent_legacy_input_foreign_repository")
         relative = path.relative_to(repository).as_posix() + "/"
-        kwargs = dict(
-            cwd=repository,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=30,
-            check=False,
+        ignored = _legacy_git(
+            ["check-ignore", "-q", "--", relative],
+            repository,
+            "ignored_directory",
+            location,
+            allowed=(0, 1),
         )
-        try:
-            ignored = subprocess.run(["git", "check-ignore", "-q", "--", relative], **kwargs)
-            if ignored.returncode == 1:
-                raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
-            if ignored.returncode != 0:
-                raise RecurrentTaskError("recurrent_legacy_input_git_unavailable")
-            tracked = subprocess.run(
-                ["git", "ls-files", "--error-unmatch", "--", relative], **kwargs
-            )
-            if tracked.returncode != 1:
-                raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
-        except (OSError, subprocess.SubprocessError):
-            raise RecurrentTaskError("recurrent_legacy_input_git_unavailable") from None
+        if ignored.returncode == 1:
+            raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
+        tracked = _legacy_git(
+            ["ls-files", "--error-unmatch", "--", relative],
+            repository,
+            "tracked_files",
+            location,
+            allowed=(0, 1),
+        )
+        if tracked.returncode == 0:
+            raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
 
 
 def _storage_path(path, *, legacy_input=False):
@@ -212,6 +273,8 @@ def review_storage(cohort, output, mapping):
                 "status": "blocked",
                 "error_code": str(error) if str(error) in PUBLIC_ERROR_CODES else "unclassified",
             }
+            if isinstance(error, RecurrentGitError):
+                checks[component]["git_failure"] = error.git_failure
     checks["overlap"] = {"status": "not_checked", "error_code": None}
     if len(resolved) == 2:
         try:

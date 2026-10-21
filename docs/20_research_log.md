@@ -2506,3 +2506,35 @@ the verified fix under the standing authorization, with a clean-commit handoff. 
 retry, source scan or claimed task-support result follows from the local tests. The
 prepared server sequence retains the external write root and stops before submission
 if any of the independent storage checks fail.
+
+### Git failure localized to the legacy input; diagnostic-only next step
+
+The user ran the `8ff2c72` storage review. Cohort input returned
+`recurrent_legacy_input_git_unavailable`, new output passed, and overlap was not checked.
+All legacy rejection booleans were false. No submission or raw scan occurred. This
+does not establish that nested worktrees caused the remaining failure: common-directory
+lookup, ignore query and some process errors still shared this generic code.
+
+Added fixed `git_failure` diagnostics with the operation, checkout role, reason category
+and exit code. Git stderr is inspected only in server process memory (an 8192-character
+prefix for classification); it is never emitted, persisted or attached to exceptions.
+No claim is made that PIPE capture itself caps stderr size. Git subprocesses retain
+30-second timeouts, force C-locale classification and disable optional Git locks. Normal
+ignore/index status codes retain their previous meaning; failed Git operations remain
+blocking. No ownership bypass, safe.directory change, index modification, ignore-rule
+change, source semantics change or artifact relocation was introduced.
+
+Generated tests identify each failed Git operation at active, owning and ancestor
+checkout roles without emitting a private sentinel. A real generated Git index/gitlink
+fixture produces and classifies the ancestor check-ignore submodule error; it remains
+blocked. This is a test case, not a claim that UCSF has that condition. Timeout and
+nonzero-exit tests use the new subprocess runner and preserve sanitized feedback.
+All 66 focused storage/runner checks passed. The next server command is diagnostic only,
+without an automatic subsequent submission; further action depends on its actual result.
+
+Final checks: `make check` **803 passed, 2 skips**, Ruff check/format (204 files),
+repository boundary check and `git diff --check` passed. `make demo` completed at
+`artifacts/synthetic/20261021T163217Z-3bf4c524`. These are generated checks only.
+Publishing this diagnostic-only milestone under the standing authorization; the next
+UCSF action remains the read-only storage review, not a claimed root-cause correction
+or a new clinical experiment. No real paths/logs/data were accessed by the Mac.

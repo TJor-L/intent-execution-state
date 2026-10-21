@@ -259,14 +259,100 @@ def test_git_context_failure_has_its_own_sanitized_input_diagnostic(
     def fail(*args, **kwargs):
         if timeout:
             raise subprocess.TimeoutExpired("private_sentinel", 30, stderr="private_sentinel")
-        raise subprocess.CalledProcessError(128, "git", stderr="private_sentinel")
+        return subprocess.CompletedProcess(args[0], 128, stdout="", stderr="private_sentinel")
 
-    monkeypatch.setattr(subprocess, "check_output", fail)
+    monkeypatch.setattr(subprocess, "run", fail)
     result = runner.review_storage(legacy.cohort, storage.root / "new-results", storage.mapping)
     assert result["error_code"] == "recurrent_legacy_input_git_unavailable"
     assert result["storage_checks"]["cohort_input"]["status"] == "blocked"
     assert result["storage_checks"]["new_output"]["status"] == "passed"
+    assert result["storage_checks"]["cohort_input"]["git_failure"] == {
+        "operation": "common_directory",
+        "location": "active_checkout",
+        "reason": "timeout" if timeout else "unclassified_git_error",
+        "exit_code": None if timeout else 128,
+    }
     assert "private_sentinel" not in json.dumps(result)
+
+
+@pytest.mark.parametrize(
+    "operation,location",
+    [
+        ("common_directory", "active_checkout"),
+        ("common_directory", "input_owner"),
+        ("ignored_directory", "input_owner"),
+        ("tracked_files", "input_owner"),
+        ("ignored_directory", "input_ancestor"),
+    ],
+)
+def test_failed_git_step_and_location_are_reported_without_stderr(
+    storage, legacy, monkeypatch, capsys, operation, location
+):
+    (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
+    owner = legacy.original / "handoff" / "old"
+    legacy.git("worktree", "add", "--detach", str(owner))
+    cohort = owner / "private" / "cohort"
+    cohort.mkdir(parents=True)
+    cwd = {
+        "active_checkout": legacy.checkout,
+        "input_owner": owner,
+        "input_ancestor": legacy.original,
+    }[location]
+    verb = {
+        "common_directory": "rev-parse",
+        "ignored_directory": "check-ignore",
+        "tracked_files": "ls-files",
+    }[operation]
+    original_run = subprocess.run
+
+    def run(command, *args, **kwargs):
+        assert kwargs["env"]["LC_ALL"] == "C"
+        assert kwargs["env"]["GIT_OPTIONAL_LOCKS"] == "0"
+        if kwargs["cwd"] == cwd and command[1] == verb:
+            return subprocess.CompletedProcess(
+                command,
+                128,
+                stdout="",
+                stderr="fatal: detected dubious ownership in repository at PRIVATE_SENTINEL",
+            )
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", run)
+    report = runner.review_storage(cohort, storage.root / "new", storage.mapping)
+    diagnostic = {
+        "operation": operation,
+        "location": location,
+        "reason": "dubious_ownership",
+        "exit_code": 128,
+    }
+    assert report["storage_checks"]["cohort_input"]["git_failure"] == diagnostic
+    assert report["storage_checks"]["new_output"]["status"] == "passed"
+    assert "PRIVATE_SENTINEL" not in json.dumps(report)
+    with pytest.raises(runner.RecurrentGitError) as caught:
+        runner.validate_paths(cohort, storage.root / "new", storage.mapping)
+    runner.report_error(caught.value)
+    captured = capsys.readouterr()
+    assert json.loads(captured.err)["git_failure"] == diagnostic
+    assert "PRIVATE_SENTINEL" not in captured.out + captured.err
+
+
+def test_real_gitlink_error_is_classified_without_ignoring_it(storage, legacy):
+    (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
+    owner = legacy.original / "handoff" / "old"
+    legacy.git("worktree", "add", "--detach", str(owner))
+    cohort = owner / "private" / "cohort"
+    cohort.mkdir(parents=True)
+    head = legacy.git("rev-parse", "HEAD").stdout.strip()
+    legacy.git("update-index", "--add", "--cacheinfo", f"160000,{head},handoff/old")
+    report = runner.review_storage(cohort, storage.root / "new", storage.mapping)
+    assert report["storage_checks"]["cohort_input"]["git_failure"] == {
+        "operation": "ignored_directory",
+        "location": "input_ancestor",
+        "reason": "submodule_path",
+        "exit_code": 128,
+    }
+    assert report["status"] == "blocked"
+    assert not (storage.root / "new").exists()
 
 
 @pytest.mark.parametrize("kind", ["legacy", "source", "ancestor", "new"])

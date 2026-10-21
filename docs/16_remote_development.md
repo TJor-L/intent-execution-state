@@ -425,6 +425,14 @@ checkout 都与运行版本共享同一 Git common directory，并分别核验�
 `cohort_input`、`new_output`、`overlap`。Git 查询失败、独立仓库、未忽略和已跟踪输入
 使用不同固定错误类别。该本地复现不证明服务器此前必然是同一种布局问题。
 
+`8ff2c72` 的后续检查明确返回旧 cohort 的 `recurrent_legacy_input_git_unavailable`，
+新输出检查通过。当前下一步仅运行 `--check-storage`，不提交作业。更新版会在
+`storage_checks.cohort_input.git_failure` 报告失败步骤（common_directory /
+ignored_directory / tracked_files）、位置角色（active_checkout / input_owner /
+input_ancestor）、固定原因类别与退出码。不会输出 Git stderr、路径或配置内容。
+不据此自动修改 safe.directory、Git index、ignore 规则或搬动数据；先由这项只读结果
+确定原因。上方检查后提交的序列暂不执行，直到该 Git 错误得到定位并处理。
+
 它复用主仓库的 `configs/remote.local.yaml` 和既有 Python 环境，发现唯一已绑定的
 cohort/history 对，仅用 cohort 的身份及 split。然后在主仓库 `configs` 下按原 cohort
 manifest 中的字节哈希查找既有 eligibility mapping。不会生成新字段映射、打印字段名、
