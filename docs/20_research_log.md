@@ -2538,3 +2538,38 @@ repository boundary check and `git diff --check` passed. `make demo` completed a
 Publishing this diagnostic-only milestone under the standing authorization; the next
 UCSF action remains the read-only storage review, not a claimed root-cause correction
 or a new clinical experiment. No real paths/logs/data were accessed by the Mac.
+
+### Remove the read-only cohort's unnecessary Git metadata dependency
+
+The user questioned the repeated Git blockers and proposed deleting/recloning. Fetch
+and worktree creation have succeeded; the latest reported failure is still the old
+input Git gate at `8ff2c72`. There is no feedback from the `e0b9183` diagnostic and no
+established repository corruption or specific Git subprocess cause. Preserve the
+original checkout, private configuration and old artifacts; deletion is not needed.
+
+Removed the common-directory/ignore/index gate on read-only cohort paths. That was an
+implementation restriction, not a requirement to determine whether pinned existing
+clinical inputs are valid. The server still confines the cohort to the original
+configured artifact root, verifies authorized storage and rejects redirects. Submission
+now additionally pins the canonical cohort location by SHA256; parent and worker reject
+missing or changed location pins before reading mapping inputs. Existing manifest,
+Parquet, mapping and source stability hashes, patient split rules and no-row persistence
+remain. Clean pinned code verification and the prohibition on all new repository writes
+remain. This change does not authorize tracking data, audit historical Git contents,
+modify server Git configuration, relocate data, or expand T001 scan scope/resources.
+
+Generated tests cover original and nested worktrees, malformed input Git metadata and
+an ancestor gitlink with no input Git subprocess calls, unchanged input bytes and no
+review output writes. Tests retain rejection of repository outputs, escapes, symlinks
+and overlap. Added parent/worker path-swap rejection and configured artifact-root
+rejection, alongside existing content-binding and split tests. Removed obsolete tests
+whose only contract was the superseded Git gate. Focused storage/runner/access tests
+passed; `make check` passed with **796 tests, 2 skips**, Ruff check/format (204 files)
+and repository boundary check. The subsequent artifact-root assertion passed in the
+23 runner tests. `make demo` completed at
+`artifacts/synthetic/20261021T164119Z-f25eae0f`; `git diff --check` passed.
+
+Publish under the standing authorization. Prepared server sequence first checks storage
+then explicitly submits the unchanged 2-CPU/4-GiB T001 scan, stopping on any failed check.
+No real scan has been rerun by the Mac; support, coverage and publication feasibility
+remain unestablished. Input Git queries are no longer a blocker requiring diagnosis.

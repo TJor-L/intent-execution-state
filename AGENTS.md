@@ -314,22 +314,19 @@ The subsequent `07638fb` storage review confirmed the configured output is insid
 Git repository, with the alias-related legacy flags false. The current fix separates
 old artifact discovery from an explicit external `--output-root`, without editing the
 existing config or moving artifacts. New writes must remain outside every repository.
-Read-only legacy cohort access is allowed only within this project's Git worktree family.
-Every enclosing checkout must have the same resolved Git common directory and must
-independently confirm the cohort directory is ignored with no tracked contents.
-Independent foreign/nested repositories, redirects, overlap and tracked inputs reject.
-The user's `784d33b` review passed the new-output checks but still rejected the legacy
-input. A same-project nested-worktree false rejection was reproduced locally and fixed;
-the server's precise prior cause is not yet confirmed. Review now reports separate
-cohort/new-output/overlap categories and distinct Git-unavailable/foreign-repository errors.
-The subsequent `8ff2c72` review specifically reported Git unavailable for the cohort,
-with the new output passing. Do not infer ownership, a gitlink, missing executables or
-a corrupt repository without evidence. The next release adds categorical operation,
-checkout role, reason and exit-code diagnostics for Git failures without raw stderr;
-run only the metadata review until that cause is known. No safe.directory changes,
-index edits, ignore-rule changes, data moves or new scan are authorized by this failure.
-This exception adds no source role or row persistence. Test the storage check before
-submitting the unchanged bounded scan; do not treat path checks as research evidence.
+The subsequent `784d33b` and `8ff2c72` reviews passed the external output location
+but blocked legacy input, most recently on an input Git query. No repository corruption
+or precise Git subprocess cause has been established. The read-only input Git
+common-directory/ignore/index gate was an implementation choice and is now removed.
+Input authority instead comes from the configured existing artifact root, authorized
+storage and no-redirect checks, plus pinned cohort location, manifest, Parquet and
+reviewed mapping hashes. Code still requires its clean pinned Git revision. New outputs
+must remain outside every repository and disjoint from inputs. This does not authorize
+adding clinical artifacts to Git or purport to audit/purge existing Git history.
+Do not delete/reclone the original repository, change safe.directory/index/ignore rules,
+move artifacts or modify the original config to work around these checks. Run storage
+review first, then the unchanged explicitly requested T001 CPU scan if it passes;
+submission and worker input checks remain mandatory. Path checks are not task evidence.
 The user also reported GPU availability if useful; T001 remains a CPU
 source/coverage audit, with GPU use considered only for a justified later modeling task.
 `run_recurrent_audit.sh` defaults

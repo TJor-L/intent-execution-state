@@ -57,7 +57,7 @@ def test_links_below_trusted_root_remain_rejected(storage, target, role):
 
 @pytest.mark.parametrize("marker", ["directory", "worktree_file", "broken_symlink"])
 @pytest.mark.parametrize("role", ["cohort", "output"])
-def test_every_git_storage_layout_is_rejected(storage, marker, role):
+def test_git_markers_block_writes_but_do_not_authorize_reads(storage, marker, role):
     folder = storage.cohort if role == "cohort" else storage.root / "other_repo"
     folder.mkdir(exist_ok=True)
     git = folder / ".git"
@@ -68,9 +68,11 @@ def test_every_git_storage_layout_is_rejected(storage, marker, role):
     else:
         git.symlink_to(storage.root / "absent")
     output = storage.root / "new" if role == "cohort" else folder / "private"
-    expected = "legacy_input_git_unavailable" if role == "cohort" else "inside_repository"
-    with pytest.raises(RecurrentTaskError, match=expected):
+    if role == "cohort":
         runner.validate_paths(storage.cohort, output, storage.mapping)
+    else:
+        with pytest.raises(RecurrentTaskError, match="inside_repository"):
+            runner.validate_paths(storage.cohort, output, storage.mapping)
     assert not output.exists()
 
 
@@ -127,7 +129,7 @@ def test_storage_review_cli_never_submits_or_writes(storage, monkeypatch, capsys
     (storage.root / ".git").mkdir()
     assert cli.main() == 2
     result = json.loads(capsys.readouterr().out)
-    assert result["error_code"] == "recurrent_legacy_input_git_unavailable"
+    assert result["error_code"] == "recurrent_storage_inside_repository"
     assert (
         result["storage_checks"]["new_output"]["error_code"]
         == "recurrent_storage_inside_repository"
@@ -177,182 +179,31 @@ def test_legacy_ignored_input_read_only_with_external_write_root(storage, legacy
         runner.validate_paths(legacy.cohort, legacy.original / "private" / "new", storage.mapping)
 
 
-@pytest.mark.parametrize(
-    "problem", [None, "inner_tracked", "outer_tracked", "inner_unignored", "outer_unignored"]
-)
-def test_same_project_nested_worktree_input_is_read_only(storage, legacy, monkeypatch, problem):
-    # Mirror the server's original-repo/handoff/<checkout> layout, not sibling trees.
-    (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
-    old_checkout = legacy.original / "handoff" / "old"
-    active_checkout = legacy.original / "handoff" / "active"
-    legacy.git("worktree", "add", "--detach", str(old_checkout))
-    legacy.git("worktree", "add", "--detach", str(active_checkout))
-    monkeypatch.setattr(runner, "ROOT", active_checkout)
-    cohort = old_checkout / "private" / "cohort"
-    cohort.mkdir(parents=True)
-    (cohort / "manifest.json").write_text('{"generated": true}\n')
-    (cohort / "cohort.parquet").write_bytes(b"generated fixture, not decoded")
-    original_bytes = {p.name: p.read_bytes() for p in cohort.iterdir()}
+@pytest.mark.parametrize("layout", ["original", "nested_worktree", "broken_git", "gitlink"])
+def test_read_only_input_does_not_query_git(storage, legacy, monkeypatch, layout):
+    cohort = legacy.cohort
+    if layout in {"nested_worktree", "gitlink"}:
+        (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
+        owner = legacy.original / "handoff" / "old"
+        legacy.git("worktree", "add", "--detach", str(owner))
+        cohort = owner / "private" / "cohort"
+        cohort.mkdir(parents=True)
+        (cohort / "manifest.json").write_text('{"generated": true}')
+        if layout == "gitlink":
+            head = legacy.git("rev-parse", "HEAD").stdout.strip()
+            legacy.git("update-index", "--add", "--cacheinfo", f"160000,{head},handoff/old")
+    elif layout == "broken_git":
+        (cohort / ".git").write_text("gitdir: missing-synthetic-path\n")
+    before = {p.name: p.read_bytes() for p in cohort.iterdir()}
+    monkeypatch.setattr(subprocess, "run", lambda *a, **kw: pytest.fail("Input must not query Git"))
     output = storage.root / "new-results"
-    if problem:
-        owner = old_checkout if problem.startswith("inner") else legacy.original
-        if problem.endswith("unignored"):
-            (owner / ".gitignore").write_text("")
-            if problem == "outer_unignored":
-                # An anchored common exclude ignores /private in the owning worktree,
-                # but not /handoff/old/private as seen by the containing checkout.
-                (old_checkout / ".gitignore").write_text("")
-                (legacy.original / ".git" / "info" / "exclude").write_text("/private/\n")
-        else:
-            tracked = cohort / "cohort.parquet"
-            digest = legacy.git("hash-object", "-w", str(tracked), cwd=owner).stdout.strip()
-            legacy.git(
-                "update-index",
-                "--add",
-                "--cacheinfo",
-                f"100644,{digest},{tracked.relative_to(owner).as_posix()}",
-                cwd=owner,
-            )
-        review = runner.review_storage(cohort, output, storage.mapping)
-        assert review["storage_checks"]["cohort_input"]["status"] == "blocked"
-        assert review["storage_checks"]["new_output"]["status"] == "passed"
-        assert review["storage_checks"]["overlap"]["status"] == "not_checked"
-        with pytest.raises(RecurrentTaskError, match="legacy_input"):
-            runner.validate_paths(cohort, output, storage.mapping)
-        assert original_bytes == {p.name: p.read_bytes() for p in cohort.iterdir()}
-        assert not output.exists()
-        return
     runner.validate_paths(cohort, output, storage.mapping)
-    assert original_bytes == {p.name: p.read_bytes() for p in cohort.iterdir()}
+    report = runner.review_storage(cohort, output, storage.mapping)
+    assert report["status"] == "passed" and report["input_git_queries"] is False
+    assert before == {p.name: p.read_bytes() for p in cohort.iterdir()}
     assert not output.exists()
     with pytest.raises(RecurrentTaskError, match="inside_repository"):
-        runner.validate_paths(cohort, old_checkout / "private" / "new", storage.mapping)
-
-
-@pytest.mark.parametrize("problem", ["tracked", "unignored", "foreign", "nested"])
-def test_legacy_exception_does_not_allow_tracked_or_other_repository_data(storage, legacy, problem):
-    cohort = legacy.cohort
-    if problem == "tracked":
-        legacy.git("add", "-f", "private/cohort/cohort.parquet")
-    elif problem == "unignored":
-        (legacy.original / ".gitignore").write_text("")
-    elif problem == "foreign":
-        other = storage.root / "foreign"
-        other.mkdir()
-        legacy.git("init", "-q", cwd=other)
-        (other / ".gitignore").write_text("private/\n")
-        cohort = other / "private"
-        cohort.mkdir()
-    else:
-        legacy.git("init", "-q", cwd=cohort)
-    expected = (
-        "legacy_input_foreign_repository" if problem in {"foreign", "nested"} else "legacy_input"
-    )
-    with pytest.raises(RecurrentTaskError, match=expected):
-        runner.validate_paths(cohort, storage.root / "new-results", storage.mapping)
-
-
-@pytest.mark.parametrize("timeout", [False, True])
-def test_git_context_failure_has_its_own_sanitized_input_diagnostic(
-    storage, legacy, monkeypatch, timeout
-):
-    def fail(*args, **kwargs):
-        if timeout:
-            raise subprocess.TimeoutExpired("private_sentinel", 30, stderr="private_sentinel")
-        return subprocess.CompletedProcess(args[0], 128, stdout="", stderr="private_sentinel")
-
-    monkeypatch.setattr(subprocess, "run", fail)
-    result = runner.review_storage(legacy.cohort, storage.root / "new-results", storage.mapping)
-    assert result["error_code"] == "recurrent_legacy_input_git_unavailable"
-    assert result["storage_checks"]["cohort_input"]["status"] == "blocked"
-    assert result["storage_checks"]["new_output"]["status"] == "passed"
-    assert result["storage_checks"]["cohort_input"]["git_failure"] == {
-        "operation": "common_directory",
-        "location": "active_checkout",
-        "reason": "timeout" if timeout else "unclassified_git_error",
-        "exit_code": None if timeout else 128,
-    }
-    assert "private_sentinel" not in json.dumps(result)
-
-
-@pytest.mark.parametrize(
-    "operation,location",
-    [
-        ("common_directory", "active_checkout"),
-        ("common_directory", "input_owner"),
-        ("ignored_directory", "input_owner"),
-        ("tracked_files", "input_owner"),
-        ("ignored_directory", "input_ancestor"),
-    ],
-)
-def test_failed_git_step_and_location_are_reported_without_stderr(
-    storage, legacy, monkeypatch, capsys, operation, location
-):
-    (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
-    owner = legacy.original / "handoff" / "old"
-    legacy.git("worktree", "add", "--detach", str(owner))
-    cohort = owner / "private" / "cohort"
-    cohort.mkdir(parents=True)
-    cwd = {
-        "active_checkout": legacy.checkout,
-        "input_owner": owner,
-        "input_ancestor": legacy.original,
-    }[location]
-    verb = {
-        "common_directory": "rev-parse",
-        "ignored_directory": "check-ignore",
-        "tracked_files": "ls-files",
-    }[operation]
-    original_run = subprocess.run
-
-    def run(command, *args, **kwargs):
-        assert kwargs["env"]["LC_ALL"] == "C"
-        assert kwargs["env"]["GIT_OPTIONAL_LOCKS"] == "0"
-        if kwargs["cwd"] == cwd and command[1] == verb:
-            return subprocess.CompletedProcess(
-                command,
-                128,
-                stdout="",
-                stderr="fatal: detected dubious ownership in repository at PRIVATE_SENTINEL",
-            )
-        return original_run(command, *args, **kwargs)
-
-    monkeypatch.setattr(subprocess, "run", run)
-    report = runner.review_storage(cohort, storage.root / "new", storage.mapping)
-    diagnostic = {
-        "operation": operation,
-        "location": location,
-        "reason": "dubious_ownership",
-        "exit_code": 128,
-    }
-    assert report["storage_checks"]["cohort_input"]["git_failure"] == diagnostic
-    assert report["storage_checks"]["new_output"]["status"] == "passed"
-    assert "PRIVATE_SENTINEL" not in json.dumps(report)
-    with pytest.raises(runner.RecurrentGitError) as caught:
-        runner.validate_paths(cohort, storage.root / "new", storage.mapping)
-    runner.report_error(caught.value)
-    captured = capsys.readouterr()
-    assert json.loads(captured.err)["git_failure"] == diagnostic
-    assert "PRIVATE_SENTINEL" not in captured.out + captured.err
-
-
-def test_real_gitlink_error_is_classified_without_ignoring_it(storage, legacy):
-    (legacy.original / ".gitignore").write_text("private/\nhandoff/\n")
-    owner = legacy.original / "handoff" / "old"
-    legacy.git("worktree", "add", "--detach", str(owner))
-    cohort = owner / "private" / "cohort"
-    cohort.mkdir(parents=True)
-    head = legacy.git("rev-parse", "HEAD").stdout.strip()
-    legacy.git("update-index", "--add", "--cacheinfo", f"160000,{head},handoff/old")
-    report = runner.review_storage(cohort, storage.root / "new", storage.mapping)
-    assert report["storage_checks"]["cohort_input"]["git_failure"] == {
-        "operation": "ignored_directory",
-        "location": "input_ancestor",
-        "reason": "submodule_path",
-        "exit_code": 128,
-    }
-    assert report["status"] == "blocked"
-    assert not (storage.root / "new").exists()
+        runner.validate_paths(cohort, cohort.parent / "new", storage.mapping)
 
 
 @pytest.mark.parametrize("kind", ["legacy", "source", "ancestor", "new"])

@@ -44,6 +44,7 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
     "recurrent_overlapping_storage",
     "recurrent_invalid_arguments",
     "recurrent_mapping_changed",
+    "recurrent_cohort_path_changed",
     "recurrent_invalid_report",
     "recurrent_invalid_result",
     "recurrent_storage_invalid_path",
@@ -51,24 +52,7 @@ PUBLIC_ERROR_CODES = frozenset(LIMIT_EXIT_CODES) | {
     "recurrent_storage_unapproved_alias",
     "recurrent_storage_symlink_below_root",
     "recurrent_storage_inside_repository",
-    "recurrent_legacy_input_not_ignored",
-    "recurrent_legacy_input_tracked_or_unverifiable",
-    "recurrent_legacy_input_git_unavailable",
-    "recurrent_legacy_input_foreign_repository",
 }
-
-
-class RecurrentGitError(RecurrentTaskError):
-    """Fixed diagnostic categories only; never attach Git stderr or private paths."""
-
-    def __init__(self, operation, location, reason, exit_code=None):
-        super().__init__("recurrent_legacy_input_git_unavailable")
-        self.git_failure = {
-            "operation": operation,
-            "location": location,
-            "reason": reason,
-            "exit_code": exit_code,
-        }
 
 
 def report_error(error):
@@ -93,109 +77,10 @@ def report_error(error):
         "error_code": message if message in PUBLIC_ERROR_CODES else "unclassified",
         "automatic_retry": False,
     }
-    if isinstance(error, RecurrentGitError):
-        result["git_failure"] = error.git_failure
     print(json.dumps(result), file=sys.stderr)
 
 
-def _git_failure_reason(stderr):
-    # Inspect a small prefix in memory and emit the matching constant, never the text.
-    message = stderr[:8192].lower()
-    for needle, category in (
-        ("dubious ownership", "dubious_ownership"),
-        ("unsafe repository", "dubious_ownership"),
-        ("is in submodule", "submodule_path"),
-        ("beyond a symbolic link", "symlink_path"),
-        ("not a git repository", "not_a_repository"),
-        ("permission denied", "permission_denied"),
-        ("unknown option", "unsupported_option"),
-        ("unknown switch", "unsupported_option"),
-        ("not a git command", "unsupported_command"),
-        ("no such file or directory", "missing_path"),
-        ("not a directory", "not_a_directory"),
-        ("index file corrupt", "invalid_index"),
-        ("index file smaller", "invalid_index"),
-    ):
-        if needle in message:
-            return category
-    return "unclassified_git_error"
-
-
-def _legacy_git(command, checkout, operation, location, *, capture=False, allowed=(0,)):
-    try:
-        result = subprocess.run(
-            ["git", *command],
-            cwd=checkout,
-            stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-            errors="replace",
-            timeout=30,
-            check=False,
-            env=dict(os.environ, LC_ALL="C", GIT_OPTIONAL_LOCKS="0"),
-        )
-    except subprocess.TimeoutExpired:
-        raise RecurrentGitError(operation, location, "timeout") from None
-    except FileNotFoundError:
-        raise RecurrentGitError(operation, location, "executable_or_cwd_missing") from None
-    except PermissionError:
-        raise RecurrentGitError(operation, location, "permission_denied") from None
-    except OSError:
-        raise RecurrentGitError(operation, location, "operating_system_error") from None
-    if result.returncode not in allowed:
-        raise RecurrentGitError(
-            operation, location, _git_failure_reason(result.stderr), result.returncode
-        )
-    return result
-
-
-def _git_common_directory(checkout, location):
-    result = _legacy_git(
-        ["rev-parse", "--git-common-dir"],
-        checkout,
-        "common_directory",
-        location,
-        capture=True,
-    )
-    common = result.stdout.strip()
-    if not common or len(common) > 16384:
-        raise RecurrentGitError("common_directory", location, "invalid_response", 0)
-    return (checkout / common).resolve()
-
-
-def _legacy_input_allowed(path, repositories):
-    """Read ignored, untracked artifacts only within this project's Git worktree family."""
-    if not repositories:
-        raise RecurrentGitError("repository_discovery", "cohort_input", "no_repository_markers")
-    common = _git_common_directory(ROOT, "active_checkout")
-    for index, repository in enumerate(repositories):
-        location = "input_owner" if index == 0 else "input_ancestor"
-        if _git_common_directory(repository, location) != common or not path.is_relative_to(
-            repository
-        ):
-            raise RecurrentTaskError("recurrent_legacy_input_foreign_repository")
-        relative = path.relative_to(repository).as_posix() + "/"
-        ignored = _legacy_git(
-            ["check-ignore", "-q", "--", relative],
-            repository,
-            "ignored_directory",
-            location,
-            allowed=(0, 1),
-        )
-        if ignored.returncode == 1:
-            raise RecurrentTaskError("recurrent_legacy_input_not_ignored")
-        tracked = _legacy_git(
-            ["ls-files", "--error-unmatch", "--", relative],
-            repository,
-            "tracked_files",
-            location,
-            allowed=(0, 1),
-        )
-        if tracked.returncode == 0:
-            raise RecurrentTaskError("recurrent_legacy_input_tracked_or_unverifiable")
-
-
-def _storage_path(path, *, legacy_input=False):
+def _storage_path(path, *, read_only_input=False):
     """Accept the fixed storage root or its canonical spelling, never arbitrary aliases."""
     if not path.is_absolute() or ".." in path.parts:
         raise RecurrentTaskError("recurrent_storage_invalid_path")
@@ -214,20 +99,21 @@ def _storage_path(path, *, legacy_input=False):
             break
         if part.is_symlink():
             raise RecurrentTaskError("recurrent_storage_symlink_below_root")
-    repositories = [
-        part
-        for part in (resolved, *resolved.parents)
-        if (part / ".git").exists() or (part / ".git").is_symlink()
-    ]
-    if resolved.is_relative_to(ROOT.resolve()) or repositories:
-        if not legacy_input:
-            raise RecurrentTaskError("recurrent_storage_inside_repository")
-        _legacy_input_allowed(resolved, repositories)
+    # Read authority comes from configured artifact storage and pinned content, not
+    # the surrounding repository's index/ignore/worktree metadata. New writes stay out.
+    if not read_only_input and (
+        resolved.is_relative_to(ROOT.resolve())
+        or any(
+            (part / ".git").exists() or (part / ".git").is_symlink()
+            for part in (resolved, *resolved.parents)
+        )
+    ):
+        raise RecurrentTaskError("recurrent_storage_inside_repository")
     return resolved
 
 
 def validate_paths(cohort, output, mapping):
-    cohort = _storage_path(cohort, legacy_input=True)
+    cohort = _storage_path(cohort, read_only_input=True)
     output = _storage_path(output)
     _check_overlap(cohort, output, mapping)
 
@@ -261,20 +147,18 @@ def review_storage(cohort, output, mapping):
         "cohort_has_symlink_ancestor": any(p.is_symlink() for p in (cohort, *cohort.parents)),
     }
     checks, resolved = {}, {}
-    for component, path, legacy_input in (
+    for component, path, read_only_input in (
         ("cohort_input", cohort, True),
         ("new_output", output, False),
     ):
         try:
-            resolved[component] = _storage_path(path, legacy_input=legacy_input)
+            resolved[component] = _storage_path(path, read_only_input=read_only_input)
             checks[component] = {"status": "passed", "error_code": None}
         except RecurrentTaskError as error:
             checks[component] = {
                 "status": "blocked",
                 "error_code": str(error) if str(error) in PUBLIC_ERROR_CODES else "unclassified",
             }
-            if isinstance(error, RecurrentGitError):
-                checks[component]["git_failure"] = error.git_failure
     checks["overlap"] = {"status": "not_checked", "error_code": None}
     if len(resolved) == 2:
         try:
@@ -285,6 +169,7 @@ def review_storage(cohort, output, mapping):
     code = next((item["error_code"] for item in checks.values() if item["error_code"]), None)
     return {
         "mode": "recurrent_storage_review",
+        "input_git_queries": False,
         "status": "passed" if code is None else "blocked",
         "error_code": code,
         "legacy_rejection_checks": legacy,
@@ -402,10 +287,21 @@ def discover_existing_mapping(configs_dir, cohort):
     return matches[0]
 
 
+def cohort_path_digest(cohort):
+    """Bind the configured, validated input location without exporting its path."""
+    return hashlib.sha256(str(cohort.resolve()).encode()).hexdigest()
+
+
+def _verify_cohort_path(cohort):
+    if os.environ.get("IES_COHORT_PATH_SHA256") != cohort_path_digest(cohort):
+        raise RecurrentTaskError("recurrent_cohort_path_changed")
+
+
 def _worker(mapping_path, cohort, output):
     from ies.feasibility.worker import apply_limits
 
     apply_limits(LIMITS)
+    _verify_cohort_path(cohort)
     mapping, digest = load_eligibility_mapping(mapping_path)
     if digest != os.environ.get("IES_MAPPING_SHA256"):
         raise RecurrentTaskError("recurrent_mapping_changed")
@@ -441,6 +337,7 @@ def _worker(mapping_path, cohort, output):
 
 def run_task(mapping_path, cohort, output):
     verify_execution_context()
+    _verify_cohort_path(cohort)
     mapping, digest = load_eligibility_mapping(mapping_path)
     if os.environ.get("IES_MAPPING_SHA256") != digest or os.environ.get(
         "IES_COHORT_MANIFEST_SHA256"

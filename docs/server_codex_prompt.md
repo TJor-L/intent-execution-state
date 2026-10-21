@@ -16,10 +16,13 @@ Mac 已实现 `recurrent-audit` 的重复事件／共同观察窗口检查及生
 本模板本身不表示代码已发布或允许重复提交；只在收到实际干净发布 SHA 及本次运行
 指令后执行。job 39768 的启动失败已定位到旧输出目录在 Git 仓库内；新命令须先执行
 `scripts/run_recurrent_audit.sh --check-storage --output-root /scratch/tliu7/intent-execution-state-private`，
-`8ff2c72` 的检查仍在旧 cohort 的 Git 查询处失败；当前仅执行该只读检查，反馈
-`storage_checks.cohort_input.git_failure`，不得自动接着 `--submit`。定位并处理 Git
-原因后才恢复提交步骤。旧配置和产物保持只读，不搬动、不重提旧 job，
-不因目录检查通过就声称任务可行。Mac 已获持续发布已验证修复的授权，无需逐次批准。
+`8ff2c72` 的检查仍在旧 cohort 的 Git 查询处失败；现在已移除只读输入对 Git
+common-directory/index/ignore 查询的依赖。先通过目录检查，再用本次固定版本的
+`--submit --output-root /scratch/tliu7/intent-execution-state-private` 运行原范围 T001。
+提交时核验配置的原产物根，并绑定 cohort 路径和 manifest 摘要；父进程与 worker
+复核路径，worker 继续核验原 Parquet 和 mapping 摘要。代码仍必须为干净固定版本。
+旧配置和产物保持只读，不删除重克隆，不搬动，不因目录通过就声称任务可行。
+Mac 已获持续发布已验证修复的授权，无需逐次批准。
 不要启动服务器独立开发、
 扩大资源、改变映射、下载私有报告或重开既往实验。
 

@@ -412,26 +412,19 @@ bash scripts/run_recurrent_audit.sh --submit \
 原 cohort/history 和 mapping，不改写配置、不复制或搬动任何旧产物。新目录也不能与
 原产物根或 data_root 重叠，包装脚本以 `umask 077` 创建新产物。
 
-如果旧 cohort 也在当前项目仓库或历史 worktree 内，只读兼容入口会验证所有包含它的
-checkout 都与运行版本共享同一 Git common directory，并分别核验整个目录被 Git 忽略、
-未跟踪任何文件，之后才可读取既有绑定产物。同项目 `handoff/<worktree>` 嵌套布局可通过；
-不能仅凭出现两个 `.git` 标记就判断是独立仓库。
-这不是允许 Git 存储临床数据：不添加、修改、提交这些文件，也不允许向仓库内写新结果；
-其他仓库、嵌套的独立仓库、符号链接跳转或跟踪状态不明确时停止。该检查不会删除历史 Git 数据，
-也不声称审计过 Git 历史。各输入内容摘要、原训练患者选择和完整扫描上限继续生效。
+旧 cohort 的读取权限现在由配置中的原产物根、授权存储边界与已有内容绑定决定，
+不再查询它所在目录的 Git common-directory、index 或忽略规则。提交时额外绑定
+规范化 cohort 路径的 SHA256，父进程和 worker 在读取 mapping 前复核；原 manifest、
+Parquet 和 mapping 的内容哈希仍须通过。代码本身仍须通过干净固定提交校验。
+新结果仍禁止写进任何 Git 仓库，不能与原数据或产物重叠，不能通过符号链接重定向。
+这项调整不允许将真实产物加入 Git，也不代表审计或清除了既有 Git 历史。
 
-`784d33b` 的服务器检查已确认新输出位置通过旧版全部拒绝条件，但旧输入仍被拦截。
-后续版本修复了同项目嵌套 worktree 的误拒绝，并在 `storage_checks` 中分别报告
-`cohort_input`、`new_output`、`overlap`。Git 查询失败、独立仓库、未忽略和已跟踪输入
-使用不同固定错误类别。该本地复现不证明服务器此前必然是同一种布局问题。
-
-`8ff2c72` 的后续检查明确返回旧 cohort 的 `recurrent_legacy_input_git_unavailable`，
-新输出检查通过。当前下一步仅运行 `--check-storage`，不提交作业。更新版会在
-`storage_checks.cohort_input.git_failure` 报告失败步骤（common_directory /
-ignored_directory / tracked_files）、位置角色（active_checkout / input_owner /
-input_ancestor）、固定原因类别与退出码。不会输出 Git stderr、路径或配置内容。
-不据此自动修改 safe.directory、Git index、ignore 规则或搬动数据；先由这项只读结果
-确定原因。上方检查后提交的序列暂不执行，直到该 Git 错误得到定位并处理。
+此前 `784d33b`、`8ff2c72` 已确认新输出位置通过，但旧输入被 Git 检查拦截。
+`e0b9183` 增加了 Git 操作分类诊断，尚未收到服务器运行反馈。现在直接移除了这项
+与只读内容核验无关的依赖，不再要求诊断它才能提交。不声称已查明 Git 子进程错误，
+也没有证据说明整个仓库损坏。无需删除重克隆、改 safe.directory/index/ignore 或搬动数据。
+上方检查后提交的序列恢复使用；任一步失败即停止，不自动重试或扩大扫描范围。
+`--check-storage` 返回 `input_git_queries: false`；它只核验目录元数据，不代表内容或任务通过。
 
 它复用主仓库的 `configs/remote.local.yaml` 和既有 Python 环境，发现唯一已绑定的
 cohort/history 对，仅用 cohort 的身份及 split。然后在主仓库 `configs` 下按原 cohort

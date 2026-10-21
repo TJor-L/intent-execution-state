@@ -108,7 +108,19 @@ def test_server_plan_binds_only_metadata_and_overrides_fixed_resources(tmp_path,
     export = next(arg for arg in command if arg.startswith("--export="))
     assert "IES_MAPPING_SHA256=" + "b" * 64 in export
     assert sha256(cohort / "manifest.json") in export
+    assert "IES_COHORT_PATH_SHA256=" + runner.cohort_path_digest(cohort) in export
     assert not (cohort / "cohort.parquet").exists()
+    assert not (tmp_path / "job").exists()
+
+    # Input authority is the configured artifact root, independent of Git metadata.
+    with pytest.raises(ValueError, match="private output storage"):
+        server.sbatch_command(
+            dict(config, output_root=str(tmp_path / "different_artifacts")),
+            "recurrent-audit",
+            tmp_path / "job",
+            mapping_path=tmp_path / "existing.local.yaml",
+            cohort_dir=cohort,
+        )
     assert not (tmp_path / "job").exists()
 
     # A real invalid output fails before creating a run directory or submitting.
@@ -144,6 +156,7 @@ def test_worker_failure_has_no_private_exception_or_partial_success(
     monkeypatch.setattr(runner, "load_eligibility_mapping", lambda p: (None, "b" * 64))
     monkeypatch.setattr(runner, "validate_paths", lambda *args: None)
     monkeypatch.setenv("IES_MAPPING_SHA256", "b" * 64)
+    monkeypatch.setenv("IES_COHORT_PATH_SHA256", runner.cohort_path_digest(cohort))
     monkeypatch.setenv("IES_COHORT_MANIFEST_SHA256", sha256(cohort / "manifest.json"))
 
     def failed(*args, **kwargs):
@@ -240,6 +253,7 @@ def test_worker_end_to_end_writes_only_verified_aggregates(tmp_path, monkeypatch
     monkeypatch.setattr(runner, "validate_paths", lambda *args: None)
     monkeypatch.setattr(worker, "apply_limits", lambda limits: None)
     monkeypatch.setenv("IES_MAPPING_SHA256", sha256(config))
+    monkeypatch.setenv("IES_COHORT_PATH_SHA256", runner.cohort_path_digest(cohort))
     monkeypatch.setenv("IES_COHORT_MANIFEST_SHA256", digest)
     monkeypatch.setenv("IES_EXPECTED_COMMIT", "a" * 40)
     output = tmp_path / "output"
@@ -269,3 +283,23 @@ def test_main_rejects_missing_slurm_context_before_access(tmp_path, monkeypatch,
     assert runner.main() == 2
     assert not (tmp_path / "output").exists()
     assert str(tmp_path) not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("entry", ["run_task", "_worker"])
+@pytest.mark.parametrize("pin", [None, "wrong", "different_path"])
+def test_changed_input_location_stops_before_mapping_read(tmp_path, monkeypatch, entry, pin):
+    from ies.feasibility import worker
+
+    cohort, output = tmp_path / "cohort", tmp_path / "output"
+    monkeypatch.setattr(runner, "verify_execution_context", lambda: None)
+    monkeypatch.setattr(worker, "apply_limits", lambda limits: None)
+    monkeypatch.setattr(
+        runner, "load_eligibility_mapping", lambda p: pytest.fail("Must not read mapping")
+    )
+    monkeypatch.delenv("IES_COHORT_PATH_SHA256", raising=False)
+    if pin is not None:
+        value = runner.cohort_path_digest(tmp_path / "other") if pin == "different_path" else pin
+        monkeypatch.setenv("IES_COHORT_PATH_SHA256", value)
+    with pytest.raises(RecurrentTaskError, match="cohort_path_changed"):
+        getattr(runner, entry)(tmp_path / "mapping", cohort, output)
+    assert not output.exists()

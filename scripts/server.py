@@ -38,6 +38,7 @@ from ies.io import write_json
 from ies.recurrent_task import RecurrentTaskError
 from ies.recurrent_task_access import plan_recurrent_task
 from ies.recurrent_task_runner import (
+    cohort_path_digest,
     report_error,
     validate_output_root,
     validate_paths,
@@ -183,6 +184,7 @@ def sbatch_command(
         command[export_index] += (
             f",IES_MAPPING_SHA256={mapping_digest}"
             f",IES_COHORT_MANIFEST_SHA256={hashlib.sha256(content).hexdigest()}"
+            f",IES_COHORT_PATH_SHA256={cohort_path_digest(cohort)}"
         )
         command.extend(
             [
